@@ -32,6 +32,7 @@ import AdminSettings from './pages/admin/Settings';
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
 import CartDrawer from './components/cart/CartDrawer';
+import UpdateBanner from './components/UpdateBanner';
 
 function App() {
   const initialize = useAuthStore((state) => state.initialize);
@@ -90,6 +91,9 @@ function App() {
 
       {/* Global Cart Drawer */}
       <CartDrawer />
+
+      {/* Update Banner */}
+      <UpdateBanner />
     </BrowserRouter>
   );
 }
