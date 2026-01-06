@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
+import { useSettingsStore } from './store/settingsStore';
 
 // Layouts
 import MainLayout from './components/layout/MainLayout';
@@ -36,10 +37,12 @@ import UpdateBanner from './components/UpdateBanner';
 
 function App() {
   const { initialize, isLoading } = useAuthStore();
+  const { fetchSettings } = useSettingsStore();
 
   useEffect(() => {
     initialize();
-  }, [initialize]);
+    fetchSettings();
+  }, [initialize, fetchSettings]);
 
   // Show loading screen while auth initializes
   if (isLoading) {
