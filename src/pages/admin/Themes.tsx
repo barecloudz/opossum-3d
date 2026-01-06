@@ -5,6 +5,7 @@ import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import { supabase } from '../../lib/supabase';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useToast } from '../../components/ui/Toast';
 
 interface ThemeSettings {
   primary_color: string;
@@ -106,6 +107,7 @@ export default function AdminThemes() {
   const [theme, setTheme] = useState<ThemeSettings>(presetThemes[0].colors);
   const [activePreset, setActivePreset] = useState<string>('Neon Green');
   const { updateSettings, applyTheme } = useSettingsStore();
+  const { addToast } = useToast();
 
   useEffect(() => {
     fetchTheme();
@@ -165,10 +167,10 @@ export default function AdminThemes() {
       applyTheme(theme);
       updateSettings({ theme_settings: theme });
 
-      alert('Theme saved and applied!');
+      addToast('Theme saved and applied!', 'success');
     } catch (err) {
       console.error('Error saving theme:', err);
-      alert('Failed to save theme. Run: ALTER TABLE store_settings ADD COLUMN theme_settings JSONB;');
+      addToast('Failed to save theme. Check database column exists.', 'error');
     } finally {
       setIsSaving(false);
     }

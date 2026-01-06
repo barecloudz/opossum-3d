@@ -6,6 +6,7 @@ import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import { supabase } from '../../lib/supabase';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useToast } from '../../components/ui/Toast';
 import type { StoreSettings } from '../../types';
 
 export default function AdminSettings() {
@@ -14,6 +15,7 @@ export default function AdminSettings() {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { updateSettings: updateGlobalSettings } = useSettingsStore();
+  const { addToast } = useToast();
 
   const [settings, setSettings] = useState<Partial<StoreSettings>>({
     store_name: '',
@@ -97,7 +99,7 @@ export default function AdminSettings() {
 
     } catch (err) {
       console.error('Error uploading logo:', err);
-      alert('Failed to upload logo. Make sure "site-assets" bucket exists in Supabase.');
+      addToast('Failed to upload logo. Check bucket permissions.', 'error');
     } finally {
       setIsUploadingLogo(false);
       if (fileInputRef.current) {
@@ -143,10 +145,10 @@ export default function AdminSettings() {
         logo_url: settings.logo_url,
       });
 
-      alert('Settings saved successfully!');
+      addToast('Settings saved successfully!', 'success');
     } catch (err) {
       console.error('Error saving settings:', err);
-      alert('Failed to save settings');
+      addToast('Failed to save settings', 'error');
     } finally {
       setIsSaving(false);
     }

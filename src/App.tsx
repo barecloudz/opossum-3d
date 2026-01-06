@@ -35,6 +35,7 @@ import AdminThemes from './pages/admin/Themes';
 import ProtectedRoute from './components/ProtectedRoute';
 import CartDrawer from './components/cart/CartDrawer';
 import UpdateBanner from './components/UpdateBanner';
+import { ToastContainer } from './components/ui/Toast';
 
 function App() {
   const { initialize, isLoading } = useAuthStore();
@@ -110,6 +111,9 @@ function App() {
 
       {/* Update Banner */}
       <UpdateBanner />
+
+      {/* Toast Notifications */}
+      <ToastContainer />
     </BrowserRouter>
   );
 }
