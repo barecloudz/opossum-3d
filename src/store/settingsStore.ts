@@ -62,7 +62,7 @@ const applyThemeToDOM = (theme: ThemeSettings) => {
   document.body.style.backgroundColor = theme.background_color;
 };
 
-export const useSettingsStore = create<SettingsState>((set, get) => ({
+export const useSettingsStore = create<SettingsState>((set) => ({
   settings: defaultSettings,
   isLoading: true,
 
