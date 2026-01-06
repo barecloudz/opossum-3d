@@ -1,22 +1,17 @@
-import { forwardRef } from 'react';
-import type { ComponentPropsWithRef, ElementType } from 'react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import Spinner from './Spinner';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
-interface ButtonBaseProps {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   isLoading?: boolean;
-  disabled?: boolean;
-  className?: string;
-  children: React.ReactNode;
+  as?: typeof Link;
+  to?: string;
 }
-
-type ButtonProps<T extends ElementType = 'button'> = ButtonBaseProps & {
-  as?: T;
-} & Omit<ComponentPropsWithRef<T>, keyof ButtonBaseProps | 'as'>;
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
@@ -37,50 +32,48 @@ const sizeStyles: Record<ButtonSize, string> = {
   lg: 'px-6 py-3 text-lg',
 };
 
-function ButtonInner<T extends ElementType = 'button'>(
-  {
-    as,
-    variant = 'primary',
-    size = 'md',
-    isLoading = false,
-    disabled = false,
-    className = '',
-    children,
-    ...props
-  }: ButtonProps<T>,
-  ref: React.Ref<Element>
-) {
-  const Component = as || 'button';
+export default function Button({
+  variant = 'primary',
+  size = 'md',
+  isLoading = false,
+  disabled = false,
+  className = '',
+  children,
+  as,
+  to,
+  ...props
+}: ButtonProps) {
   const isDisabled = disabled || isLoading;
 
+  const classes = `
+    inline-flex items-center justify-center font-semibold rounded-lg
+    transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-black
+    ${variantStyles[variant]}
+    ${sizeStyles[size]}
+    ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+    ${className}
+  `;
+
+  const content = isLoading ? (
+    <>
+      <Spinner size="sm" className="mr-2" />
+      Loading...
+    </>
+  ) : (
+    children
+  );
+
+  if (as === Link && to) {
+    return (
+      <Link to={to} className={classes}>
+        {content}
+      </Link>
+    );
+  }
+
   return (
-    <Component
-      ref={ref}
-      disabled={Component === 'button' ? isDisabled : undefined}
-      className={`
-        inline-flex items-center justify-center font-semibold rounded-lg
-        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-black
-        ${variantStyles[variant]}
-        ${sizeStyles[size]}
-        ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-        ${className}
-      `}
-      {...props}
-    >
-      {isLoading ? (
-        <>
-          <Spinner size="sm" className="mr-2" />
-          Loading...
-        </>
-      ) : (
-        children
-      )}
-    </Component>
+    <button disabled={isDisabled} className={classes} {...props}>
+      {content}
+    </button>
   );
 }
-
-const Button = forwardRef(ButtonInner) as <T extends ElementType = 'button'>(
-  props: ButtonProps<T> & { ref?: React.Ref<Element> }
-) => React.ReactElement | null;
-
-export default Button;

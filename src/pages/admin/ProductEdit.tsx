@@ -8,7 +8,6 @@ import Spinner from '../../components/ui/Spinner';
 import { supabase } from '../../lib/supabase';
 import { slugify } from '../../lib/utils';
 import { useCategories } from '../../hooks/useCategories';
-import type { Product } from '../../types';
 
 export default function AdminProductEdit() {
   const { id } = useParams<{ id: string }>();

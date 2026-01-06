@@ -1,7 +1,5 @@
-import { type ClassValue, clsx } from 'clsx';
-
-// Simple clsx implementation if not using the library
-export function cn(...inputs: ClassValue[]): string {
+// Simple cn utility for joining class names
+export function cn(...inputs: (string | undefined | null | false)[]): string {
   return inputs.filter(Boolean).join(' ');
 }
 
