@@ -5,6 +5,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
 import Spinner from '../../components/ui/Spinner';
+import ImageUpload from '../../components/admin/ImageUpload';
 import { supabase } from '../../lib/supabase';
 import { slugify } from '../../lib/utils';
 import { useCategories } from '../../hooks/useCategories';
@@ -17,6 +18,7 @@ export default function AdminProductEdit() {
 
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -71,6 +73,17 @@ export default function AdminProductEdit() {
           print_time_hours: data.print_time_hours?.toString() || '',
           weight_oz: data.weight_oz?.toString() || '',
         });
+
+        // Fetch product images
+        const { data: imagesData } = await supabase
+          .from('product_images')
+          .select('url')
+          .eq('product_id', id)
+          .order('display_order');
+
+        if (imagesData) {
+          setImages(imagesData.map(img => img.url));
+        }
       }
     } catch (err) {
       console.error('Error fetching product:', err);
@@ -124,12 +137,41 @@ export default function AdminProductEdit() {
         weight_oz: formData.weight_oz ? parseFloat(formData.weight_oz) : null,
       };
 
+      let productId = id;
+
       if (isNew) {
-        const { error } = await supabase.from('products').insert(productData);
+        const { data: newProduct, error } = await supabase
+          .from('products')
+          .insert(productData)
+          .select('id')
+          .single();
         if (error) throw error;
+        productId = newProduct.id;
       } else {
         const { error } = await supabase.from('products').update(productData).eq('id', id);
         if (error) throw error;
+      }
+
+      // Save images
+      if (productId) {
+        // Delete existing images
+        await supabase.from('product_images').delete().eq('product_id', productId);
+
+        // Insert new images
+        if (images.length > 0) {
+          const imageRecords = images.map((url, index) => ({
+            product_id: productId,
+            url,
+            display_order: index,
+            is_primary: index === 0,
+          }));
+
+          const { error: imgError } = await supabase
+            .from('product_images')
+            .insert(imageRecords);
+
+          if (imgError) throw imgError;
+        }
       }
 
       navigate('/admin/products');
@@ -356,12 +398,12 @@ export default function AdminProductEdit() {
 
             <Card>
               <h2 className="text-xl font-semibold text-white mb-4">Images</h2>
-              <p className="text-gray-400 text-sm mb-4">
-                Image upload will be available soon. For now, add images directly in Supabase.
-              </p>
-              <div className="border-2 border-dashed border-brand-gray rounded-lg p-8 text-center">
-                <p className="text-gray-500 text-sm">Coming soon</p>
-              </div>
+              <ImageUpload
+                images={images}
+                onChange={setImages}
+                bucket="product-images"
+                maxImages={5}
+              />
             </Card>
 
             <Button type="submit" className="w-full" size="lg" isLoading={isSaving}>
