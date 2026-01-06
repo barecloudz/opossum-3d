@@ -6,6 +6,7 @@ import {
   Users,
   MessageSquare,
   Settings,
+  Palette,
   ArrowLeft,
   Menu,
   X,
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/admin/orders', icon: ShoppingBag, label: 'Orders' },
   { href: '/admin/customers', icon: Users, label: 'Customers' },
   { href: '/admin/quotes', icon: MessageSquare, label: 'Quote Requests' },
+  { href: '/admin/themes', icon: Palette, label: 'Themes' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 

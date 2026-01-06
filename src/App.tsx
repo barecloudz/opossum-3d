@@ -29,6 +29,7 @@ import AdminOrderDetail from './pages/admin/OrderDetail';
 import AdminCustomers from './pages/admin/Customers';
 import AdminQuotes from './pages/admin/QuoteRequests';
 import AdminSettings from './pages/admin/Settings';
+import AdminThemes from './pages/admin/Themes';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -99,6 +100,7 @@ function App() {
           <Route path="orders/:id" element={<AdminOrderDetail />} />
           <Route path="customers" element={<AdminCustomers />} />
           <Route path="quotes" element={<AdminQuotes />} />
+          <Route path="themes" element={<AdminThemes />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
       </Routes>
