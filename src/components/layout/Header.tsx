@@ -71,13 +71,22 @@ export default function Header() {
               )}
             </button>
 
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-gray-300 hover:text-brand-neon transition-colors"
-            >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+            {/* Mobile login button / menu */}
+            {!user ? (
+              <Link
+                to="/login"
+                className="md:hidden bg-brand-neon text-brand-black px-4 py-1.5 rounded-lg font-semibold text-sm hover:bg-brand-emerald transition-colors"
+              >
+                Login
+              </Link>
+            ) : (
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden text-gray-300 hover:text-brand-neon transition-colors"
+              >
+                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            )}
           </div>
         </div>
 
