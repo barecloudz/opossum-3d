@@ -35,11 +35,23 @@ import CartDrawer from './components/cart/CartDrawer';
 import UpdateBanner from './components/UpdateBanner';
 
 function App() {
-  const initialize = useAuthStore((state) => state.initialize);
+  const { initialize, isLoading } = useAuthStore();
 
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Show loading screen while auth initializes
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-brand-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-3xl font-bold text-brand-neon mb-2">OPOSSUM</div>
+          <div className="text-gray-400 text-sm">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <BrowserRouter>
@@ -63,11 +75,13 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* 404 inside MainLayout for proper styling */}
+          <Route path="*" element={<NotFound />} />
         </Route>
 
         {/* Admin Routes */}
         <Route
-          path="/admin"
+          path="/admin/*"
           element={
             <ProtectedRoute requireAdmin>
               <AdminLayout />
@@ -84,9 +98,6 @@ function App() {
           <Route path="quotes" element={<AdminQuotes />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
-
-        {/* 404 */}
-        <Route path="*" element={<NotFound />} />
       </Routes>
 
       {/* Global Cart Drawer */}
