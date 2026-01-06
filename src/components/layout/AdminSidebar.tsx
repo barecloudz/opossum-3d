@@ -30,43 +30,44 @@ export default function AdminSidebar() {
     return location.pathname.startsWith(path);
   };
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
     <>
       {/* Logo */}
-      <div className="p-4 border-b border-brand-gray">
-        <Link to="/admin" className="flex items-center space-x-2">
+      <div className={`p-5 border-b ${isMobile ? 'border-brand-neon/20 bg-brand-charcoal' : 'border-brand-gray'}`}>
+        <Link to="/admin" className="flex items-center space-x-2" onClick={() => setMobileOpen(false)}>
           <span className="text-xl font-bold text-brand-neon">OPOSSUM</span>
-          <span className="text-xs text-gray-400">Admin</span>
+          <span className="text-xs text-gray-400 bg-brand-gray px-2 py-0.5 rounded">Admin</span>
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className={`flex-1 p-4 space-y-1 ${isMobile ? 'bg-brand-charcoal' : ''}`}>
         {navItems.map((item) => (
           <Link
             key={item.href}
             to={item.href}
             onClick={() => setMobileOpen(false)}
-            className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+            className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
               isActive(item.href)
-                ? 'bg-brand-emerald-dark text-brand-neon'
-                : 'text-gray-400 hover:bg-brand-gray hover:text-white'
+                ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
+                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
             }`}
           >
-            <item.icon className="h-5 w-5" />
-            <span>{item.label}</span>
+            <item.icon className={`h-5 w-5 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
+            <span className="font-medium">{item.label}</span>
           </Link>
         ))}
       </nav>
 
       {/* Back to store */}
-      <div className="p-4 border-t border-brand-gray">
+      <div className={`p-4 border-t ${isMobile ? 'border-brand-neon/20 bg-brand-charcoal' : 'border-brand-gray'}`}>
         <Link
           to="/"
-          className="flex items-center space-x-3 px-3 py-2 text-gray-400 hover:text-brand-neon transition-colors"
+          onClick={() => setMobileOpen(false)}
+          className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:text-brand-neon transition-colors rounded-lg hover:bg-brand-gray/50"
         >
           <ArrowLeft className="h-5 w-5" />
-          <span>Back to Store</span>
+          <span className="font-medium">Back to Store</span>
         </Link>
       </div>
     </>
@@ -77,7 +78,7 @@ export default function AdminSidebar() {
       {/* Mobile toggle */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 bg-brand-charcoal p-2 rounded-lg text-gray-400 hover:text-white"
+        className="md:hidden fixed top-4 left-4 z-50 bg-brand-charcoal border border-brand-gray p-2.5 rounded-lg text-brand-neon hover:bg-brand-gray transition-colors shadow-lg"
       >
         {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </button>
@@ -92,16 +93,16 @@ export default function AdminSidebar() {
 
       {/* Mobile sidebar */}
       <aside
-        className={`md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-brand-charcoal border-r border-brand-gray flex flex-col transform transition-transform ${
+        className={`md:hidden fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-brand-charcoal to-brand-black border-r border-brand-neon/20 flex flex-col transform transition-transform shadow-2xl shadow-brand-neon/10 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <SidebarContent />
+        <SidebarContent isMobile={true} />
       </aside>
 
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-64 bg-brand-charcoal border-r border-brand-gray flex-col">
-        <SidebarContent />
+        <SidebarContent isMobile={false} />
       </aside>
     </>
   );
