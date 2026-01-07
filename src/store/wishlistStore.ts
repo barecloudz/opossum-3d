@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
-import type { Product } from '../types';
 
 interface WishlistState {
   items: string[]; // Product IDs

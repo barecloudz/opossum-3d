@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Star, User, ThumbsUp, CheckCircle } from 'lucide-react';
+import { Star, User, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import Button from '../ui/Button';

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { CheckCircle, Package, ArrowRight, MapPin, CreditCard } from 'lucide-react';
+import { CheckCircle, Package, ArrowRight, MapPin } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import { supabase } from '../lib/supabase';

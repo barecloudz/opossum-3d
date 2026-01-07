@@ -64,7 +64,7 @@ export default function ProductDetail() {
   };
 
   // Build breadcrumb items
-  const breadcrumbItems = [
+  const breadcrumbItems: { label: string; href?: string }[] = [
     { label: 'Products', href: '/products' },
   ];
   if (product.category) {

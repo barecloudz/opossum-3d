@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { User, Package, LogOut, Settings, ChevronRight, MapPin, Eye, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Package, LogOut, Settings, ChevronRight, MapPin, Clock } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
 import Button from '../components/ui/Button';
