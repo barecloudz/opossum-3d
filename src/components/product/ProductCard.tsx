@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
-import { Package, ShoppingCart } from 'lucide-react';
+import { Package, ShoppingCart, Heart } from 'lucide-react';
 import Badge from '../ui/Badge';
 import { formatPrice, getStockStatus } from '../../lib/utils';
 import { useCartStore } from '../../store/cartStore';
+import { useWishlistStore } from '../../store/wishlistStore';
+import { useAuthStore } from '../../store/authStore';
 import type { Product } from '../../types';
 
 interface ProductCardProps {
@@ -11,8 +13,17 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem, openCart } = useCartStore();
+  const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore();
+  const { user } = useAuthStore();
   const stockStatus = getStockStatus(product.stock_quantity, product.low_stock_threshold);
   const primaryImage = product.images?.find((img) => img.is_primary) || product.images?.[0];
+  const inWishlist = isInWishlist(product.id);
+
+  // Calculate discount percentage
+  const isOnSale = product.compare_at_price && product.compare_at_price > product.price;
+  const discountPercent = isOnSale
+    ? Math.round(((product.compare_at_price! - product.price) / product.compare_at_price!) * 100)
+    : 0;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -21,13 +32,23 @@ export default function ProductCard({ product }: ProductCardProps) {
     openCart();
   };
 
+  const handleWishlistToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (inWishlist) {
+      removeFromWishlist(product.id, user?.id);
+    } else {
+      addToWishlist(product.id, user?.id);
+    }
+  };
+
   return (
     <Link
       to={`/products/${product.slug}`}
-      className="group bg-brand-charcoal rounded-xl border border-brand-gray overflow-hidden hover:border-brand-neon/50 hover:shadow-neon-sm transition-all"
+      className="group bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] overflow-hidden hover:border-[var(--color-primary)]/50 hover:shadow-neon-sm transition-all"
     >
       {/* Image */}
-      <div className="aspect-square bg-brand-black relative overflow-hidden">
+      <div className="aspect-square bg-[var(--color-background)] relative overflow-hidden">
         {primaryImage ? (
           <img
             src={primaryImage.image_url}
@@ -50,11 +71,32 @@ export default function ProductCard({ product }: ProductCardProps) {
         )}
 
         {/* Featured badge */}
-        {product.is_featured && (
+        {product.is_featured && !isOnSale && (
           <div className="absolute top-2 right-2">
             <Badge variant="success">Featured</Badge>
           </div>
         )}
+
+        {/* Sale badge */}
+        {isOnSale && (
+          <div className="absolute top-2 right-2">
+            <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+              {discountPercent}% OFF
+            </span>
+          </div>
+        )}
+
+        {/* Wishlist button - always bottom left */}
+        <button
+          onClick={handleWishlistToggle}
+          className={`absolute bottom-2 left-2 p-2 rounded-full transition-all ${
+            inWishlist
+              ? 'bg-red-500 text-white'
+              : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500'
+          }`}
+        >
+          <Heart className={`h-4 w-4 ${inWishlist ? 'fill-current' : ''}`} />
+        </button>
 
         {/* Quick add button */}
         <button
@@ -68,14 +110,14 @@ export default function ProductCard({ product }: ProductCardProps) {
 
       {/* Info */}
       <div className="p-4">
-        <h3 className="text-white font-medium mb-1 truncate group-hover:text-brand-neon transition-colors">
+        <h3 className="text-theme font-medium mb-1 truncate group-hover:text-[var(--color-primary)] transition-colors">
           {product.name}
         </h3>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-brand-neon font-semibold">{formatPrice(product.price)}</span>
+            <span className="text-[var(--color-primary)] font-semibold">{formatPrice(product.price)}</span>
             {product.compare_at_price && (
-              <span className="text-gray-500 text-sm line-through">
+              <span className="text-theme opacity-50 text-sm line-through">
                 {formatPrice(product.compare_at_price)}
               </span>
             )}

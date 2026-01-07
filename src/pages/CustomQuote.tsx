@@ -49,11 +49,11 @@ export default function CustomQuote() {
   if (isSubmitted) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <div className="w-20 h-20 bg-brand-emerald-dark rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle className="h-10 w-10 text-brand-neon" />
+        <div className="w-20 h-20 bg-[var(--color-primary)]/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle className="h-10 w-10 text-[var(--color-primary)]" />
         </div>
-        <h1 className="text-3xl font-bold text-white mb-4">Quote Request Submitted!</h1>
-        <p className="text-gray-400 mb-8">
+        <h1 className="text-3xl font-bold text-theme mb-4">Quote Request Submitted!</h1>
+        <p className="text-theme opacity-60 mb-8">
           Thank you for your interest! We'll review your request and get back to you
           within 1-2 business days with a quote.
         </p>
@@ -65,8 +65,8 @@ export default function CustomQuote() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-white mb-4">Request a Custom Quote</h1>
-        <p className="text-gray-400 max-w-xl mx-auto">
+        <h1 className="text-3xl font-bold text-theme mb-4">Request a Custom Quote</h1>
+        <p className="text-theme opacity-60 max-w-xl mx-auto">
           Have a unique project in mind? Tell us about it and we'll get back to you
           with a custom quote. From personalized signs to one-of-a-kind creations,
           we're here to help.
@@ -102,7 +102,7 @@ export default function CustomQuote() {
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-theme opacity-80 mb-1">
               Project Description
             </label>
             <textarea
@@ -112,18 +112,18 @@ export default function CustomQuote() {
               rows={5}
               required
               placeholder="Tell us about your project. Include details like dimensions, materials, colors, quantity, and any other relevant information..."
-              className="w-full px-4 py-2 rounded-lg bg-brand-black border border-brand-gray text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-neon focus:border-transparent resize-none"
+              className="w-full px-4 py-2 rounded-lg bg-[var(--color-background)] border border-[var(--color-border)] text-theme placeholder-[var(--color-text)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-none"
             />
           </div>
 
           {/* Image upload placeholder */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-theme opacity-80 mb-1">
               Reference Images (optional)
             </label>
-            <div className="border-2 border-dashed border-brand-gray rounded-lg p-8 text-center hover:border-brand-neon/50 transition-colors">
-              <Upload className="h-10 w-10 text-gray-500 mx-auto mb-2" />
-              <p className="text-gray-400 text-sm">
+            <div className="border-2 border-dashed border-[var(--color-border)] rounded-lg p-8 text-center hover:border-[var(--color-primary)]/50 transition-colors">
+              <Upload className="h-10 w-10 text-theme opacity-50 mx-auto mb-2" />
+              <p className="text-theme opacity-60 text-sm">
                 Image upload coming soon - for now, please describe your reference images
                 in the description or email them to us after submitting.
               </p>

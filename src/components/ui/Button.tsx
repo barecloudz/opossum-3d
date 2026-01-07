@@ -15,13 +15,13 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-brand-neon text-brand-black hover:bg-brand-emerald hover:shadow-neon focus:ring-brand-neon',
+    'bg-[var(--color-primary)] text-[var(--color-background)] hover:opacity-90 hover:shadow-neon focus:ring-[var(--color-primary)]',
   secondary:
-    'bg-brand-emerald-dark text-brand-neon hover:bg-brand-emerald/20 focus:ring-brand-emerald',
+    'bg-[var(--color-primary)]/20 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/30 focus:ring-[var(--color-primary)]',
   outline:
-    'border-2 border-brand-neon text-brand-neon hover:bg-brand-neon/10 focus:ring-brand-neon',
+    'border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 focus:ring-[var(--color-primary)]',
   ghost:
-    'text-gray-300 hover:bg-brand-gray hover:text-white focus:ring-brand-gray',
+    'text-theme opacity-80 hover:bg-[var(--color-border)] hover:opacity-100 focus:ring-[var(--color-border)]',
   danger:
     'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
 };
@@ -47,7 +47,7 @@ export default function Button({
 
   const classes = `
     inline-flex items-center justify-center font-semibold rounded-lg
-    transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-brand-black
+    transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--color-background)]
     ${variantStyles[variant]}
     ${sizeStyles[size]}
     ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}

@@ -68,33 +68,33 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="py-16 bg-brand-charcoal">
+      <section className="py-16 bg-[var(--color-surface)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center p-6">
-              <div className="w-12 h-12 bg-brand-emerald-dark rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="h-6 w-6 text-brand-neon" />
+              <div className="w-12 h-12 bg-[var(--color-primary)]/20 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="h-6 w-6 text-[var(--color-primary)]" />
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">Premium Quality</h3>
-              <p className="text-gray-400">
+              <h3 className="text-lg font-semibold text-theme mb-2">Premium Quality</h3>
+              <p className="text-theme opacity-60">
                 20 years of combined experience with $12k in professional equipment
               </p>
             </div>
             <div className="text-center p-6">
-              <div className="w-12 h-12 bg-brand-emerald-dark rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Truck className="h-6 w-6 text-brand-neon" />
+              <div className="w-12 h-12 bg-[var(--color-primary)]/20 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <Truck className="h-6 w-6 text-[var(--color-primary)]" />
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">Fast Shipping</h3>
-              <p className="text-gray-400">
+              <h3 className="text-lg font-semibold text-theme mb-2">Fast Shipping</h3>
+              <p className="text-theme opacity-60">
                 Affordable USPS shipping on all orders, typically around $5
               </p>
             </div>
             <div className="text-center p-6">
-              <div className="w-12 h-12 bg-brand-emerald-dark rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Shield className="h-6 w-6 text-brand-neon" />
+              <div className="w-12 h-12 bg-[var(--color-primary)]/20 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-6 w-6 text-[var(--color-primary)]" />
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">Custom Orders</h3>
-              <p className="text-gray-400">
+              <h3 className="text-lg font-semibold text-theme mb-2">Custom Orders</h3>
+              <p className="text-theme opacity-60">
                 Have something specific in mind? We can bring your vision to life
               </p>
             </div>
@@ -106,8 +106,8 @@ export default function Home() {
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-white">Featured Products</h2>
-            <Link to="/products" className="text-brand-neon hover:text-brand-emerald transition-colors flex items-center">
+            <h2 className="text-2xl font-bold text-theme">Featured Products</h2>
+            <Link to="/products" className="text-[var(--color-primary)] hover:opacity-80 transition-colors flex items-center">
               View All <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </div>
@@ -115,10 +115,10 @@ export default function Home() {
             {isLoading ? (
               // Loading skeletons
               [1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-brand-charcoal rounded-xl border border-brand-gray p-4">
-                  <div className="aspect-square bg-brand-gray rounded-lg mb-4 animate-pulse" />
-                  <div className="h-4 bg-brand-gray rounded w-3/4 mb-2 animate-pulse" />
-                  <div className="h-4 bg-brand-gray rounded w-1/2 animate-pulse" />
+                <div key={i} className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-4">
+                  <div className="aspect-square bg-[var(--color-border)] rounded-lg mb-4 animate-pulse" />
+                  <div className="h-4 bg-[var(--color-border)] rounded w-3/4 mb-2 animate-pulse" />
+                  <div className="h-4 bg-[var(--color-border)] rounded w-1/2 animate-pulse" />
                 </div>
               ))
             ) : featuredProducts.length > 0 ? (
@@ -128,9 +128,9 @@ export default function Home() {
                   <Link
                     key={product.id}
                     to={`/products/${product.slug}`}
-                    className="bg-brand-charcoal rounded-xl border border-brand-gray p-4 hover:border-brand-neon/50 transition-colors group"
+                    className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-4 hover:border-[var(--color-primary)]/50 transition-colors group"
                   >
-                    <div className="aspect-square bg-brand-gray rounded-lg mb-4 overflow-hidden">
+                    <div className="aspect-square bg-[var(--color-border)] rounded-lg mb-4 overflow-hidden">
                       {primaryImage ? (
                         <img
                           src={primaryImage.image_url}
@@ -138,18 +138,18 @@ export default function Home() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-500">
+                        <div className="w-full h-full flex items-center justify-center text-theme opacity-50">
                           No image
                         </div>
                       )}
                     </div>
-                    <h3 className="font-semibold text-white mb-1 group-hover:text-brand-neon transition-colors">
+                    <h3 className="font-semibold text-theme mb-1 group-hover:text-[var(--color-primary)] transition-colors">
                       {product.name}
                     </h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-brand-neon font-bold">${product.price.toFixed(2)}</span>
+                      <span className="text-[var(--color-primary)] font-bold">${product.price.toFixed(2)}</span>
                       {product.compare_at_price && product.compare_at_price > product.price && (
-                        <span className="text-gray-500 line-through text-sm">
+                        <span className="text-theme opacity-50 line-through text-sm">
                           ${product.compare_at_price.toFixed(2)}
                         </span>
                       )}
@@ -158,7 +158,7 @@ export default function Home() {
                 );
               })
             ) : (
-              <div className="col-span-full text-center py-8 text-gray-400">
+              <div className="col-span-full text-center py-8 text-theme opacity-60">
                 No products available yet. Check back soon!
               </div>
             )}
@@ -167,12 +167,12 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-brand-charcoal">
+      <section className="py-16 bg-[var(--color-surface)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">
+          <h2 className="text-3xl font-bold text-theme mb-4">
             Have a Custom Project in Mind?
           </h2>
-          <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
+          <p className="text-theme opacity-60 mb-8 max-w-2xl mx-auto">
             Whether it's a unique gift, a custom sign, or a one-of-a-kind creation,
             we're here to help bring your ideas to life.
           </p>

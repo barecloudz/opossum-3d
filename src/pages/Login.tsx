@@ -38,8 +38,8 @@ export default function Login() {
     <div className="min-h-[60vh] flex items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-white">Welcome Back</h1>
-          <p className="text-gray-400 mt-2">Sign in to your account</p>
+          <h1 className="text-2xl font-bold text-theme">Welcome Back</h1>
+          <p className="text-theme opacity-60 mt-2">Sign in to your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -70,9 +70,9 @@ export default function Login() {
           </Button>
         </form>
 
-        <p className="text-center text-gray-400 mt-6">
+        <p className="text-center text-theme opacity-60 mt-6">
           Don't have an account?{' '}
-          <Link to="/register" className="text-brand-neon hover:text-brand-emerald transition-colors">
+          <Link to="/register" className="text-[var(--color-primary)] hover:opacity-80 transition-colors">
             Create one
           </Link>
         </p>

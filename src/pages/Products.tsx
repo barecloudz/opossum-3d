@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 import Input from '../components/ui/Input';
 import ProductCard from '../components/product/ProductCard';
+import Button from '../components/ui/Button';
+import { ProductGridSkeleton } from '../components/ui/Skeleton';
 import { useProducts } from '../hooks/useProducts';
 import { useCategories } from '../hooks/useCategories';
-import Spinner from '../components/ui/Spinner';
 
 export default function Products() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'price-asc' | 'price-desc'>('newest');
 
-  const { products, isLoading } = useProducts();
+  const { products, isLoading, error, refetch } = useProducts();
   const { categories } = useCategories();
 
   const filteredProducts = products
@@ -36,8 +37,8 @@ export default function Products() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Products</h1>
-        <p className="text-gray-400">Browse our collection of 3D printed and laser engraved items</p>
+        <h1 className="text-3xl font-bold text-theme mb-2">Products</h1>
+        <p className="text-theme opacity-60">Browse our collection of 3D printed and laser engraved items</p>
       </div>
 
       {/* Filters */}
@@ -59,7 +60,7 @@ export default function Products() {
           <select
             value={selectedCategory || ''}
             onChange={(e) => setSelectedCategory(e.target.value || null)}
-            className="px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-neon"
+            className="px-4 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-theme focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
           >
             <option value="">All Categories</option>
             {categories.map((category) => (
@@ -73,7 +74,7 @@ export default function Products() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-neon"
+            className="px-4 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-theme focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
           >
             <option value="newest">Newest</option>
             <option value="price-asc">Price: Low to High</option>
@@ -84,13 +85,21 @@ export default function Products() {
 
       {/* Products Grid */}
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Spinner size="lg" />
+        <ProductGridSkeleton count={8} />
+      ) : error ? (
+        <div className="text-center py-12">
+          <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+          <p className="text-theme mb-2">Failed to load products</p>
+          <p className="text-theme opacity-60 text-sm mb-4">{error.message}</p>
+          <Button onClick={refetch} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
         </div>
       ) : filteredProducts.length === 0 ? (
         <div className="text-center py-12">
-          <Filter className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400">No products found matching your criteria</p>
+          <Filter className="h-12 w-12 text-theme opacity-40 mx-auto mb-4" />
+          <p className="text-theme opacity-60">No products found matching your criteria</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

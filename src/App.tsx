@@ -15,6 +15,7 @@ import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderConfirmation from './pages/OrderConfirmation';
 import CustomQuote from './pages/CustomQuote';
+import Wishlist from './pages/Wishlist';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Account from './pages/Account';
@@ -24,6 +25,7 @@ import NotFound from './pages/NotFound';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
 import AdminProductEdit from './pages/admin/ProductEdit';
+import AdminCategories from './pages/admin/Categories';
 import AdminOrders from './pages/admin/Orders';
 import AdminOrderDetail from './pages/admin/OrderDetail';
 import AdminCustomers from './pages/admin/Customers';
@@ -31,6 +33,8 @@ import AdminQuotes from './pages/admin/QuoteRequests';
 import AdminSettings from './pages/admin/Settings';
 import AdminThemes from './pages/admin/Themes';
 import AdminPromoCodes from './pages/admin/PromoCodes';
+import AdminEmailSubscribers from './pages/admin/EmailSubscribers';
+import AdminReviews from './pages/admin/Reviews';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -73,6 +77,7 @@ function App() {
           <Route path="checkout" element={<Checkout />} />
           <Route path="order-confirmation/:id" element={<OrderConfirmation />} />
           <Route path="custom-quote" element={<CustomQuote />} />
+          <Route path="wishlist" element={<Wishlist />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
           <Route
@@ -100,11 +105,14 @@ function App() {
           <Route path="products" element={<AdminProducts />} />
           <Route path="products/new" element={<AdminProductEdit />} />
           <Route path="products/:id/edit" element={<AdminProductEdit />} />
+          <Route path="categories" element={<AdminCategories />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="orders/:id" element={<AdminOrderDetail />} />
           <Route path="customers" element={<AdminCustomers />} />
           <Route path="quotes" element={<AdminQuotes />} />
           <Route path="promo-codes" element={<AdminPromoCodes />} />
+          <Route path="subscribers" element={<AdminEmailSubscribers />} />
+          <Route path="reviews" element={<AdminReviews />} />
           <Route path="themes" element={<AdminThemes />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>

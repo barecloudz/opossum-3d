@@ -104,4 +104,9 @@ body {
   .border-default {
     border-color: var(--color-border);
   }
+
+  /* Theme-aware text that adapts to light/dark backgrounds */
+  .text-theme {
+    color: var(--color-text);
+  }
 }

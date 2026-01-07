@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Minus, Plus, Clock, Package } from 'lucide-react';
+import { Minus, Plus, Clock, Package, Heart } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import Spinner from '../components/ui/Spinner';
+import { ProductDetailSkeleton } from '../components/ui/Skeleton';
+import Breadcrumbs from '../components/ui/Breadcrumbs';
+import RelatedProducts from '../components/product/RelatedProducts';
+import ProductReviews from '../components/product/ProductReviews';
 import { useProduct } from '../hooks/useProduct';
 import { useCartStore } from '../store/cartStore';
+import { useWishlistStore } from '../store/wishlistStore';
+import { useAuthStore } from '../store/authStore';
 import { formatPrice, getStockStatus } from '../lib/utils';
 import type { ProductVariant } from '../types';
 
@@ -15,20 +20,18 @@ export default function ProductDetail() {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>();
   const [quantity, setQuantity] = useState(1);
   const { addItem, openCart } = useCartStore();
+  const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore();
+  const { user } = useAuthStore();
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-[50vh]">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <ProductDetailSkeleton />;
   }
 
   if (!product) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8 text-center">
-        <h1 className="text-2xl font-bold text-white mb-4">Product Not Found</h1>
-        <Link to="/products" className="text-brand-neon hover:text-brand-emerald">
+        <h1 className="text-2xl font-bold text-theme mb-4">Product Not Found</h1>
+        <Link to="/products" className="text-[var(--color-primary)] hover:opacity-80">
           Back to Products
         </Link>
       </div>
@@ -38,27 +41,49 @@ export default function ProductDetail() {
   const stockStatus = getStockStatus(product.stock_quantity, product.low_stock_threshold);
   const currentPrice = product.price + (selectedVariant?.price_adjustment || 0);
   const primaryImage = product.images?.find((img) => img.is_primary) || product.images?.[0];
+  const inWishlist = isInWishlist(product.id);
+
+  // Calculate discount percentage
+  const isOnSale = product.compare_at_price && product.compare_at_price > product.price;
+  const discountPercent = isOnSale
+    ? Math.round(((product.compare_at_price! - product.price) / product.compare_at_price!) * 100)
+    : 0;
+  const savings = isOnSale ? product.compare_at_price! - product.price : 0;
 
   const handleAddToCart = () => {
     addItem(product, selectedVariant, quantity);
     openCart();
   };
 
+  const handleWishlistToggle = () => {
+    if (inWishlist) {
+      removeFromWishlist(product.id, user?.id);
+    } else {
+      addToWishlist(product.id, user?.id);
+    }
+  };
+
+  // Build breadcrumb items
+  const breadcrumbItems = [
+    { label: 'Products', href: '/products' },
+  ];
+  if (product.category) {
+    breadcrumbItems.push({
+      label: product.category.name,
+      href: `/products?category=${product.category.slug}`,
+    });
+  }
+  breadcrumbItems.push({ label: product.name });
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Back link */}
-      <Link
-        to="/products"
-        className="inline-flex items-center text-gray-400 hover:text-brand-neon mb-6 transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Products
-      </Link>
+      {/* Breadcrumbs */}
+      <Breadcrumbs items={breadcrumbItems} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Image Gallery */}
         <div className="space-y-4">
-          <div className="aspect-square bg-brand-charcoal rounded-xl border border-brand-gray overflow-hidden">
+          <div className="aspect-square bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] overflow-hidden">
             {primaryImage ? (
               <img
                 src={primaryImage.image_url}
@@ -77,7 +102,7 @@ export default function ProductDetail() {
               {product.images.map((image) => (
                 <button
                   key={image.id}
-                  className="aspect-square bg-brand-charcoal rounded-lg border border-brand-gray overflow-hidden hover:border-brand-neon transition-colors"
+                  className="aspect-square bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] overflow-hidden hover:border-[var(--color-primary)] transition-colors"
                 >
                   <img
                     src={image.image_url}
@@ -92,17 +117,29 @@ export default function ProductDetail() {
 
         {/* Product Info */}
         <div>
-          <h1 className="text-3xl font-bold text-white mb-4">{product.name}</h1>
+          <h1 className="text-3xl font-bold text-theme mb-4">{product.name}</h1>
 
           {/* Price */}
-          <div className="flex items-center gap-4 mb-6">
-            <span className="text-3xl font-bold text-brand-neon">
-              {formatPrice(currentPrice)}
-            </span>
-            {product.compare_at_price && (
-              <span className="text-xl text-gray-500 line-through">
-                {formatPrice(product.compare_at_price)}
+          <div className="mb-6">
+            <div className="flex items-center gap-4">
+              <span className="text-3xl font-bold text-[var(--color-primary)]">
+                {formatPrice(currentPrice)}
               </span>
+              {isOnSale && (
+                <>
+                  <span className="text-xl text-theme opacity-50 line-through">
+                    {formatPrice(product.compare_at_price!)}
+                  </span>
+                  <span className="bg-red-500 text-white text-sm font-bold px-2 py-1 rounded">
+                    {discountPercent}% OFF
+                  </span>
+                </>
+              )}
+            </div>
+            {isOnSale && (
+              <p className="text-green-400 text-sm mt-1">
+                You save {formatPrice(savings)}
+              </p>
             )}
           </div>
 
@@ -127,7 +164,7 @@ export default function ProductDetail() {
 
           {/* Print time */}
           {product.print_time_hours && (
-            <div className="flex items-center text-gray-400 mb-6">
+            <div className="flex items-center text-theme opacity-60 mb-6">
               <Clock className="h-5 w-5 mr-2" />
               <span>Estimated print time: {product.print_time_hours} hours</span>
             </div>
@@ -135,13 +172,13 @@ export default function ProductDetail() {
 
           {/* Description */}
           {product.description && (
-            <p className="text-gray-400 mb-8">{product.description}</p>
+            <p className="text-theme opacity-60 mb-8">{product.description}</p>
           )}
 
           {/* Variants */}
           {product.variants && product.variants.length > 0 && (
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-theme opacity-80 mb-2">
                 Size / Option
               </label>
               <div className="flex flex-wrap gap-2">
@@ -151,8 +188,8 @@ export default function ProductDetail() {
                     onClick={() => setSelectedVariant(variant)}
                     className={`px-4 py-2 rounded-lg border transition-colors ${
                       selectedVariant?.id === variant.id
-                        ? 'border-brand-neon bg-brand-neon/10 text-brand-neon'
-                        : 'border-brand-gray text-gray-300 hover:border-brand-neon/50'
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                        : 'border-[var(--color-border)] text-theme opacity-80 hover:border-[var(--color-primary)]/50'
                     }`}
                   >
                     {variant.name}
@@ -170,39 +207,60 @@ export default function ProductDetail() {
 
           {/* Quantity */}
           <div className="mb-8">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-theme opacity-80 mb-2">
               Quantity
             </label>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="p-2 bg-brand-charcoal border border-brand-gray rounded-lg hover:border-brand-neon transition-colors"
+                className="p-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-primary)] transition-colors"
               >
-                <Minus className="h-5 w-5 text-gray-400" />
+                <Minus className="h-5 w-5 text-theme opacity-60" />
               </button>
-              <span className="text-white text-xl font-semibold w-12 text-center">
+              <span className="text-theme text-xl font-semibold w-12 text-center">
                 {quantity}
               </span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                className="p-2 bg-brand-charcoal border border-brand-gray rounded-lg hover:border-brand-neon transition-colors"
+                className="p-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-primary)] transition-colors"
               >
-                <Plus className="h-5 w-5 text-gray-400" />
+                <Plus className="h-5 w-5 text-theme opacity-60" />
               </button>
             </div>
           </div>
 
-          {/* Add to cart */}
-          <Button
-            onClick={handleAddToCart}
-            size="lg"
-            className="w-full"
-            disabled={stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock}
-          >
-            Add to Cart - {formatPrice(currentPrice * quantity)}
-          </Button>
+          {/* Add to cart and wishlist */}
+          <div className="flex gap-3">
+            <Button
+              onClick={handleAddToCart}
+              size="lg"
+              className="flex-1"
+              disabled={stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock}
+            >
+              Add to Cart - {formatPrice(currentPrice * quantity)}
+            </Button>
+            <button
+              onClick={handleWishlistToggle}
+              className={`p-4 rounded-lg border transition-all ${
+                inWishlist
+                  ? 'bg-red-500 border-red-500 text-white'
+                  : 'bg-[var(--color-surface)] border-[var(--color-border)] text-theme hover:border-red-500 hover:text-red-500'
+              }`}
+            >
+              <Heart className={`h-6 w-6 ${inWishlist ? 'fill-current' : ''}`} />
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Product Reviews */}
+      <ProductReviews productId={product.id} />
+
+      {/* Related Products */}
+      <RelatedProducts
+        currentProductId={product.id}
+        categoryId={product.category_id}
+      />
     </div>
   );
 }

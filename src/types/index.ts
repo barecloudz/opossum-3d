@@ -88,6 +88,8 @@ export interface Order {
   shipping_cost: number;
   tax: number;
   total: number;
+  discount_amount?: number;
+  promo_code_id?: string | null;
   shipping_address: Address;
   billing_address: Address | null;
   stripe_payment_intent_id: string | null;
@@ -179,4 +181,40 @@ export interface PromoCode {
   starts_at: string | null;
   expires_at: string | null;
   created_at: string;
+}
+
+export interface EmailSubscriber {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  source: 'checkout' | 'register' | 'footer' | 'popup';
+  is_subscribed: boolean;
+  subscribed_at: string;
+  unsubscribed_at: string | null;
+  created_at: string;
+}
+
+export interface ProductReview {
+  id: string;
+  product_id: string;
+  user_id: string | null;
+  reviewer_name: string;
+  reviewer_email: string;
+  rating: number;
+  title: string | null;
+  content: string | null;
+  is_verified_purchase: boolean;
+  is_approved: boolean;
+  created_at: string;
+  updated_at: string;
+  user?: Profile;
+}
+
+export interface Wishlist {
+  id: string;
+  user_id: string;
+  product_id: string;
+  created_at: string;
+  product?: Product;
 }

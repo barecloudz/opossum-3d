@@ -1,14 +1,17 @@
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Menu, X, User } from 'lucide-react';
+import { ShoppingCart, Menu, X, User, Heart } from 'lucide-react';
 import { useState } from 'react';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
+import { useWishlistStore } from '../../store/wishlistStore';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { openCart, getItemCount } = useCartStore();
   const { user, isAdmin } = useAuthStore();
+  const { items: wishlistItems } = useWishlistStore();
   const itemCount = getItemCount();
+  const wishlistCount = wishlistItems.length;
 
   const navLinks = [
     { href: '/products', label: 'Products' },
@@ -16,17 +19,17 @@ export default function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-brand-charcoal border-b border-brand-gray">
+    <header className="sticky top-0 z-40 bg-[var(--color-surface)] border-b border-[var(--color-border)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative flex items-center justify-between h-16">
           {/* Mobile Left - Cart */}
           <button
             onClick={openCart}
-            className="md:hidden relative text-gray-300 hover:text-brand-neon transition-colors p-1"
+            className="md:hidden relative text-theme hover:text-[var(--color-primary)] transition-colors p-1"
           >
             <ShoppingCart className="h-6 w-6" />
             {itemCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-brand-neon text-brand-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 bg-[var(--color-primary)] text-[var(--color-background)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                 {itemCount > 99 ? '99+' : itemCount}
               </span>
             )}
@@ -56,7 +59,7 @@ export default function Header() {
               <Link
                 key={link.href}
                 to={link.href}
-                className="text-gray-300 hover:text-brand-neon transition-colors"
+                className="text-theme hover:text-[var(--color-primary)] transition-colors"
               >
                 {link.label}
               </Link>
@@ -65,10 +68,23 @@ export default function Header() {
 
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
+            {/* Wishlist - Desktop */}
+            <Link
+              to="/wishlist"
+              className="hidden md:block relative text-theme hover:text-[var(--color-primary)] transition-colors"
+            >
+              <Heart className="h-6 w-6" />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {wishlistCount > 99 ? '99+' : wishlistCount}
+                </span>
+              )}
+            </Link>
+
             {/* User account - Desktop */}
             <Link
               to={user ? '/account' : '/login'}
-              className="hidden md:flex text-gray-300 hover:text-brand-neon transition-colors"
+              className="hidden md:flex text-theme hover:text-[var(--color-primary)] transition-colors"
             >
               <User className="h-6 w-6" />
             </Link>
@@ -77,7 +93,7 @@ export default function Header() {
             {isAdmin && (
               <Link
                 to="/admin"
-                className="hidden md:flex text-gray-300 hover:text-brand-neon transition-colors text-sm"
+                className="hidden md:flex text-theme hover:text-[var(--color-primary)] transition-colors text-sm"
               >
                 Admin
               </Link>
@@ -86,11 +102,11 @@ export default function Header() {
             {/* Cart button - Desktop */}
             <button
               onClick={openCart}
-              className="hidden md:block relative text-gray-300 hover:text-brand-neon transition-colors"
+              className="hidden md:block relative text-theme hover:text-[var(--color-primary)] transition-colors"
             >
               <ShoppingCart className="h-6 w-6" />
               {itemCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-brand-neon text-brand-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <span className="absolute -top-2 -right-2 bg-[var(--color-primary)] text-[var(--color-background)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                   {itemCount > 99 ? '99+' : itemCount}
                 </span>
               )}
@@ -101,14 +117,14 @@ export default function Header() {
               {!user && (
                 <Link
                   to="/login"
-                  className="text-gray-300 hover:text-brand-neon transition-colors p-1"
+                  className="text-theme hover:text-[var(--color-primary)] transition-colors p-1"
                 >
                   <User className="h-6 w-6" />
                 </Link>
               )}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="text-gray-300 hover:text-brand-neon transition-colors p-1"
+                className="text-theme hover:text-brand-neon transition-colors p-1"
               >
                 {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
@@ -118,22 +134,35 @@ export default function Header() {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-brand-gray">
+          <div className="md:hidden py-4 border-t border-[var(--color-border)]">
             <nav className="flex flex-col gap-3 px-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   to={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center py-3 px-4 bg-brand-gray/50 hover:bg-brand-neon/20 border border-brand-gray hover:border-brand-neon/50 rounded-xl text-white font-medium transition-all"
+                  className="flex items-center justify-center py-3 px-4 bg-[var(--color-surface)] hover:bg-[var(--color-primary)]/20 border border-[var(--color-border)] hover:border-[var(--color-primary)]/50 rounded-xl text-theme font-medium transition-all"
                 >
                   {link.label}
                 </Link>
               ))}
               <Link
+                to="/wishlist"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-2 py-3 px-4 bg-[var(--color-surface)] hover:bg-red-500/10 border border-[var(--color-border)] hover:border-red-500/30 rounded-xl text-theme font-medium transition-all"
+              >
+                <Heart className="h-5 w-5" />
+                Wishlist
+                {wishlistCount > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
+              <Link
                 to={user ? '/account' : '/login'}
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-center py-3 px-4 bg-brand-gray/50 hover:bg-brand-neon/20 border border-brand-gray hover:border-brand-neon/50 rounded-xl text-white font-medium transition-all"
+                className="flex items-center justify-center py-3 px-4 bg-[var(--color-surface)] hover:bg-brand-neon/20 border border-[var(--color-border)] hover:border-brand-neon/50 rounded-xl text-theme font-medium transition-all"
               >
                 {user ? 'Account' : 'Sign In'}
               </Link>
@@ -141,7 +170,7 @@ export default function Header() {
                 <Link
                   to="/admin"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center py-3 px-4 bg-brand-neon/10 hover:bg-brand-neon/20 border border-brand-neon/30 hover:border-brand-neon rounded-xl text-brand-neon font-medium transition-all"
+                  className="flex items-center justify-center py-3 px-4 bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/30 hover:border-[var(--color-primary)] rounded-xl text-[var(--color-primary)] font-medium transition-all"
                 >
                   Admin Dashboard
                 </Link>

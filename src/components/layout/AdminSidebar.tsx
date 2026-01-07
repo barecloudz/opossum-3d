@@ -2,33 +2,39 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
+  FolderOpen,
   ShoppingBag,
   Users,
   MessageSquare,
   Settings,
   Palette,
   Tag,
+  Mail,
   ArrowLeft,
   Menu,
   X,
   Megaphone,
   ChevronDown,
   ChevronRight,
+  Star,
 } from 'lucide-react';
 import { useState } from 'react';
 
 export const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/products', icon: Package, label: 'Products' },
+  { href: '/admin/categories', icon: FolderOpen, label: 'Categories' },
   { href: '/admin/orders', icon: ShoppingBag, label: 'Orders' },
   { href: '/admin/customers', icon: Users, label: 'Customers' },
   { href: '/admin/quotes', icon: MessageSquare, label: 'Quote Requests' },
+  { href: '/admin/reviews', icon: Star, label: 'Reviews' },
   { href: '/admin/themes', icon: Palette, label: 'Themes' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
 export const marketingSubItems = [
   { href: '/admin/promo-codes', icon: Tag, label: 'Promo Codes' },
+  { href: '/admin/subscribers', icon: Mail, label: 'Email Subscribers' },
 ];
 
 export function getPageTitle(pathname: string): string {
@@ -83,7 +89,7 @@ export default function AdminSidebar() {
 
       {/* Navigation */}
       <nav className={`flex-1 p-4 space-y-1 overflow-y-auto ${isMobile ? 'bg-brand-charcoal' : ''}`}>
-        {navItems.slice(0, 5).map((item) => (
+        {navItems.slice(0, 7).map((item) => (
           <Link
             key={item.href}
             to={item.href}
@@ -140,7 +146,7 @@ export default function AdminSidebar() {
           )}
         </div>
 
-        {navItems.slice(5).map((item) => (
+        {navItems.slice(7).map((item) => (
           <Link
             key={item.href}
             to={item.href}

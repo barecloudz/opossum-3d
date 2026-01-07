@@ -9,12 +9,14 @@ import { DEFAULT_SHIPPING_COST } from '../lib/constants';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
+import { useToast } from '../components/ui/Toast';
 import type { PromoCode } from '../types';
 
 export default function Checkout() {
   const navigate = useNavigate();
   const { items, getSubtotal, clearCart } = useCartStore();
   const { user } = useAuthStore();
+  const { addToast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [promoCode, setPromoCode] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
@@ -31,7 +33,7 @@ export default function Checkout() {
     state: '',
     zip: '',
     phone: '',
-    marketingOptIn: false,
+    marketingOptIn: true,
   });
 
   const subtotal = getSubtotal();
@@ -112,12 +114,120 @@ export default function Checkout() {
     e.preventDefault();
     setIsLoading(true);
 
-    // TODO: Implement Stripe payment
-    // For now, simulate a successful order
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      // Build shipping address
+      const shippingAddress = {
+        address_line_1: formData.address,
+        address_line_2: formData.apartment || undefined,
+        city: formData.city,
+        state: formData.state,
+        postal_code: formData.zip,
+        country: 'US',
+      };
 
-    clearCart();
-    navigate('/order-confirmation/demo-order-id');
+      // Calculate tax (placeholder - could be dynamic based on location)
+      const tax = 0;
+
+      // Create the order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user?.id || null,
+          guest_email: !user ? formData.email : null,
+          guest_name: !user ? `${formData.firstName} ${formData.lastName}` : null,
+          status: 'pending',
+          subtotal: subtotal,
+          shipping_cost: shipping,
+          tax: tax,
+          total: total,
+          shipping_address: shippingAddress,
+          billing_address: shippingAddress, // Same as shipping for now
+          promo_code_id: appliedPromo?.id || null,
+          discount_amount: discount,
+          notes: null,
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Create order items
+      const orderItems = items.map((item) => ({
+        order_id: order.id,
+        product_id: item.product.id,
+        variant_id: item.variant?.id || null,
+        product_name: item.product.name,
+        variant_name: item.variant?.name || null,
+        quantity: item.quantity,
+        unit_price: item.product.price + (item.variant?.price_adjustment || 0),
+        total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      // Update inventory for each item
+      for (const item of items) {
+        if (item.product.track_inventory) {
+          if (item.variant) {
+            // Update variant stock
+            const newStock = Math.max(0, item.variant.stock_quantity - item.quantity);
+            await supabase
+              .from('product_variants')
+              .update({ stock_quantity: newStock })
+              .eq('id', item.variant.id);
+          } else {
+            // Update product stock
+            const newStock = Math.max(0, item.product.stock_quantity - item.quantity);
+            await supabase
+              .from('products')
+              .update({ stock_quantity: newStock })
+              .eq('id', item.product.id);
+          }
+        }
+      }
+
+      // Update promo code usage if applied
+      if (appliedPromo) {
+        await supabase
+          .from('promo_codes')
+          .update({ uses_count: appliedPromo.uses_count + 1 })
+          .eq('id', appliedPromo.id);
+      }
+
+      // Add email subscriber if opted in
+      if (formData.marketingOptIn && formData.email) {
+        // Check if already subscribed
+        const { data: existingSub } = await supabase
+          .from('email_subscribers')
+          .select('id')
+          .eq('email', formData.email.toLowerCase())
+          .single();
+
+        if (!existingSub) {
+          await supabase.from('email_subscribers').insert({
+            email: formData.email.toLowerCase(),
+            first_name: formData.firstName || null,
+            last_name: formData.lastName || null,
+            source: 'checkout',
+            is_subscribed: true,
+            subscribed_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      // Clear cart and redirect to confirmation
+      clearCart();
+      navigate(`/order-confirmation/${order.id}`);
+    } catch (err) {
+      console.error('Error creating order:', err);
+      addToast('Failed to create order. Please try again.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (items.length === 0) {
@@ -127,7 +237,7 @@ export default function Checkout() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-white mb-8">Checkout</h1>
+      <h1 className="text-3xl font-bold text-theme mb-8">Checkout</h1>
 
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -135,7 +245,7 @@ export default function Checkout() {
           <div className="space-y-8">
             {/* Contact Information */}
             <Card>
-              <h2 className="text-xl font-semibold text-white mb-4">Contact Information</h2>
+              <h2 className="text-xl font-semibold text-theme mb-4">Contact Information</h2>
               <div className="space-y-4">
                 <Input
                   label="Email"
@@ -152,9 +262,9 @@ export default function Checkout() {
                     id="marketingOptIn"
                     checked={formData.marketingOptIn}
                     onChange={handleInputChange}
-                    className="w-4 h-4 rounded border-brand-gray bg-brand-black text-brand-neon focus:ring-brand-neon"
+                    className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
                   />
-                  <label htmlFor="marketingOptIn" className="text-gray-400 text-sm">
+                  <label htmlFor="marketingOptIn" className="text-theme opacity-60 text-sm">
                     Email me with news and offers
                   </label>
                 </div>
@@ -163,7 +273,7 @@ export default function Checkout() {
 
             {/* Shipping Address */}
             <Card>
-              <h2 className="text-xl font-semibold text-white mb-4">Shipping Address</h2>
+              <h2 className="text-xl font-semibold text-theme mb-4">Shipping Address</h2>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <Input
@@ -229,12 +339,12 @@ export default function Checkout() {
 
             {/* Payment - Placeholder */}
             <Card>
-              <h2 className="text-xl font-semibold text-white mb-4">Payment</h2>
-              <p className="text-gray-400">
+              <h2 className="text-xl font-semibold text-theme mb-4">Payment</h2>
+              <p className="text-theme opacity-60">
                 Stripe payment integration will be added here.
               </p>
-              <div className="mt-4 p-4 bg-brand-black rounded-lg border border-brand-gray">
-                <p className="text-sm text-gray-500">
+              <div className="mt-4 p-4 bg-[var(--color-background)] rounded-lg border border-[var(--color-border)]">
+                <p className="text-sm text-theme opacity-50">
                   Demo mode - click "Place Order" to simulate a successful payment
                 </p>
               </div>
@@ -244,7 +354,7 @@ export default function Checkout() {
           {/* Right Column - Order Summary */}
           <div>
             <Card className="sticky top-24">
-              <h2 className="text-xl font-semibold text-white mb-4">Order Summary</h2>
+              <h2 className="text-xl font-semibold text-theme mb-4">Order Summary</h2>
 
               {/* Items */}
               <div className="space-y-4 mb-6">
@@ -255,18 +365,18 @@ export default function Checkout() {
                       key={`${item.product.id}-${item.variant?.id || 'default'}`}
                       className="flex gap-4"
                     >
-                      <div className="w-16 h-16 bg-brand-gray rounded-lg flex-shrink-0 relative">
-                        <span className="absolute -top-2 -right-2 bg-brand-neon text-brand-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      <div className="w-16 h-16 bg-[var(--color-border)] rounded-lg flex-shrink-0 relative">
+                        <span className="absolute -top-2 -right-2 bg-[var(--color-primary)] text-[var(--color-background)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                           {item.quantity}
                         </span>
                       </div>
                       <div className="flex-1">
-                        <p className="text-white font-medium">{item.product.name}</p>
+                        <p className="text-theme font-medium">{item.product.name}</p>
                         {item.variant && (
-                          <p className="text-gray-400 text-sm">{item.variant.name}</p>
+                          <p className="text-theme opacity-60 text-sm">{item.variant.name}</p>
                         )}
                       </div>
-                      <span className="text-gray-400">
+                      <span className="text-theme opacity-60">
                         {formatPrice(itemPrice * item.quantity)}
                       </span>
                     </div>
@@ -275,13 +385,13 @@ export default function Checkout() {
               </div>
 
               {/* Promo Code */}
-              <div className="border-t border-brand-gray pt-4 mb-4">
+              <div className="border-t border-[var(--color-border)] pt-4 mb-4">
                 {appliedPromo ? (
-                  <div className="flex items-center justify-between bg-brand-emerald-dark/20 border border-brand-neon/30 rounded-lg px-3 py-2">
+                  <div className="flex items-center justify-between bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-lg px-3 py-2">
                     <div className="flex items-center gap-2">
-                      <Tag className="h-4 w-4 text-brand-neon" />
-                      <span className="font-mono text-brand-neon font-medium">{appliedPromo.code}</span>
-                      <span className="text-gray-400 text-sm">
+                      <Tag className="h-4 w-4 text-[var(--color-primary)]" />
+                      <span className="font-mono text-[var(--color-primary)] font-medium">{appliedPromo.code}</span>
+                      <span className="text-theme opacity-60 text-sm">
                         ({appliedPromo.discount_type === 'percentage'
                           ? `${appliedPromo.discount_value}% off`
                           : `${formatPrice(appliedPromo.discount_value)} off`})
@@ -290,7 +400,7 @@ export default function Checkout() {
                     <button
                       type="button"
                       onClick={removePromoCode}
-                      className="text-gray-400 hover:text-red-400 transition-colors"
+                      className="text-theme opacity-60 hover:text-red-400 transition-colors"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -324,13 +434,13 @@ export default function Checkout() {
               </div>
 
               {/* Totals */}
-              <div className="border-t border-brand-gray pt-4 space-y-2">
-                <div className="flex justify-between text-gray-400">
+              <div className="border-t border-[var(--color-border)] pt-4 space-y-2">
+                <div className="flex justify-between text-theme opacity-60">
                   <span>Subtotal</span>
                   <span>{formatPrice(subtotal)}</span>
                 </div>
                 {discount > 0 && (
-                  <div className="flex justify-between text-green-400">
+                  <div className="flex justify-between text-green-500">
                     <span className="flex items-center gap-1">
                       <Check className="h-4 w-4" />
                       Discount
@@ -338,13 +448,13 @@ export default function Checkout() {
                     <span>-{formatPrice(discount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-400">
+                <div className="flex justify-between text-theme opacity-60">
                   <span>Shipping</span>
                   <span>{formatPrice(shipping)}</span>
                 </div>
-                <div className="flex justify-between text-lg font-semibold pt-2 border-t border-brand-gray">
-                  <span className="text-white">Total</span>
-                  <span className="text-brand-neon">{formatPrice(total)}</span>
+                <div className="flex justify-between text-lg font-semibold pt-2 border-t border-[var(--color-border)]">
+                  <span className="text-theme">Total</span>
+                  <span className="text-[var(--color-primary)]">{formatPrice(total)}</span>
                 </div>
               </div>
 

@@ -21,9 +21,9 @@ export default function Card({
   return (
     <div
       className={`
-        bg-brand-charcoal border border-brand-gray rounded-xl
+        bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl
         ${paddingStyles[padding]}
-        ${hover ? 'transition-all hover:border-brand-neon/50 hover:shadow-neon-sm' : ''}
+        ${hover ? 'transition-all hover:border-[var(--color-primary)]/50 hover:shadow-neon-sm' : ''}
         ${className}
       `}
     >

@@ -17,8 +17,9 @@ interface AuthState {
   setSession: (session: Session | null) => void;
   setLoading: (loading: boolean) => void;
   fetchProfile: () => Promise<void>;
+  updateProfile: (updates: Partial<Omit<Profile, 'id' | 'email' | 'role' | 'created_at' | 'updated_at'>>) => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, metadata?: { first_name?: string; last_name?: string }) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, metadata?: { first_name?: string; last_name?: string; marketing_opt_in?: boolean }) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
 }
@@ -50,6 +51,25 @@ export const useAuthStore = create<AuthState>()(
         if (error) {
           console.error('Error fetching profile:', error);
           return;
+        }
+
+        set({ profile: data, isAdmin: data?.role === 'admin' });
+      },
+
+      updateProfile: async (updates) => {
+        const { user, profile } = get();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .update(updates)
+          .eq('id', user.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error updating profile:', error);
+          throw error;
         }
 
         set({ profile: data, isAdmin: data?.role === 'admin' });
