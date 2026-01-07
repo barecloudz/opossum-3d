@@ -119,13 +119,13 @@ export default function Header() {
         {/* Mobile menu */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-brand-gray">
-            <nav className="flex flex-col space-y-4">
+            <nav className="flex flex-col gap-3 px-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   to={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-gray-300 hover:text-brand-neon transition-colors"
+                  className="flex items-center justify-center py-3 px-4 bg-brand-gray/50 hover:bg-brand-neon/20 border border-brand-gray hover:border-brand-neon/50 rounded-xl text-white font-medium transition-all"
                 >
                   {link.label}
                 </Link>
@@ -133,7 +133,7 @@ export default function Header() {
               <Link
                 to={user ? '/account' : '/login'}
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-gray-300 hover:text-brand-neon transition-colors"
+                className="flex items-center justify-center py-3 px-4 bg-brand-gray/50 hover:bg-brand-neon/20 border border-brand-gray hover:border-brand-neon/50 rounded-xl text-white font-medium transition-all"
               >
                 {user ? 'Account' : 'Sign In'}
               </Link>
@@ -141,7 +141,7 @@ export default function Header() {
                 <Link
                   to="/admin"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-gray-300 hover:text-brand-neon transition-colors"
+                  className="flex items-center justify-center py-3 px-4 bg-brand-neon/10 hover:bg-brand-neon/20 border border-brand-neon/30 hover:border-brand-neon rounded-xl text-brand-neon font-medium transition-all"
                 >
                   Admin Dashboard
                 </Link>
