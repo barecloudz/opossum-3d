@@ -91,15 +91,15 @@ const presetThemes: PresetTheme[] = [
   },
   {
     name: 'Rustic Wood',
-    description: 'Warm burnt wood tones matching the Opossum Works logo',
+    description: 'Light wood tones matching the Opossum Works logo',
     colors: {
-      primary_color: '#c9a66b',
-      secondary_color: '#8b6914',
-      accent_color: '#d4a84b',
-      background_color: '#1a1409',
-      surface_color: '#2a2010',
-      text_color: '#f5e6c8',
-      border_color: '#4a3c20',
+      primary_color: '#8B4513',
+      secondary_color: '#654321',
+      accent_color: '#a0522d',
+      background_color: '#dbc1a0',
+      surface_color: '#e8d4b8',
+      text_color: '#3d2914',
+      border_color: '#c4a574',
     },
   },
   {
