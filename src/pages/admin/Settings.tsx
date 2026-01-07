@@ -234,38 +234,6 @@ export default function AdminSettings() {
           </div>
         </Card>
 
-        {/* Hero Image */}
-        <Card>
-          <h2 className="text-xl font-semibold text-white mb-4">Hero Image</h2>
-          <p className="text-gray-400 text-sm mb-4">
-            Set the hero image for the homepage. Use a path like <code className="text-brand-neon">/images/hero.jpg</code> for local images or paste any URL.
-          </p>
-
-          <div className="space-y-4">
-            <Input
-              label="Hero Image URL"
-              value={settings.hero_image_url || ''}
-              onChange={(e) => setSettings({ ...settings, hero_image_url: e.target.value || null })}
-              placeholder="/images/hero.jpg or https://..."
-              helperText="Local: add image to public/images folder. External: paste full URL"
-            />
-
-            {/* Hero Preview */}
-            {settings.hero_image_url && (
-              <div className="w-full h-48 bg-brand-gray rounded-lg overflow-hidden border border-brand-gray">
-                <img
-                  src={settings.hero_image_url}
-                  alt="Hero preview"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </Card>
-
         <Card>
           <h2 className="text-xl font-semibold text-white mb-4">Store Information</h2>
           <div className="space-y-4">
