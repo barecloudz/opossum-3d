@@ -65,7 +65,7 @@ export default function Button({
 
   if (as === Link && to) {
     return (
-      <Link to={to} className={classes}>
+      <Link to={to} className={classes} onClick={props.onClick as React.MouseEventHandler}>
         {content}
       </Link>
     );
