@@ -13,9 +13,7 @@ export default function AdminSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [isUploadingHero, setIsUploadingHero] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const heroInputRef = useRef<HTMLInputElement>(null);
   const { updateSettings: updateGlobalSettings } = useSettingsStore();
   const { addToast } = useToast();
 
@@ -123,74 +121,6 @@ export default function AdminSettings() {
       }
     }
     setSettings({ ...settings, logo_url: null });
-  };
-
-  const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      addToast('Please select an image file', 'error');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      addToast('Hero image must be under 5MB', 'error');
-      return;
-    }
-
-    setIsUploadingHero(true);
-
-    try {
-      // Delete old hero if exists
-      if (settings.hero_image_url) {
-        const oldFileName = settings.hero_image_url.split('/').pop();
-        if (oldFileName) {
-          await supabase.storage.from('site-assets').remove([`hero/${oldFileName}`]);
-        }
-      }
-
-      const ext = file.name.split('.').pop();
-      const fileName = `hero-${Date.now()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('site-assets')
-        .upload(`hero/${fileName}`, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('site-assets')
-        .getPublicUrl(`hero/${fileName}`);
-
-      setSettings({ ...settings, hero_image_url: publicUrl });
-      addToast('Hero image uploaded!', 'success');
-    } catch (err) {
-      console.error('Error uploading hero:', err);
-      addToast('Failed to upload hero image', 'error');
-    } finally {
-      setIsUploadingHero(false);
-      if (heroInputRef.current) {
-        heroInputRef.current.value = '';
-      }
-    }
-  };
-
-  const handleRemoveHero = async () => {
-    if (settings.hero_image_url) {
-      try {
-        const fileName = settings.hero_image_url.split('/').pop();
-        if (fileName) {
-          await supabase.storage.from('site-assets').remove([`hero/${fileName}`]);
-        }
-      } catch (err) {
-        console.error('Error removing hero:', err);
-      }
-    }
-    setSettings({ ...settings, hero_image_url: null });
   };
 
   const handleSave = async () => {
@@ -304,66 +234,35 @@ export default function AdminSettings() {
           </div>
         </Card>
 
-        {/* Hero Image Upload */}
+        {/* Hero Image */}
         <Card>
           <h2 className="text-xl font-semibold text-white mb-4">Hero Image</h2>
           <p className="text-gray-400 text-sm mb-4">
-            Upload a hero image for the homepage. This will be displayed behind the main heading.
+            Set the hero image for the homepage. Use a path like <code className="text-brand-neon">/images/hero.jpg</code> for local images or paste any URL.
           </p>
 
-          <div className="flex flex-col gap-4">
+          <div className="space-y-4">
+            <Input
+              label="Hero Image URL"
+              value={settings.hero_image_url || ''}
+              onChange={(e) => setSettings({ ...settings, hero_image_url: e.target.value || null })}
+              placeholder="/images/hero.jpg or https://..."
+              helperText="Local: add image to public/images folder. External: paste full URL"
+            />
+
             {/* Hero Preview */}
-            <div className="w-full h-48 bg-brand-gray rounded-lg flex items-center justify-center overflow-hidden border-2 border-dashed border-brand-gray">
-              {settings.hero_image_url ? (
+            {settings.hero_image_url && (
+              <div className="w-full h-48 bg-brand-gray rounded-lg overflow-hidden border border-brand-gray">
                 <img
                   src={settings.hero_image_url}
-                  alt="Hero image"
+                  alt="Hero preview"
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
                 />
-              ) : (
-                <div className="text-center">
-                  <ImageIcon className="h-12 w-12 text-gray-500 mx-auto mb-2" />
-                  <span className="text-gray-500 text-sm">No hero image</span>
-                </div>
-              )}
-            </div>
-
-            {/* Upload Controls */}
-            <div className="flex flex-wrap gap-3">
-              <input
-                ref={heroInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleHeroUpload}
-                className="hidden"
-              />
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => heroInputRef.current?.click()}
-                isLoading={isUploadingHero}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                {settings.hero_image_url ? 'Change Hero Image' : 'Upload Hero Image'}
-              </Button>
-
-              {settings.hero_image_url && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={handleRemoveHero}
-                  className="text-red-400 hover:text-red-300"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Remove
-                </Button>
-              )}
-            </div>
-
-            <p className="text-gray-500 text-xs">
-              Recommended: Wide landscape image (1920x600 or similar), max 5MB
-            </p>
+              </div>
+            )}
           </div>
         </Card>
 

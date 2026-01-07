@@ -9,21 +9,21 @@ export default function Home() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
+      <section className="relative min-h-[400px] md:min-h-[500px]">
         {/* Hero Background Image */}
         {settings.hero_image_url && (
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 z-0">
             <img
               src={settings.hero_image_url}
               alt=""
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-brand-black/70" />
+            <div className="absolute inset-0 bg-brand-black/60" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-emerald-dark/20 to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
-          <div className="relative z-10 max-w-3xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-emerald-dark/20 to-transparent z-[1]" />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
+          <div className="max-w-3xl">
             <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
               Custom{' '}
               <span className="text-brand-neon">3D Printed</span>{' '}
