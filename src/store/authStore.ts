@@ -115,14 +115,18 @@ export const useAuthStore = create<AuthState>()(
       initialize: async () => {
         set({ isLoading: true });
 
-        const { data: { session } } = await supabase.auth.getSession();
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
 
-        if (session) {
-          set({ user: session.user, session });
-          await get().fetchProfile();
+          if (session) {
+            set({ user: session.user, session });
+            await get().fetchProfile();
+          }
+        } catch (err) {
+          console.error('Error initializing auth:', err);
+        } finally {
+          set({ isLoading: false });
         }
-
-        set({ isLoading: false });
 
         // Listen for auth changes
         supabase.auth.onAuthStateChange(async (_event, session) => {
