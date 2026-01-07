@@ -159,9 +159,9 @@ export default function AdminProductEdit() {
 
         // Insert new images
         if (images.length > 0) {
-          const imageRecords = images.map((url, index) => ({
+          const imageRecords = images.map((img, index) => ({
             product_id: productId,
-            url,
+            image_url: img,
             display_order: index,
             is_primary: index === 0,
           }));
