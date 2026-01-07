@@ -18,13 +18,40 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 bg-brand-charcoal border-b border-brand-gray">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center">
+        <div className="relative flex items-center justify-between h-16">
+          {/* Mobile Left - Login/Menu */}
+          <div className="flex items-center space-x-2 md:hidden">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="text-gray-300 hover:text-brand-neon transition-colors p-1"
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+            {!user && (
+              <Link
+                to="/login"
+                className="text-gray-300 hover:text-brand-neon transition-colors p-1"
+              >
+                <User className="h-6 w-6" />
+              </Link>
+            )}
+          </div>
+
+          {/* Desktop Left - Logo */}
+          <Link to="/" className="hidden md:flex items-center">
             <img
               src="/images/logo.jpg"
               alt="Opossum Works"
               className="h-12 w-auto object-contain"
+            />
+          </Link>
+
+          {/* Mobile Center - Logo */}
+          <Link to="/" className="md:hidden absolute left-1/2 transform -translate-x-1/2">
+            <img
+              src="/images/logo.jpg"
+              alt="Opossum Works"
+              className="h-10 w-auto object-contain"
             />
           </Link>
 
@@ -43,7 +70,7 @@ export default function Header() {
 
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
-            {/* User account */}
+            {/* User account - Desktop */}
             <Link
               to={user ? '/account' : '/login'}
               className="hidden md:flex text-gray-300 hover:text-brand-neon transition-colors"
@@ -51,7 +78,7 @@ export default function Header() {
               <User className="h-6 w-6" />
             </Link>
 
-            {/* Admin link */}
+            {/* Admin link - Desktop */}
             {isAdmin && (
               <Link
                 to="/admin"
@@ -73,23 +100,6 @@ export default function Header() {
                 </span>
               )}
             </button>
-
-            {/* Mobile login button / menu */}
-            {!user ? (
-              <Link
-                to="/login"
-                className="md:hidden bg-brand-neon text-brand-black px-4 py-1.5 rounded-lg font-semibold text-sm hover:bg-brand-emerald transition-colors"
-              >
-                Login
-              </Link>
-            ) : (
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden text-gray-300 hover:text-brand-neon transition-colors"
-              >
-                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-              </button>
-            )}
           </div>
         </div>
 

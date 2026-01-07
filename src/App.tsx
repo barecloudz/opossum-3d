@@ -30,6 +30,7 @@ import AdminCustomers from './pages/admin/Customers';
 import AdminQuotes from './pages/admin/QuoteRequests';
 import AdminSettings from './pages/admin/Settings';
 import AdminThemes from './pages/admin/Themes';
+import AdminPromoCodes from './pages/admin/PromoCodes';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -101,6 +102,7 @@ function App() {
           <Route path="orders/:id" element={<AdminOrderDetail />} />
           <Route path="customers" element={<AdminCustomers />} />
           <Route path="quotes" element={<AdminQuotes />} />
+          <Route path="promo-codes" element={<AdminPromoCodes />} />
           <Route path="themes" element={<AdminThemes />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>

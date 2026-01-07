@@ -1,18 +1,25 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Tag, Check, X } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
+import { supabase } from '../lib/supabase';
 import { formatPrice } from '../lib/utils';
 import { DEFAULT_SHIPPING_COST } from '../lib/constants';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
+import type { PromoCode } from '../types';
 
 export default function Checkout() {
   const navigate = useNavigate();
   const { items, getSubtotal, clearCart } = useCartStore();
   const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
 
   const [formData, setFormData] = useState({
     email: user?.email || '',
@@ -29,7 +36,69 @@ export default function Checkout() {
 
   const subtotal = getSubtotal();
   const shipping = DEFAULT_SHIPPING_COST;
-  const total = subtotal + shipping;
+
+  // Calculate discount
+  let discount = 0;
+  if (appliedPromo) {
+    if (appliedPromo.discount_type === 'percentage') {
+      discount = subtotal * (appliedPromo.discount_value / 100);
+    } else {
+      discount = Math.min(appliedPromo.discount_value, subtotal);
+    }
+  }
+
+  const total = subtotal + shipping - discount;
+
+  const applyPromoCode = async () => {
+    if (!promoCode.trim()) return;
+
+    setPromoLoading(true);
+    setPromoError('');
+
+    try {
+      const { data, error } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .eq('code', promoCode.toUpperCase().trim())
+        .eq('is_active', true)
+        .single();
+
+      if (error || !data) {
+        setPromoError('Invalid promo code');
+        return;
+      }
+
+      // Check if expired
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        setPromoError('This code has expired');
+        return;
+      }
+
+      // Check minimum order
+      if (data.min_order_amount && subtotal < data.min_order_amount) {
+        setPromoError(`Minimum order ${formatPrice(data.min_order_amount)} required`);
+        return;
+      }
+
+      // Check max uses
+      if (data.max_uses && data.uses_count >= data.max_uses) {
+        setPromoError('This code has reached its usage limit');
+        return;
+      }
+
+      setAppliedPromo(data);
+      setPromoCode('');
+    } catch (err) {
+      setPromoError('Failed to apply code');
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const removePromoCode = () => {
+    setAppliedPromo(null);
+    setPromoError('');
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -205,12 +274,70 @@ export default function Checkout() {
                 })}
               </div>
 
+              {/* Promo Code */}
+              <div className="border-t border-brand-gray pt-4 mb-4">
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between bg-brand-emerald-dark/20 border border-brand-neon/30 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-brand-neon" />
+                      <span className="font-mono text-brand-neon font-medium">{appliedPromo.code}</span>
+                      <span className="text-gray-400 text-sm">
+                        ({appliedPromo.discount_type === 'percentage'
+                          ? `${appliedPromo.discount_value}% off`
+                          : `${formatPrice(appliedPromo.discount_value)} off`})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removePromoCode}
+                      className="text-gray-400 hover:text-red-400 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Promo code"
+                          value={promoCode}
+                          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                          className="font-mono"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={applyPromoCode}
+                        isLoading={promoLoading}
+                        disabled={!promoCode.trim()}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                    {promoError && (
+                      <p className="text-red-400 text-sm">{promoError}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Totals */}
               <div className="border-t border-brand-gray pt-4 space-y-2">
                 <div className="flex justify-between text-gray-400">
                   <span>Subtotal</span>
                   <span>{formatPrice(subtotal)}</span>
                 </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-green-400">
+                    <span className="flex items-center gap-1">
+                      <Check className="h-4 w-4" />
+                      Discount
+                    </span>
+                    <span>-{formatPrice(discount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-400">
                   <span>Shipping</span>
                   <span>{formatPrice(shipping)}</span>

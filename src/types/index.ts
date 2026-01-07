@@ -165,3 +165,18 @@ export interface InventoryAdjustment {
   admin_user_id: string | null;
   created_at: string;
 }
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  description: string | null;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  min_order_amount: number | null;
+  max_uses: number | null;
+  uses_count: number;
+  is_active: boolean;
+  starts_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
