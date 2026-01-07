@@ -14,6 +14,7 @@ interface ThemeSettings {
 interface SiteSettings {
   store_name: string;
   logo_url: string | null;
+  hero_image_url: string | null;
   contact_email: string;
   default_shipping_cost: number;
   low_stock_threshold: number;
@@ -41,6 +42,7 @@ const defaultTheme: ThemeSettings = {
 const defaultSettings: SiteSettings = {
   store_name: 'OPOSSUM',
   logo_url: null,
+  hero_image_url: null,
   contact_email: '',
   default_shipping_cost: 5,
   low_stock_threshold: 5,
@@ -87,6 +89,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
           settings: {
             store_name: data.store_name || 'OPOSSUM',
             logo_url: data.logo_url || null,
+            hero_image_url: data.hero_image_url || null,
             contact_email: data.contact_email || '',
             default_shipping_cost: data.default_shipping_cost || 5,
             low_stock_threshold: data.low_stock_threshold || 5,

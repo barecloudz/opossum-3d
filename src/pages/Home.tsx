@@ -1,12 +1,26 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, Truck, Shield } from 'lucide-react';
 import Button from '../components/ui/Button';
+import { useSettingsStore } from '../store/settingsStore';
 
 export default function Home() {
+  const { settings } = useSettingsStore();
+
   return (
     <div>
       {/* Hero Section */}
       <section className="relative overflow-hidden">
+        {/* Hero Background Image */}
+        {settings.hero_image_url && (
+          <div className="absolute inset-0">
+            <img
+              src={settings.hero_image_url}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-brand-black/70" />
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-br from-brand-emerald-dark/20 to-transparent" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
           <div className="relative z-10 max-w-3xl">
