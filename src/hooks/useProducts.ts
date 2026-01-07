@@ -10,14 +10,10 @@ export function useProducts(includeInactive = false) {
   const maxRetries = 3;
 
   const fetchProducts = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      setIsLoading(true);
-      setError(null);
-
-      // Create abort controller for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
       let query = supabase
         .from('products')
         .select(`
@@ -33,26 +29,27 @@ export function useProducts(includeInactive = false) {
       }
 
       const { data, error: fetchError } = await query;
-      clearTimeout(timeoutId);
 
       if (fetchError) throw fetchError;
 
       setProducts(data || []);
+      setIsLoading(false);
       retryCount.current = 0; // Reset retry count on success
     } catch (err) {
       const error = err as Error;
       console.error('Error fetching products:', error);
 
       // Retry logic
-      if (retryCount.current < maxRetries && error.name !== 'AbortError') {
+      if (retryCount.current < maxRetries) {
         retryCount.current += 1;
         console.log(`Retrying... (${retryCount.current}/${maxRetries})`);
         setTimeout(fetchProducts, 1000 * retryCount.current); // Exponential backoff
+        // Don't set isLoading to false - we're retrying
         return;
       }
 
+      // Max retries exceeded
       setError(error);
-    } finally {
       setIsLoading(false);
     }
   }, [includeInactive]);
