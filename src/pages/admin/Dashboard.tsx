@@ -72,71 +72,54 @@ export default function AdminDashboard() {
       const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      // Fetch all data in parallel with individual error handling
-      const [ordersResult, lowStockResult, customerResult] = await Promise.all([
-        supabase
-          .from('orders')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .then(res => res.data || [])
-          .catch(() => []),
-        supabase
-          .from('products')
-          .select('*', { count: 'exact', head: true })
-          .eq('track_inventory', true)
-          .lt('stock_quantity', 5)
-          .then(res => res.count || 0)
-          .catch(() => 0),
-        supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .then(res => res.count || 0)
-          .catch(() => 0),
+      // Fetch all data in parallel
+      const [ordersRes, lowStockRes, customerRes] = await Promise.all([
+        supabase.from('orders').select('*').order('created_at', { ascending: false }),
+        supabase.from('products').select('*', { count: 'exact', head: true }).eq('track_inventory', true).lt('stock_quantity', 5),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }),
       ]);
 
-      const orders = ordersResult;
-      const lowStockCount = lowStockResult;
-      const customerCount = customerResult;
+      const orders: Order[] = ordersRes.data || [];
+      const lowStockCount = lowStockRes.count || 0;
+      const customerCount = customerRes.count || 0;
 
-      if (orders) {
-        // Calculate stats
-        const todayOrders = orders.filter(o => o.created_at >= todayStart);
-        const weekOrders = orders.filter(o => o.created_at >= weekStart);
-        const monthOrders = orders.filter(o => o.created_at >= monthStart);
-        const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'processing');
+      // Calculate stats
+      const todayOrders = orders.filter((o: Order) => o.created_at >= todayStart);
+      const weekOrders = orders.filter((o: Order) => o.created_at >= weekStart);
+      const monthOrders = orders.filter((o: Order) => o.created_at >= monthStart);
+      const pendingOrders = orders.filter((o: Order) => o.status === 'pending' || o.status === 'processing');
 
-        const todayRevenue = todayOrders.reduce((sum, o) => sum + o.total, 0);
-        const weekRevenue = weekOrders.reduce((sum, o) => sum + o.total, 0);
-        const monthRevenue = monthOrders.reduce((sum, o) => sum + o.total, 0);
-        const avgOrderValue = orders.length > 0 ? orders.reduce((sum, o) => sum + o.total, 0) / orders.length : 0;
+      const todayRevenue = todayOrders.reduce((sum: number, o: Order) => sum + o.total, 0);
+      const weekRevenue = weekOrders.reduce((sum: number, o: Order) => sum + o.total, 0);
+      const monthRevenue = monthOrders.reduce((sum: number, o: Order) => sum + o.total, 0);
+      const avgOrderValue = orders.length > 0 ? orders.reduce((sum: number, o: Order) => sum + o.total, 0) / orders.length : 0;
 
-        setStats({
-          todayRevenue,
-          weekRevenue,
-          monthRevenue,
-          orderCount: orders.length,
-          avgOrderValue,
-          lowStockCount: typeof lowStockCount === 'number' ? lowStockCount : 0,
-          customerCount: typeof customerCount === 'number' ? customerCount : 0,
-          pendingOrders: pendingOrders.length,
+      setStats({
+        todayRevenue,
+        weekRevenue,
+        monthRevenue,
+        orderCount: orders.length,
+        avgOrderValue,
+        lowStockCount,
+        customerCount,
+        pendingOrders: pendingOrders.length,
+      });
+
+      setRecentOrders(orders.slice(0, 5));
+
+      // Generate sales data for chart (last 14 days)
+      const chartData: SalesDataPoint[] = [];
+      for (let i = 13; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayOrders = orders.filter((o: Order) => o.created_at.startsWith(dateStr));
+        chartData.push({
+          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          revenue: dayOrders.reduce((sum: number, o: Order) => sum + o.total, 0),
+          orders: dayOrders.length,
         });
-
-        setRecentOrders(orders.slice(0, 5));
-
-        // Generate sales data for chart (last 14 days)
-        const chartData: SalesDataPoint[] = [];
-        for (let i = 13; i >= 0; i--) {
-          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-          const dateStr = date.toISOString().split('T')[0];
-          const dayOrders = orders.filter(o => o.created_at.startsWith(dateStr));
-          chartData.push({
-            date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-            revenue: dayOrders.reduce((sum, o) => sum + o.total, 0),
-            orders: dayOrders.length,
-          });
-        }
-        setSalesData(chartData);
       }
+      setSalesData(chartData);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
     } finally {
