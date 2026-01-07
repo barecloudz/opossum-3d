@@ -146,6 +146,7 @@ export interface StoreSettings {
   id: number;
   store_name: string;
   logo_url: string | null;
+  hero_image_url: string | null;
   contact_email: string | null;
   default_shipping_cost: number;
   low_stock_threshold: number;
