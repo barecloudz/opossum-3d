@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { useSettingsStore } from './store/settingsStore';
@@ -44,16 +44,25 @@ import ScrollToTop from './components/ScrollToTop';
 import { ToastContainer } from './components/ui/Toast';
 
 function App() {
-  const { initialize, isLoading } = useAuthStore();
+  const { initialize, isLoading, setLoading } = useAuthStore();
   const { fetchSettings } = useSettingsStore();
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
     initialize();
     fetchSettings();
-  }, [initialize, fetchSettings]);
 
-  // Show loading screen while auth initializes
-  if (isLoading) {
+    // Failsafe: if still loading after 3 seconds, proceed anyway
+    const timeout = setTimeout(() => {
+      setTimedOut(true);
+      setLoading(false);
+    }, 3000);
+
+    return () => clearTimeout(timeout);
+  }, [initialize, fetchSettings, setLoading]);
+
+  // Show loading screen while auth initializes (max 3 seconds)
+  if (isLoading && !timedOut) {
     return (
       <div className="min-h-screen bg-brand-black flex items-center justify-center">
         <div className="text-center">
