@@ -89,6 +89,32 @@ const presetThemes: PresetTheme[] = [
       border_color: '#3d2817',
     },
   },
+  {
+    name: 'Rustic Wood',
+    description: 'Warm burnt wood tones matching the Opossum Works logo',
+    colors: {
+      primary_color: '#c9a66b',
+      secondary_color: '#8b6914',
+      accent_color: '#d4a84b',
+      background_color: '#1a1409',
+      surface_color: '#2a2010',
+      text_color: '#f5e6c8',
+      border_color: '#4a3c20',
+    },
+  },
+  {
+    name: 'Silver Machine',
+    description: 'Industrial metallic silver with steel blue accents',
+    colors: {
+      primary_color: '#c0c0c0',
+      secondary_color: '#808080',
+      accent_color: '#71a8d7',
+      background_color: '#121518',
+      surface_color: '#1e2328',
+      text_color: '#e8eaed',
+      border_color: '#3a4048',
+    },
+  },
 ];
 
 const colorFields = [
