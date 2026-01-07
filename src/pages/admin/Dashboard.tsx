@@ -146,22 +146,48 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white">Dashboard</h1>
-        <div className="text-sm text-gray-400">
-          Last updated: {new Date().toLocaleString()}
+      {/* Welcome Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-brand-charcoal via-brand-emerald-dark/20 to-brand-charcoal border border-brand-gray p-6 sm:p-8">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-brand-neon/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="relative">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+            Welcome to Opossum Works
+          </h1>
+          <p className="text-gray-400 mb-4">
+            Here's what's happening with your store today.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              to="/admin/products/new"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-neon text-brand-black rounded-lg font-semibold text-sm hover:bg-brand-emerald transition-colors"
+            >
+              <Package className="h-4 w-4" />
+              Add Product
+            </Link>
+            <Link
+              to="/admin/orders"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-gray text-white rounded-lg font-semibold text-sm hover:bg-brand-gray/80 transition-colors"
+            >
+              <ShoppingBag className="h-4 w-4" />
+              View Orders
+              {stats.pendingOrders > 0 && (
+                <span className="bg-yellow-500 text-black text-xs px-1.5 py-0.5 rounded-full">
+                  {stats.pendingOrders}
+                </span>
+              )}
+            </Link>
+          </div>
         </div>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4 sm:p-6">
+        <Card className="group p-4 sm:p-6 hover:border-brand-neon/50 transition-all duration-300 hover:shadow-lg hover:shadow-brand-neon/10">
           <div className="flex items-start justify-between">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-brand-emerald-dark rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-brand-neon/20 to-brand-emerald-dark rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
               <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-brand-neon" />
             </div>
-            <span className="text-brand-neon text-xs flex items-center gap-1">
+            <span className="text-brand-neon text-xs flex items-center gap-1 bg-brand-neon/10 px-2 py-1 rounded-full">
               <TrendingUp className="h-3 w-3" />
               Today
             </span>
@@ -172,12 +198,12 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        <Card className="p-4 sm:p-6">
+        <Card className="group p-4 sm:p-6 hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10">
           <div className="flex items-start justify-between">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
               <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-blue-400" />
             </div>
-            <span className="text-blue-400 text-xs flex items-center gap-1">
+            <span className="text-blue-400 text-xs flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded-full">
               <ArrowUpRight className="h-3 w-3" />
               Month
             </span>
@@ -188,14 +214,20 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        <Card className="p-4 sm:p-6">
+        <Card className="group p-4 sm:p-6 hover:border-purple-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10">
           <div className="flex items-start justify-between">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
               <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-purple-400" />
             </div>
-            <span className="text-purple-400 text-xs flex items-center gap-1">
-              {stats.pendingOrders} pending
-            </span>
+            {stats.pendingOrders > 0 ? (
+              <span className="text-yellow-400 text-xs flex items-center gap-1 bg-yellow-500/10 px-2 py-1 rounded-full animate-pulse">
+                {stats.pendingOrders} pending
+              </span>
+            ) : (
+              <span className="text-purple-400 text-xs flex items-center gap-1 bg-purple-500/10 px-2 py-1 rounded-full">
+                All clear
+              </span>
+            )}
           </div>
           <div className="mt-3 sm:mt-4">
             <p className="text-gray-400 text-xs sm:text-sm">Total Orders</p>
@@ -203,15 +235,19 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        <Card className="p-4 sm:p-6">
+        <Card className="group p-4 sm:p-6 hover:border-yellow-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-yellow-500/10">
           <div className="flex items-start justify-between">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
               <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-400" />
             </div>
-            {stats.lowStockCount > 0 && (
-              <span className="text-yellow-400 text-xs flex items-center gap-1">
+            {stats.lowStockCount > 0 ? (
+              <span className="text-yellow-400 text-xs flex items-center gap-1 bg-yellow-500/10 px-2 py-1 rounded-full animate-pulse">
                 <ArrowDownRight className="h-3 w-3" />
                 Alert
+              </span>
+            ) : (
+              <span className="text-green-400 text-xs flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full">
+                Stocked
               </span>
             )}
           </div>
@@ -224,9 +260,9 @@ export default function AdminDashboard() {
 
       {/* Secondary Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="p-4 sm:p-6">
+        <Card className="group p-4 sm:p-6 hover:border-green-500/50 transition-all">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
               <TrendingUp className="h-5 w-5 text-green-400" />
             </div>
             <div>
@@ -236,9 +272,9 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        <Card className="p-4 sm:p-6">
+        <Card className="group p-4 sm:p-6 hover:border-cyan-500/50 transition-all">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
               <Users className="h-5 w-5 text-cyan-400" />
             </div>
             <div>
@@ -248,9 +284,9 @@ export default function AdminDashboard() {
           </div>
         </Card>
 
-        <Card className="p-4 sm:p-6 col-span-2 lg:col-span-1">
+        <Card className="group p-4 sm:p-6 col-span-2 lg:col-span-1 hover:border-orange-500/50 transition-all">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
               <DollarSign className="h-5 w-5 text-orange-400" />
             </div>
             <div>
@@ -264,8 +300,11 @@ export default function AdminDashboard() {
       {/* Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Revenue Chart */}
-        <Card className="p-4 sm:p-6">
-          <h2 className="text-lg sm:text-xl font-semibold text-white mb-4">Revenue (14 Days)</h2>
+        <Card className="p-4 sm:p-6 hover:border-brand-neon/30 transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg sm:text-xl font-semibold text-white">Revenue</h2>
+            <span className="text-xs text-gray-400 bg-brand-gray px-2 py-1 rounded">Last 14 days</span>
+          </div>
           <div className="h-64 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={salesData}>
@@ -313,8 +352,11 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Orders Chart */}
-        <Card className="p-4 sm:p-6">
-          <h2 className="text-lg sm:text-xl font-semibold text-white mb-4">Orders (14 Days)</h2>
+        <Card className="p-4 sm:p-6 hover:border-purple-500/30 transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg sm:text-xl font-semibold text-white">Orders</h2>
+            <span className="text-xs text-gray-400 bg-brand-gray px-2 py-1 rounded">Last 14 days</span>
+          </div>
           <div className="h-64 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={salesData}>

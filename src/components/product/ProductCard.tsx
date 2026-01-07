@@ -71,13 +71,23 @@ export default function ProductCard({ product }: ProductCardProps) {
         <h3 className="text-white font-medium mb-1 truncate group-hover:text-brand-neon transition-colors">
           {product.name}
         </h3>
-        <div className="flex items-center gap-2">
-          <span className="text-brand-neon font-semibold">{formatPrice(product.price)}</span>
-          {product.compare_at_price && (
-            <span className="text-gray-500 text-sm line-through">
-              {formatPrice(product.compare_at_price)}
-            </span>
-          )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-brand-neon font-semibold">{formatPrice(product.price)}</span>
+            {product.compare_at_price && (
+              <span className="text-gray-500 text-sm line-through">
+                {formatPrice(product.compare_at_price)}
+              </span>
+            )}
+          </div>
+          {/* Mobile Add to Cart */}
+          <button
+            onClick={handleAddToCart}
+            disabled={stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock}
+            className="md:hidden p-2 bg-brand-neon text-brand-black rounded-lg disabled:opacity-50 disabled:cursor-not-allowed active:bg-brand-emerald"
+          >
+            <ShoppingCart className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </Link>
