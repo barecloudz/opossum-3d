@@ -186,7 +186,13 @@ export default function AdminThemes() {
 
   return (
     <div>
-      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-8">Themes</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white">Themes</h1>
+        <Button onClick={handleSave} isLoading={isSaving}>
+          <Save className="h-5 w-5 mr-2" />
+          Save Theme
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Preset Themes */}
@@ -268,11 +274,6 @@ export default function AdminThemes() {
               ))}
             </div>
           </Card>
-
-          <Button onClick={handleSave} size="lg" isLoading={isSaving}>
-            <Save className="h-5 w-5 mr-2" />
-            Save Theme
-          </Button>
         </div>
 
         {/* Live Preview */}
