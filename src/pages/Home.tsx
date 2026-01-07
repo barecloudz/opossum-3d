@@ -1,8 +1,35 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, Truck, Shield } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import Button from '../components/ui/Button';
+import { supabase } from '../lib/supabase';
+import type { Product } from '../types';
 
 export default function Home() {
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeaturedProducts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*, images:product_images(*)')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(4);
+
+        if (error) throw error;
+        setFeaturedProducts(data || []);
+      } catch (err) {
+        console.error('Error fetching products:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFeaturedProducts();
+  }, []);
 
   return (
     <div>
@@ -76,7 +103,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Products Placeholder */}
+      {/* Featured Products */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
@@ -86,14 +113,56 @@ export default function Home() {
             </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Placeholder product cards */}
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-brand-charcoal rounded-xl border border-brand-gray p-4 hover:border-brand-neon/50 transition-colors">
-                <div className="aspect-square bg-brand-gray rounded-lg mb-4" />
-                <div className="h-4 bg-brand-gray rounded w-3/4 mb-2" />
-                <div className="h-4 bg-brand-gray rounded w-1/2" />
+            {isLoading ? (
+              // Loading skeletons
+              [1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-brand-charcoal rounded-xl border border-brand-gray p-4">
+                  <div className="aspect-square bg-brand-gray rounded-lg mb-4 animate-pulse" />
+                  <div className="h-4 bg-brand-gray rounded w-3/4 mb-2 animate-pulse" />
+                  <div className="h-4 bg-brand-gray rounded w-1/2 animate-pulse" />
+                </div>
+              ))
+            ) : featuredProducts.length > 0 ? (
+              featuredProducts.map((product) => {
+                const primaryImage = product.images?.find((img) => img.is_primary) || product.images?.[0];
+                return (
+                  <Link
+                    key={product.id}
+                    to={`/products/${product.slug}`}
+                    className="bg-brand-charcoal rounded-xl border border-brand-gray p-4 hover:border-brand-neon/50 transition-colors group"
+                  >
+                    <div className="aspect-square bg-brand-gray rounded-lg mb-4 overflow-hidden">
+                      {primaryImage ? (
+                        <img
+                          src={primaryImage.image_url}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-500">
+                          No image
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-white mb-1 group-hover:text-brand-neon transition-colors">
+                      {product.name}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-brand-neon font-bold">${product.price.toFixed(2)}</span>
+                      {product.compare_at_price && product.compare_at_price > product.price && (
+                        <span className="text-gray-500 line-through text-sm">
+                          ${product.compare_at_price.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })
+            ) : (
+              <div className="col-span-full text-center py-8 text-gray-400">
+                No products available yet. Check back soon!
               </div>
-            ))}
+            )}
           </div>
         </div>
       </section>

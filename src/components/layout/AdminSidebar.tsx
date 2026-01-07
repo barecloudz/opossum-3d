@@ -12,7 +12,6 @@ import {
   X,
 } from 'lucide-react';
 import { useState } from 'react';
-import { useSettingsStore } from '../../store/settingsStore';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
@@ -27,7 +26,6 @@ const navItems = [
 export default function AdminSidebar() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { settings } = useSettingsStore();
 
   const isActive = (path: string) => {
     if (path === '/admin') return location.pathname === '/admin';
@@ -39,15 +37,11 @@ export default function AdminSidebar() {
       {/* Logo */}
       <div className={`p-5 border-b ${isMobile ? 'border-brand-neon/20 bg-brand-charcoal' : 'border-brand-gray'}`}>
         <Link to="/admin" className="flex items-center space-x-2" onClick={() => setMobileOpen(false)}>
-          {settings.logo_url ? (
-            <img
-              src={settings.logo_url}
-              alt={settings.store_name}
-              className="h-8 w-auto object-contain"
-            />
-          ) : (
-            <span className="text-xl font-bold text-brand-neon">{settings.store_name || 'OPOSSUM'}</span>
-          )}
+          <img
+            src="/images/logo.jpg"
+            alt="Opossum Works"
+            className="h-8 w-auto object-contain"
+          />
           <span className="text-xs text-gray-400 bg-brand-gray px-2 py-0.5 rounded">Admin</span>
         </Link>
       </div>

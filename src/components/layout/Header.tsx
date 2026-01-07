@@ -3,13 +3,11 @@ import { ShoppingCart, Menu, X, User } from 'lucide-react';
 import { useState } from 'react';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
-import { useSettingsStore } from '../../store/settingsStore';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { openCart, getItemCount } = useCartStore();
   const { user, isAdmin } = useAuthStore();
-  const { settings } = useSettingsStore();
   const itemCount = getItemCount();
 
   const navLinks = [
@@ -22,19 +20,12 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            {settings.logo_url ? (
-              <img
-                src={settings.logo_url}
-                alt={settings.store_name}
-                className="h-10 w-auto object-contain"
-              />
-            ) : (
-              <>
-                <span className="text-2xl font-bold text-brand-neon">{settings.store_name || 'OPOSSUM'}</span>
-                <span className="text-sm text-gray-400">3D</span>
-              </>
-            )}
+          <Link to="/" className="flex items-center">
+            <img
+              src="/images/logo.jpg"
+              alt="Opossum Works"
+              className="h-12 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Navigation */}
