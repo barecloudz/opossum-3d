@@ -36,6 +36,7 @@ import AdminPromoCodes from './pages/admin/PromoCodes';
 import ProtectedRoute from './components/ProtectedRoute';
 import CartDrawer from './components/cart/CartDrawer';
 import UpdateBanner from './components/UpdateBanner';
+import ScrollToTop from './components/ScrollToTop';
 import { ToastContainer } from './components/ui/Toast';
 
 function App() {
@@ -61,6 +62,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<MainLayout />}>

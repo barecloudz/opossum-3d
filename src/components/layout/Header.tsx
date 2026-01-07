@@ -19,23 +19,18 @@ export default function Header() {
     <header className="sticky top-0 z-40 bg-brand-charcoal border-b border-brand-gray">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative flex items-center justify-between h-16">
-          {/* Mobile Left - Login/Menu */}
-          <div className="flex items-center space-x-2 md:hidden">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-gray-300 hover:text-brand-neon transition-colors p-1"
-            >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
-            {!user && (
-              <Link
-                to="/login"
-                className="text-gray-300 hover:text-brand-neon transition-colors p-1"
-              >
-                <User className="h-6 w-6" />
-              </Link>
+          {/* Mobile Left - Cart */}
+          <button
+            onClick={openCart}
+            className="md:hidden relative text-gray-300 hover:text-brand-neon transition-colors p-1"
+          >
+            <ShoppingCart className="h-6 w-6" />
+            {itemCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-brand-neon text-brand-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                {itemCount > 99 ? '99+' : itemCount}
+              </span>
             )}
-          </div>
+          </button>
 
           {/* Desktop Left - Logo */}
           <Link to="/" className="hidden md:flex items-center">
@@ -88,10 +83,10 @@ export default function Header() {
               </Link>
             )}
 
-            {/* Cart button */}
+            {/* Cart button - Desktop */}
             <button
               onClick={openCart}
-              className="relative text-gray-300 hover:text-brand-neon transition-colors"
+              className="hidden md:block relative text-gray-300 hover:text-brand-neon transition-colors"
             >
               <ShoppingCart className="h-6 w-6" />
               {itemCount > 0 && (
@@ -100,6 +95,24 @@ export default function Header() {
                 </span>
               )}
             </button>
+
+            {/* Mobile Right - Login/Menu */}
+            <div className="flex items-center space-x-2 md:hidden">
+              {!user && (
+                <Link
+                  to="/login"
+                  className="text-gray-300 hover:text-brand-neon transition-colors p-1"
+                >
+                  <User className="h-6 w-6" />
+                </Link>
+              )}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="text-gray-300 hover:text-brand-neon transition-colors p-1"
+              >
+                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            </div>
           </div>
         </div>
 

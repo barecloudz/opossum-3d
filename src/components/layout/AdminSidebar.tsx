@@ -11,23 +11,56 @@ import {
   ArrowLeft,
   Menu,
   X,
+  Megaphone,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useState } from 'react';
 
-const navItems = [
+export const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/products', icon: Package, label: 'Products' },
   { href: '/admin/orders', icon: ShoppingBag, label: 'Orders' },
   { href: '/admin/customers', icon: Users, label: 'Customers' },
   { href: '/admin/quotes', icon: MessageSquare, label: 'Quote Requests' },
-  { href: '/admin/promo-codes', icon: Tag, label: 'Promo Codes' },
   { href: '/admin/themes', icon: Palette, label: 'Themes' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
+export const marketingSubItems = [
+  { href: '/admin/promo-codes', icon: Tag, label: 'Promo Codes' },
+];
+
+export function getPageTitle(pathname: string): string {
+  // Check for exact match first
+  const exactMatch = navItems.find(item => item.href === pathname);
+  if (exactMatch) return exactMatch.label;
+
+  // Check marketing sub-items
+  const marketingMatch = marketingSubItems.find(item => item.href === pathname);
+  if (marketingMatch) return marketingMatch.label;
+
+  // Check for partial matches (e.g., /admin/products/new matches Products)
+  const partialMatch = navItems.find(item =>
+    item.href !== '/admin' && pathname.startsWith(item.href)
+  );
+  if (partialMatch) return partialMatch.label;
+
+  // Check marketing partial matches
+  const marketingPartial = marketingSubItems.find(item =>
+    pathname.startsWith(item.href)
+  );
+  if (marketingPartial) return marketingPartial.label;
+
+  return 'Admin';
+}
+
 export default function AdminSidebar() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [marketingOpen, setMarketingOpen] = useState(
+    marketingSubItems.some(item => location.pathname.startsWith(item.href))
+  );
 
   const isActive = (path: string) => {
     if (path === '/admin') return location.pathname === '/admin';
@@ -49,8 +82,65 @@ export default function AdminSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className={`flex-1 p-4 space-y-1 ${isMobile ? 'bg-brand-charcoal' : ''}`}>
-        {navItems.map((item) => (
+      <nav className={`flex-1 p-4 space-y-1 overflow-y-auto ${isMobile ? 'bg-brand-charcoal' : ''}`}>
+        {navItems.slice(0, 5).map((item) => (
+          <Link
+            key={item.href}
+            to={item.href}
+            onClick={() => setMobileOpen(false)}
+            className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
+              isActive(item.href)
+                ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
+                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+            }`}
+          >
+            <item.icon className={`h-5 w-5 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
+            <span className="font-medium">{item.label}</span>
+          </Link>
+        ))}
+
+        {/* Marketing collapsible menu */}
+        <div>
+          <button
+            onClick={() => setMarketingOpen(!marketingOpen)}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
+              marketingSubItems.some(item => isActive(item.href))
+                ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
+                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <Megaphone className={`h-5 w-5 ${marketingSubItems.some(item => isActive(item.href)) ? 'text-brand-neon' : ''}`} />
+              <span className="font-medium">Marketing</span>
+            </div>
+            {marketingOpen ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+          {marketingOpen && (
+            <div className="ml-4 mt-1 space-y-1">
+              {marketingSubItems.map((item) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all ${
+                    isActive(item.href)
+                      ? 'bg-brand-neon/10 text-brand-neon'
+                      : 'text-gray-400 hover:bg-brand-gray/50 hover:text-white'
+                  }`}
+                >
+                  <item.icon className={`h-4 w-4 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
+                  <span className="text-sm">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {navItems.slice(5).map((item) => (
           <Link
             key={item.href}
             to={item.href}
@@ -81,15 +171,22 @@ export default function AdminSidebar() {
     </>
   );
 
+  const pageTitle = getPageTitle(location.pathname);
+
   return (
     <>
-      {/* Mobile toggle */}
-      <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 bg-brand-charcoal border border-brand-gray p-2.5 rounded-lg text-brand-neon hover:bg-brand-gray transition-colors shadow-lg"
-      >
-        {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-      </button>
+      {/* Mobile header bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-brand-charcoal border-b border-brand-gray h-14 flex items-center px-4">
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="p-2 rounded-lg text-brand-neon hover:bg-brand-gray transition-colors"
+        >
+          {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+        <h1 className="absolute left-1/2 transform -translate-x-1/2 text-white font-semibold">
+          {pageTitle}
+        </h1>
+      </div>
 
       {/* Mobile overlay */}
       {mobileOpen && (
@@ -101,7 +198,7 @@ export default function AdminSidebar() {
 
       {/* Mobile sidebar */}
       <aside
-        className={`md:hidden fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-brand-charcoal to-brand-black border-r border-brand-neon/20 flex flex-col transform transition-transform shadow-2xl shadow-brand-neon/10 ${
+        className={`md:hidden fixed top-14 bottom-0 left-0 z-50 w-72 bg-gradient-to-b from-brand-charcoal to-brand-black border-r border-brand-neon/20 flex flex-col transform transition-transform shadow-2xl shadow-brand-neon/10 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

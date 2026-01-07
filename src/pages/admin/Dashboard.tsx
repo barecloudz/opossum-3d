@@ -72,23 +72,31 @@ export default function AdminDashboard() {
       const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      // Fetch all orders
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch all data in parallel with individual error handling
+      const [ordersResult, lowStockResult, customerResult] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .then(res => res.data || [])
+          .catch(() => []),
+        supabase
+          .from('products')
+          .select('*', { count: 'exact', head: true })
+          .eq('track_inventory', true)
+          .lt('stock_quantity', 5)
+          .then(res => res.count || 0)
+          .catch(() => 0),
+        supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .then(res => res.count || 0)
+          .catch(() => 0),
+      ]);
 
-      // Fetch low stock products
-      const { count: lowStockCount } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-        .eq('track_inventory', true)
-        .lt('stock_quantity', 5);
-
-      // Fetch customer count
-      const { count: customerCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
+      const orders = ordersResult;
+      const lowStockCount = lowStockResult;
+      const customerCount = customerResult;
 
       if (orders) {
         // Calculate stats
@@ -108,8 +116,8 @@ export default function AdminDashboard() {
           monthRevenue,
           orderCount: orders.length,
           avgOrderValue,
-          lowStockCount: lowStockCount || 0,
-          customerCount: customerCount || 0,
+          lowStockCount: typeof lowStockCount === 'number' ? lowStockCount : 0,
+          customerCount: typeof customerCount === 'number' ? customerCount : 0,
           pendingOrders: pendingOrders.length,
         });
 
