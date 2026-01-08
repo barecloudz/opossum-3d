@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Tag, Check, X } from 'lucide-react';
+import { Elements } from '@stripe/react-stripe-js';
+import { Tag, Check, X, CreditCard } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
+import { stripePromise } from '../lib/stripe';
 import { formatPrice } from '../lib/utils';
 import { DEFAULT_SHIPPING_COST } from '../lib/constants';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
+import PaymentForm from '../components/checkout/PaymentForm';
 import { useToast } from '../components/ui/Toast';
 import type { PromoCode } from '../types';
 
@@ -18,6 +21,9 @@ export default function Checkout() {
   const { user } = useAuthStore();
   const { addToast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [step, setStep] = useState<'details' | 'payment'>('details');
   const [promoCode, setPromoCode] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
@@ -51,6 +57,13 @@ export default function Checkout() {
 
   const total = subtotal + shipping - discount;
 
+  // Redirect if cart is empty
+  useEffect(() => {
+    if (items.length === 0) {
+      navigate('/cart');
+    }
+  }, [items.length, navigate]);
+
   const applyPromoCode = async () => {
     if (!promoCode.trim()) return;
 
@@ -70,19 +83,16 @@ export default function Checkout() {
         return;
       }
 
-      // Check if expired
       if (data.expires_at && new Date(data.expires_at) < new Date()) {
         setPromoError('This code has expired');
         return;
       }
 
-      // Check minimum order
       if (data.min_order_amount && subtotal < data.min_order_amount) {
         setPromoError(`Minimum order ${formatPrice(data.min_order_amount)} required`);
         return;
       }
 
-      // Check max uses
       if (data.max_uses && data.uses_count >= data.max_uses) {
         setPromoError('This code has reached its usage limit');
         return;
@@ -110,8 +120,7 @@ export default function Checkout() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const createOrderAndPaymentIntent = async () => {
     setIsLoading(true);
 
     try {
@@ -125,10 +134,7 @@ export default function Checkout() {
         country: 'US',
       };
 
-      // Calculate tax (placeholder - could be dynamic based on location)
-      const tax = 0;
-
-      // Create the order
+      // Create the order first (pending status)
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -138,13 +144,12 @@ export default function Checkout() {
           status: 'pending',
           subtotal: subtotal,
           shipping_cost: shipping,
-          tax: tax,
+          tax: 0,
           total: total,
           shipping_address: shippingAddress,
-          billing_address: shippingAddress, // Same as shipping for now
+          billing_address: shippingAddress,
           promo_code_id: appliedPromo?.id || null,
           discount_amount: discount,
-          notes: null,
         })
         .select()
         .single();
@@ -169,59 +174,26 @@ export default function Checkout() {
 
       if (itemsError) throw itemsError;
 
-      // Update inventory for each item
-      for (const item of items) {
-        if (item.product.track_inventory) {
-          if (item.variant) {
-            // Update variant stock
-            const newStock = Math.max(0, item.variant.stock_quantity - item.quantity);
-            await supabase
-              .from('product_variants')
-              .update({ stock_quantity: newStock })
-              .eq('id', item.variant.id);
-          } else {
-            // Update product stock
-            const newStock = Math.max(0, item.product.stock_quantity - item.quantity);
-            await supabase
-              .from('products')
-              .update({ stock_quantity: newStock })
-              .eq('id', item.product.id);
-          }
-        }
+      setOrderId(order.id);
+
+      // Create payment intent
+      const response = await fetch('/.netlify/functions/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: Math.round(total * 100), // Convert to cents
+          orderId: order.id,
+          customerEmail: formData.email,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create payment intent');
       }
 
-      // Update promo code usage if applied
-      if (appliedPromo) {
-        await supabase
-          .from('promo_codes')
-          .update({ uses_count: appliedPromo.uses_count + 1 })
-          .eq('id', appliedPromo.id);
-      }
-
-      // Add email subscriber if opted in
-      if (formData.marketingOptIn && formData.email) {
-        // Check if already subscribed
-        const { data: existingSub } = await supabase
-          .from('email_subscribers')
-          .select('id')
-          .eq('email', formData.email.toLowerCase())
-          .single();
-
-        if (!existingSub) {
-          await supabase.from('email_subscribers').insert({
-            email: formData.email.toLowerCase(),
-            first_name: formData.firstName || null,
-            last_name: formData.lastName || null,
-            source: 'checkout',
-            is_subscribed: true,
-            subscribed_at: new Date().toISOString(),
-          });
-        }
-      }
-
-      // Clear cart and redirect to confirmation
-      clearCart();
-      navigate(`/order-confirmation/${order.id}`);
+      const { clientSecret: secret } = await response.json();
+      setClientSecret(secret);
+      setStep('payment');
     } catch (err) {
       console.error('Error creating order:', err);
       addToast('Failed to create order. Please try again.', 'error');
@@ -230,8 +202,75 @@ export default function Checkout() {
     }
   };
 
+  const handlePaymentSuccess = async () => {
+    try {
+      // Update order status to paid
+      if (orderId) {
+        await supabase
+          .from('orders')
+          .update({ status: 'paid' })
+          .eq('id', orderId);
+
+        // Update inventory
+        for (const item of items) {
+          if (item.product.track_inventory) {
+            if (item.variant) {
+              const newStock = Math.max(0, item.variant.stock_quantity - item.quantity);
+              await supabase
+                .from('product_variants')
+                .update({ stock_quantity: newStock })
+                .eq('id', item.variant.id);
+            } else {
+              const newStock = Math.max(0, item.product.stock_quantity - item.quantity);
+              await supabase
+                .from('products')
+                .update({ stock_quantity: newStock })
+                .eq('id', item.product.id);
+            }
+          }
+        }
+
+        // Update promo code usage
+        if (appliedPromo) {
+          await supabase
+            .from('promo_codes')
+            .update({ uses_count: appliedPromo.uses_count + 1 })
+            .eq('id', appliedPromo.id);
+        }
+
+        // Add email subscriber if opted in
+        if (formData.marketingOptIn && formData.email) {
+          const { data: existingSub } = await supabase
+            .from('email_subscribers')
+            .select('id')
+            .eq('email', formData.email.toLowerCase())
+            .single();
+
+          if (!existingSub) {
+            await supabase.from('email_subscribers').insert({
+              email: formData.email.toLowerCase(),
+              first_name: formData.firstName || null,
+              last_name: formData.lastName || null,
+              source: 'checkout',
+              is_subscribed: true,
+              subscribed_at: new Date().toISOString(),
+            });
+          }
+        }
+      }
+
+      clearCart();
+      navigate(`/order-confirmation/${orderId}`);
+    } catch (err) {
+      console.error('Error finalizing order:', err);
+    }
+  };
+
+  const handlePaymentError = (message: string) => {
+    addToast(message, 'error');
+  };
+
   if (items.length === 0) {
-    navigate('/cart');
     return null;
   }
 
@@ -239,152 +278,202 @@ export default function Checkout() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-3xl font-bold text-theme mb-8">Checkout</h1>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Column - Form */}
-          <div className="space-y-8">
-            {/* Contact Information */}
-            <Card>
-              <h2 className="text-xl font-semibold text-theme mb-4">Contact Information</h2>
-              <div className="space-y-4">
-                <Input
-                  label="Email"
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                />
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    name="marketingOptIn"
-                    id="marketingOptIn"
-                    checked={formData.marketingOptIn}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left Column - Form */}
+        <div className="space-y-8">
+          {step === 'details' ? (
+            <>
+              {/* Contact Information */}
+              <Card>
+                <h2 className="text-xl font-semibold text-theme mb-4">Contact Information</h2>
+                <div className="space-y-4">
+                  <Input
+                    label="Email"
+                    type="email"
+                    name="email"
+                    value={formData.email}
                     onChange={handleInputChange}
-                    className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                    required
                   />
-                  <label htmlFor="marketingOptIn" className="text-theme opacity-60 text-sm">
-                    Email me with news and offers
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      name="marketingOptIn"
+                      id="marketingOptIn"
+                      checked={formData.marketingOptIn}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                    />
+                    <label htmlFor="marketingOptIn" className="text-theme opacity-60 text-sm">
+                      Email me with news and offers
+                    </label>
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
 
-            {/* Shipping Address */}
-            <Card>
-              <h2 className="text-xl font-semibold text-theme mb-4">Shipping Address</h2>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              {/* Shipping Address */}
+              <Card>
+                <h2 className="text-xl font-semibold text-theme mb-4">Shipping Address</h2>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      label="First Name"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                    <Input
+                      label="Last Name"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
                   <Input
-                    label="First Name"
-                    name="firstName"
-                    value={formData.firstName}
+                    label="Address"
+                    name="address"
+                    value={formData.address}
                     onChange={handleInputChange}
                     required
                   />
                   <Input
-                    label="Last Name"
-                    name="lastName"
-                    value={formData.lastName}
+                    label="Apartment, suite, etc. (optional)"
+                    name="apartment"
+                    value={formData.apartment}
                     onChange={handleInputChange}
-                    required
+                  />
+                  <div className="grid grid-cols-3 gap-4">
+                    <Input
+                      label="City"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      required
+                    />
+                    <Input
+                      label="State"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      required
+                    />
+                    <Input
+                      label="ZIP Code"
+                      name="zip"
+                      value={formData.zip}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <Input
+                    label="Phone (optional)"
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
                   />
                 </div>
-                <Input
-                  label="Address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  required
-                />
-                <Input
-                  label="Apartment, suite, etc. (optional)"
-                  name="apartment"
-                  value={formData.apartment}
-                  onChange={handleInputChange}
-                />
-                <div className="grid grid-cols-3 gap-4">
-                  <Input
-                    label="City"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <Input
-                    label="State"
-                    name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <Input
-                    label="ZIP Code"
-                    name="zip"
-                    value={formData.zip}
-                    onChange={handleInputChange}
-                    required
-                  />
+              </Card>
+
+              <Button
+                onClick={createOrderAndPaymentIntent}
+                className="w-full"
+                size="lg"
+                isLoading={isLoading}
+                disabled={!formData.email || !formData.firstName || !formData.lastName || !formData.address || !formData.city || !formData.state || !formData.zip}
+              >
+                Continue to Payment
+              </Button>
+            </>
+          ) : (
+            <>
+              {/* Payment Section */}
+              <Card>
+                <div className="flex items-center gap-2 mb-4">
+                  <CreditCard className="h-5 w-5 text-[var(--color-primary)]" />
+                  <h2 className="text-xl font-semibold text-theme">Payment</h2>
                 </div>
-                <Input
-                  label="Phone (optional)"
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                />
-              </div>
-            </Card>
 
-            {/* Payment - Placeholder */}
-            <Card>
-              <h2 className="text-xl font-semibold text-theme mb-4">Payment</h2>
-              <p className="text-theme opacity-60">
-                Stripe payment integration will be added here.
-              </p>
-              <div className="mt-4 p-4 bg-[var(--color-background)] rounded-lg border border-[var(--color-border)]">
-                <p className="text-sm text-theme opacity-50">
-                  Demo mode - click "Place Order" to simulate a successful payment
-                </p>
-              </div>
-            </Card>
-          </div>
+                <div className="mb-4 p-3 bg-[var(--color-background)] rounded-lg border border-[var(--color-border)]">
+                  <p className="text-theme opacity-60 text-sm">
+                    Shipping to: {formData.firstName} {formData.lastName}, {formData.address}, {formData.city}, {formData.state} {formData.zip}
+                  </p>
+                  <button
+                    onClick={() => setStep('details')}
+                    className="text-[var(--color-primary)] text-sm hover:underline mt-1"
+                  >
+                    Edit details
+                  </button>
+                </div>
 
-          {/* Right Column - Order Summary */}
-          <div>
-            <Card className="sticky top-24">
-              <h2 className="text-xl font-semibold text-theme mb-4">Order Summary</h2>
+                {clientSecret && (
+                  <Elements
+                    stripe={stripePromise}
+                    options={{
+                      clientSecret,
+                      appearance: {
+                        theme: 'night',
+                        variables: {
+                          colorPrimary: '#00ff66',
+                          colorBackground: '#1a1a1a',
+                          colorText: '#f5f5f5',
+                          colorDanger: '#ef4444',
+                          fontFamily: 'system-ui, sans-serif',
+                          borderRadius: '8px',
+                        },
+                      },
+                    }}
+                  >
+                    <PaymentForm
+                      onSuccess={handlePaymentSuccess}
+                      onError={handlePaymentError}
+                      isProcessing={isLoading}
+                      setIsProcessing={setIsLoading}
+                    />
+                  </Elements>
+                )}
+              </Card>
+            </>
+          )}
+        </div>
 
-              {/* Items */}
-              <div className="space-y-4 mb-6">
-                {items.map((item) => {
-                  const itemPrice = item.product.price + (item.variant?.price_adjustment || 0);
-                  return (
-                    <div
-                      key={`${item.product.id}-${item.variant?.id || 'default'}`}
-                      className="flex gap-4"
-                    >
-                      <div className="w-16 h-16 bg-[var(--color-border)] rounded-lg flex-shrink-0 relative">
-                        <span className="absolute -top-2 -right-2 bg-[var(--color-primary)] text-[var(--color-background)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                          {item.quantity}
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-theme font-medium">{item.product.name}</p>
-                        {item.variant && (
-                          <p className="text-theme opacity-60 text-sm">{item.variant.name}</p>
-                        )}
-                      </div>
-                      <span className="text-theme opacity-60">
-                        {formatPrice(itemPrice * item.quantity)}
+        {/* Right Column - Order Summary */}
+        <div>
+          <Card className="sticky top-24">
+            <h2 className="text-xl font-semibold text-theme mb-4">Order Summary</h2>
+
+            {/* Items */}
+            <div className="space-y-4 mb-6">
+              {items.map((item) => {
+                const itemPrice = item.product.price + (item.variant?.price_adjustment || 0);
+                return (
+                  <div
+                    key={`${item.product.id}-${item.variant?.id || 'default'}`}
+                    className="flex gap-4"
+                  >
+                    <div className="w-16 h-16 bg-[var(--color-border)] rounded-lg flex-shrink-0 relative">
+                      <span className="absolute -top-2 -right-2 bg-[var(--color-primary)] text-[var(--color-background)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                        {item.quantity}
                       </span>
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="flex-1">
+                      <p className="text-theme font-medium">{item.product.name}</p>
+                      {item.variant && (
+                        <p className="text-theme opacity-60 text-sm">{item.variant.name}</p>
+                      )}
+                    </div>
+                    <span className="text-theme opacity-60">
+                      {formatPrice(itemPrice * item.quantity)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
 
-              {/* Promo Code */}
+            {/* Promo Code */}
+            {step === 'details' && (
               <div className="border-t border-[var(--color-border)] pt-4 mb-4">
                 {appliedPromo ? (
                   <div className="flex items-center justify-between bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-lg px-3 py-2">
@@ -432,39 +521,35 @@ export default function Checkout() {
                   </div>
                 )}
               </div>
+            )}
 
-              {/* Totals */}
-              <div className="border-t border-[var(--color-border)] pt-4 space-y-2">
-                <div className="flex justify-between text-theme opacity-60">
-                  <span>Subtotal</span>
-                  <span>{formatPrice(subtotal)}</span>
-                </div>
-                {discount > 0 && (
-                  <div className="flex justify-between text-green-500">
-                    <span className="flex items-center gap-1">
-                      <Check className="h-4 w-4" />
-                      Discount
-                    </span>
-                    <span>-{formatPrice(discount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-theme opacity-60">
-                  <span>Shipping</span>
-                  <span>{formatPrice(shipping)}</span>
-                </div>
-                <div className="flex justify-between text-lg font-semibold pt-2 border-t border-[var(--color-border)]">
-                  <span className="text-theme">Total</span>
-                  <span className="text-[var(--color-primary)]">{formatPrice(total)}</span>
-                </div>
+            {/* Totals */}
+            <div className="border-t border-[var(--color-border)] pt-4 space-y-2">
+              <div className="flex justify-between text-theme opacity-60">
+                <span>Subtotal</span>
+                <span>{formatPrice(subtotal)}</span>
               </div>
-
-              <Button type="submit" className="w-full mt-6" size="lg" isLoading={isLoading}>
-                Place Order
-              </Button>
-            </Card>
-          </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-green-500">
+                  <span className="flex items-center gap-1">
+                    <Check className="h-4 w-4" />
+                    Discount
+                  </span>
+                  <span>-{formatPrice(discount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-theme opacity-60">
+                <span>Shipping</span>
+                <span>{formatPrice(shipping)}</span>
+              </div>
+              <div className="flex justify-between text-lg font-semibold pt-2 border-t border-[var(--color-border)]">
+                <span className="text-theme">Total</span>
+                <span className="text-[var(--color-primary)]">{formatPrice(total)}</span>
+              </div>
+            </div>
+          </Card>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
