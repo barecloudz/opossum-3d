@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { useSettingsStore } from './store/settingsStore';
@@ -44,16 +44,32 @@ import ScrollToTop from './components/ScrollToTop';
 import { ToastContainer } from './components/ui/Toast';
 
 function App() {
-  const { initialize, isLoading } = useAuthStore();
+  const { initialize, isLoading, setLoading } = useAuthStore();
   const { fetchSettings } = useSettingsStore();
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     initialize();
     fetchSettings();
-  }, [initialize, fetchSettings]);
 
-  // Show loading screen while auth initializes
-  if (isLoading) {
+    // Failsafe: proceed after 3 seconds even if auth hangs
+    const timeout = setTimeout(() => {
+      setLoading(false);
+      setReady(true);
+    }, 3000);
+
+    return () => clearTimeout(timeout);
+  }, [initialize, fetchSettings, setLoading]);
+
+  // Update ready state when loading finishes normally
+  useEffect(() => {
+    if (!isLoading) {
+      setReady(true);
+    }
+  }, [isLoading]);
+
+  // Show loading screen while auth initializes (max 3 seconds)
+  if (!ready) {
     return (
       <div className="min-h-screen bg-brand-black flex items-center justify-center">
         <div className="text-center">
