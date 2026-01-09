@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
@@ -9,6 +9,14 @@ import ImageUpload from '../../components/admin/ImageUpload';
 import { supabase } from '../../lib/supabase';
 import { slugify } from '../../lib/utils';
 import { useCategories } from '../../hooks/useCategories';
+
+interface Variant {
+  id?: string;
+  name: string;
+  sku: string;
+  price_adjustment: string;
+  stock_quantity: string;
+}
 
 export default function AdminProductEdit() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +27,7 @@ export default function AdminProductEdit() {
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const [variants, setVariants] = useState<Variant[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -84,6 +93,23 @@ export default function AdminProductEdit() {
         if (imagesData) {
           setImages(imagesData.map(img => img.image_url).filter(Boolean));
         }
+
+        // Fetch product variants
+        const { data: variantsData } = await supabase
+          .from('product_variants')
+          .select('*')
+          .eq('product_id', id)
+          .order('display_order');
+
+        if (variantsData) {
+          setVariants(variantsData.map(v => ({
+            id: v.id,
+            name: v.name,
+            sku: v.sku || '',
+            price_adjustment: v.price_adjustment.toString(),
+            stock_quantity: v.stock_quantity.toString(),
+          })));
+        }
       }
     } catch (err) {
       console.error('Error fetching product:', err);
@@ -111,6 +137,20 @@ export default function AdminProductEdit() {
         slug: slugify(value),
       }));
     }
+  };
+
+  const addVariant = () => {
+    setVariants([...variants, { name: '', sku: '', price_adjustment: '0', stock_quantity: '0' }]);
+  };
+
+  const updateVariant = (index: number, field: keyof Variant, value: string) => {
+    const updated = [...variants];
+    updated[index] = { ...updated[index], [field]: value };
+    setVariants(updated);
+  };
+
+  const removeVariant = (index: number) => {
+    setVariants(variants.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -171,6 +211,32 @@ export default function AdminProductEdit() {
             .insert(imageRecords);
 
           if (imgError) throw imgError;
+        }
+
+        // Save variants
+        // Delete existing variants
+        await supabase.from('product_variants').delete().eq('product_id', productId);
+
+        // Insert new variants
+        if (variants.length > 0) {
+          const variantRecords = variants
+            .filter(v => v.name.trim()) // Only save variants with names
+            .map((v, index) => ({
+              product_id: productId,
+              name: v.name,
+              sku: v.sku || null,
+              price_adjustment: parseFloat(v.price_adjustment) || 0,
+              stock_quantity: parseInt(v.stock_quantity) || 0,
+              display_order: index,
+            }));
+
+          if (variantRecords.length > 0) {
+            const { error: varError } = await supabase
+              .from('product_variants')
+              .insert(variantRecords);
+
+            if (varError) throw varError;
+          }
         }
       }
 
@@ -348,6 +414,77 @@ export default function AdminProductEdit() {
                   min="0"
                 />
               </div>
+            </Card>
+
+            {/* Product Variants / Options */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-white">Options / Variants</h2>
+                  <p className="text-gray-400 text-sm mt-1">Add different colors, sizes, or options</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={addVariant}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Option
+                </Button>
+              </div>
+
+              {variants.length === 0 ? (
+                <div className="text-center py-8 border border-dashed border-brand-gray rounded-lg">
+                  <p className="text-gray-400">No variants added yet</p>
+                  <p className="text-gray-500 text-sm mt-1">Click "Add Option" to create variants like colors or sizes</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {variants.map((variant, index) => (
+                    <div
+                      key={index}
+                      className="p-4 bg-brand-black rounded-lg border border-brand-gray"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <span className="text-gray-400 text-sm">Option {index + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeVariant(index)}
+                          className="text-gray-400 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <Input
+                          label="Name"
+                          placeholder="e.g., Red, Large, etc."
+                          value={variant.name}
+                          onChange={(e) => updateVariant(index, 'name', e.target.value)}
+                        />
+                        <Input
+                          label="SKU"
+                          placeholder="Optional"
+                          value={variant.sku}
+                          onChange={(e) => updateVariant(index, 'sku', e.target.value)}
+                        />
+                        <Input
+                          label="Price Adjustment"
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={variant.price_adjustment}
+                          onChange={(e) => updateVariant(index, 'price_adjustment', e.target.value)}
+                          helperText="+/- from base price"
+                        />
+                        <Input
+                          label="Stock"
+                          type="number"
+                          min="0"
+                          value={variant.stock_quantity}
+                          onChange={(e) => updateVariant(index, 'stock_quantity', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
 
