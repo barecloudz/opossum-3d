@@ -208,66 +208,77 @@ export default function Checkout() {
   };
 
   const handlePaymentSuccess = async () => {
-    try {
+    // Store orderId before clearing cart
+    const confirmedOrderId = orderId;
+
+    // Clear cart and navigate immediately - don't let post-payment operations block this
+    clearCart();
+
+    // Navigate to confirmation
+    if (confirmedOrderId) {
+      navigate(`/order-confirmation/${confirmedOrderId}`);
+    } else {
+      navigate('/');
+    }
+
+    // Run post-payment operations in background (don't await)
+    if (confirmedOrderId) {
       // Update order status to paid
-      if (orderId) {
-        await supabase
-          .from('orders')
-          .update({ status: 'paid' })
-          .eq('id', orderId);
+      supabase
+        .from('orders')
+        .update({ status: 'paid' })
+        .eq('id', confirmedOrderId)
+        .then(({ error }) => {
+          if (error) console.error('Error updating order status:', error);
+        });
 
-        // Update inventory
-        for (const item of items) {
-          if (item.product.track_inventory) {
-            if (item.variant) {
-              const newStock = Math.max(0, item.variant.stock_quantity - item.quantity);
-              await supabase
-                .from('product_variants')
-                .update({ stock_quantity: newStock })
-                .eq('id', item.variant.id);
-            } else {
-              const newStock = Math.max(0, item.product.stock_quantity - item.quantity);
-              await supabase
-                .from('products')
-                .update({ stock_quantity: newStock })
-                .eq('id', item.product.id);
-            }
-          }
-        }
-
-        // Update promo code usage
-        if (appliedPromo) {
-          await supabase
-            .from('promo_codes')
-            .update({ uses_count: appliedPromo.uses_count + 1 })
-            .eq('id', appliedPromo.id);
-        }
-
-        // Add email subscriber if opted in
-        if (formData.marketingOptIn && formData.email) {
-          const { data: existingSub } = await supabase
-            .from('email_subscribers')
-            .select('id')
-            .eq('email', formData.email.toLowerCase())
-            .single();
-
-          if (!existingSub) {
-            await supabase.from('email_subscribers').insert({
-              email: formData.email.toLowerCase(),
-              first_name: formData.firstName || null,
-              last_name: formData.lastName || null,
-              source: 'checkout',
-              is_subscribed: true,
-              subscribed_at: new Date().toISOString(),
-            });
+      // Update inventory
+      for (const item of items) {
+        if (item.product.track_inventory) {
+          if (item.variant) {
+            const newStock = Math.max(0, item.variant.stock_quantity - item.quantity);
+            supabase
+              .from('product_variants')
+              .update({ stock_quantity: newStock })
+              .eq('id', item.variant.id);
+          } else {
+            const newStock = Math.max(0, item.product.stock_quantity - item.quantity);
+            supabase
+              .from('products')
+              .update({ stock_quantity: newStock })
+              .eq('id', item.product.id);
           }
         }
       }
 
-      clearCart();
-      navigate(`/order-confirmation/${orderId}`);
-    } catch (err) {
-      console.error('Error finalizing order:', err);
+      // Update promo code usage
+      if (appliedPromo) {
+        supabase
+          .from('promo_codes')
+          .update({ uses_count: appliedPromo.uses_count + 1 })
+          .eq('id', appliedPromo.id);
+      }
+
+      // Add email subscriber if opted in
+      if (formData.marketingOptIn && formData.email) {
+        supabase
+          .from('email_subscribers')
+          .select('id')
+          .eq('email', formData.email.toLowerCase())
+          .single()
+          .then(({ data: existingSub }) => {
+            if (!existingSub) {
+              supabase.from('email_subscribers').insert({
+                email: formData.email.toLowerCase(),
+                first_name: formData.firstName || null,
+                last_name: formData.lastName || null,
+                source: 'checkout',
+                is_subscribed: true,
+                subscribed_at: new Date().toISOString(),
+              });
+            }
+          });
+      }
     }
   };
 
