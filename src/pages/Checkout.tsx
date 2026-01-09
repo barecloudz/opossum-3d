@@ -28,6 +28,7 @@ export default function Checkout() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
+  const [paymentComplete, setPaymentComplete] = useState(false);
 
   const [formData, setFormData] = useState({
     email: user?.email || '',
@@ -57,12 +58,12 @@ export default function Checkout() {
 
   const total = subtotal + shipping - discount;
 
-  // Redirect if cart is empty
+  // Redirect if cart is empty (but not after successful payment)
   useEffect(() => {
-    if (items.length === 0) {
+    if (items.length === 0 && !paymentComplete) {
       navigate('/cart');
     }
-  }, [items.length, navigate]);
+  }, [items.length, navigate, paymentComplete]);
 
   const applyPromoCode = async () => {
     if (!promoCode.trim()) return;
@@ -210,6 +211,9 @@ export default function Checkout() {
   const handlePaymentSuccess = async () => {
     // Store orderId before clearing cart
     const confirmedOrderId = orderId;
+
+    // Mark payment as complete to prevent redirect to cart
+    setPaymentComplete(true);
 
     // Clear cart and navigate immediately - don't let post-payment operations block this
     clearCart();
@@ -469,7 +473,14 @@ export default function Checkout() {
                     key={`${item.product.id}-${item.variant?.id || 'default'}`}
                     className="flex gap-4"
                   >
-                    <div className="w-16 h-16 bg-[var(--color-border)] rounded-lg flex-shrink-0 relative">
+                    <div className="w-16 h-16 bg-[var(--color-border)] rounded-lg flex-shrink-0 relative overflow-hidden">
+                      {item.product.images?.[0]?.image_url ? (
+                        <img
+                          src={item.product.images[0].image_url}
+                          alt={item.product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : null}
                       <span className="absolute -top-2 -right-2 bg-[var(--color-primary)] text-[var(--color-background)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                         {item.quantity}
                       </span>
