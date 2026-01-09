@@ -11,6 +11,12 @@ export function useProducts(includeInactive = false) {
     setIsLoading(true);
     setError(null);
 
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      setError(new Error('Request timed out'));
+      setIsLoading(false);
+    }, 10000);
+
     try {
       let query = supabase
         .from('products')
@@ -27,14 +33,16 @@ export function useProducts(includeInactive = false) {
       }
 
       const { data, error: fetchError } = await query;
+      clearTimeout(timeoutId);
 
       if (fetchError) throw fetchError;
 
       setProducts(data || []);
+      setIsLoading(false);
     } catch (err) {
+      clearTimeout(timeoutId);
       console.error('Error fetching products:', err);
       setError(err as Error);
-    } finally {
       setIsLoading(false);
     }
   };
