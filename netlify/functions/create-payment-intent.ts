@@ -7,11 +7,27 @@ interface PaymentIntentRequest {
   customerEmail: string;
 }
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 const handler: Handler = async (event) => {
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204,
+      headers: corsHeaders,
+      body: '',
+    };
+  }
+
   // Only allow POST
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers: corsHeaders,
       body: JSON.stringify({ error: 'Method not allowed' }),
     };
   }
@@ -21,6 +37,7 @@ const handler: Handler = async (event) => {
     console.error('STRIPE_SECRET_KEY not configured');
     return {
       statusCode: 500,
+      headers: corsHeaders,
       body: JSON.stringify({ error: 'Payment service not configured' }),
     };
   }
@@ -35,6 +52,7 @@ const handler: Handler = async (event) => {
     if (!amount || amount < 50) {
       return {
         statusCode: 400,
+        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid amount - minimum is $0.50' }),
       };
     }
@@ -55,8 +73,8 @@ const handler: Handler = async (event) => {
     return {
       statusCode: 200,
       headers: {
+        ...corsHeaders,
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
       },
       body: JSON.stringify({
         clientSecret: paymentIntent.client_secret,
@@ -66,6 +84,7 @@ const handler: Handler = async (event) => {
     console.error('Error creating payment intent:', error);
     return {
       statusCode: 500,
+      headers: corsHeaders,
       body: JSON.stringify({
         error: error.message || 'Failed to create payment intent'
       }),

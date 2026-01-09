@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Product } from '../types';
 
@@ -6,16 +6,18 @@ export function useProducts(includeInactive = false) {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const retryCount = useRef(0);
+  const maxRetries = 3;
 
-  const fetchProducts = async () => {
-    setIsLoading(true);
-    setError(null);
+  const fetchProducts = useCallback(async (isRetry = false) => {
+    if (!isRetry) {
+      setIsLoading(true);
+      setError(null);
+      retryCount.current = 0;
+    }
 
-    // Set up timeout
-    const timeoutId = setTimeout(() => {
-      setError(new Error('Request timed out'));
-      setIsLoading(false);
-    }, 10000);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
       let query = supabase
@@ -26,7 +28,8 @@ export function useProducts(includeInactive = false) {
           images:product_images(*),
           variants:product_variants(*)
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(controller.signal);
 
       if (!includeInactive) {
         query = query.eq('is_active', true);
@@ -39,17 +42,30 @@ export function useProducts(includeInactive = false) {
 
       setProducts(data || []);
       setIsLoading(false);
-    } catch (err) {
+      setError(null);
+    } catch (err: any) {
       clearTimeout(timeoutId);
+
+      // If aborted (timeout) or network error, retry
+      if ((err.name === 'AbortError' || err.message?.includes('network')) && retryCount.current < maxRetries) {
+        retryCount.current++;
+        console.log(`Retry attempt ${retryCount.current}/${maxRetries}`);
+        setTimeout(() => fetchProducts(true), 1000 * retryCount.current);
+        return;
+      }
+
       console.error('Error fetching products:', err);
-      setError(err as Error);
+      const errorMessage = err.name === 'AbortError'
+        ? 'Request timed out. Please check your connection and try again.'
+        : err.message || 'Failed to load products';
+      setError(new Error(errorMessage));
       setIsLoading(false);
     }
-  };
+  }, [includeInactive]);
 
   useEffect(() => {
     fetchProducts();
-  }, [includeInactive]);
+  }, [fetchProducts]);
 
-  return { products, isLoading, error, refetch: fetchProducts };
+  return { products, isLoading, error, refetch: () => fetchProducts(false) };
 }

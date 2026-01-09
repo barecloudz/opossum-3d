@@ -10,20 +10,38 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 3;
+
     const fetchFeaturedProducts = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       try {
         const { data, error } = await supabase
           .from('products')
           .select('*, images:product_images(*)')
           .eq('is_active', true)
           .order('created_at', { ascending: false })
-          .limit(4);
+          .limit(4)
+          .abortSignal(controller.signal);
 
+        clearTimeout(timeoutId);
         if (error) throw error;
         setFeaturedProducts(data || []);
-      } catch (err) {
+        setIsLoading(false);
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+
+        // Retry on timeout or network error
+        if ((err.name === 'AbortError' || err.message?.includes('network')) && retryCount < maxRetries) {
+          retryCount++;
+          console.log(`Home: Retry attempt ${retryCount}/${maxRetries}`);
+          setTimeout(fetchFeaturedProducts, 1000 * retryCount);
+          return;
+        }
+
         console.error('Error fetching products:', err);
-      } finally {
         setIsLoading(false);
       }
     };
