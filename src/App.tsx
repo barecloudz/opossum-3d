@@ -57,8 +57,12 @@ function App() {
     return (
       <div className="min-h-screen bg-brand-black flex items-center justify-center">
         <div className="text-center">
-          <div className="text-3xl font-bold text-brand-neon mb-2">OPOSSUM</div>
-          <div className="text-gray-400 text-sm">Loading...</div>
+          <img
+            src="/images/logo.jpg"
+            alt="Opossum Works"
+            className="w-48 h-48 object-contain mx-auto mb-6"
+          />
+          <div className="w-10 h-10 border-4 border-brand-neon border-t-transparent rounded-full animate-spin mx-auto"></div>
         </div>
       </div>
     );
