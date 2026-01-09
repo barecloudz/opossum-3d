@@ -77,12 +77,12 @@ export default function AdminProductEdit() {
         // Fetch product images
         const { data: imagesData } = await supabase
           .from('product_images')
-          .select('url')
+          .select('image_url')
           .eq('product_id', id)
           .order('display_order');
 
         if (imagesData) {
-          setImages(imagesData.map(img => img.url));
+          setImages(imagesData.map(img => img.image_url).filter(Boolean));
         }
       }
     } catch (err) {
