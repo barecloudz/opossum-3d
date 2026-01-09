@@ -1,10 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
-});
-
 interface PaymentIntentRequest {
   amount: number; // in cents
   orderId: string;
@@ -20,13 +16,26 @@ const handler: Handler = async (event) => {
     };
   }
 
+  // Check for Stripe secret key
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error('STRIPE_SECRET_KEY not configured');
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Payment service not configured' }),
+    };
+  }
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2023-10-16',
+  });
+
   try {
     const { amount, orderId, customerEmail }: PaymentIntentRequest = JSON.parse(event.body || '{}');
 
     if (!amount || amount < 50) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'Invalid amount' }),
+        body: JSON.stringify({ error: 'Invalid amount - minimum is $0.50' }),
       };
     }
 
@@ -38,25 +47,28 @@ const handler: Handler = async (event) => {
         enabled: true,
       },
       metadata: {
-        orderId,
+        orderId: orderId || 'unknown',
       },
-      receipt_email: customerEmail,
+      receipt_email: customerEmail || undefined,
     });
 
     return {
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
       },
       body: JSON.stringify({
         clientSecret: paymentIntent.client_secret,
       }),
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating payment intent:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to create payment intent' }),
+      body: JSON.stringify({
+        error: error.message || 'Failed to create payment intent'
+      }),
     };
   }
 };

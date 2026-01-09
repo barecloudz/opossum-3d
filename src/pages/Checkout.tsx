@@ -187,16 +187,21 @@ export default function Checkout() {
         }),
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to create payment intent');
+        throw new Error(responseData.error || 'Failed to create payment intent');
       }
 
-      const { clientSecret: secret } = await response.json();
-      setClientSecret(secret);
+      if (!responseData.clientSecret) {
+        throw new Error('No client secret returned');
+      }
+
+      setClientSecret(responseData.clientSecret);
       setStep('payment');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating order:', err);
-      addToast('Failed to create order. Please try again.', 'error');
+      addToast(err.message || 'Failed to create order. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
