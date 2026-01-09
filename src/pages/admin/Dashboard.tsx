@@ -63,6 +63,13 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+
+    // Failsafe: stop loading after 10 seconds
+    const timeout = setTimeout(() => {
+      setIsLoading(false);
+    }, 10000);
+
+    return () => clearTimeout(timeout);
   }, []);
 
   const fetchDashboardData = async () => {
@@ -72,12 +79,17 @@ export default function AdminDashboard() {
       const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      // Fetch all data in parallel
+      // Fetch all data in parallel with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const [ordersRes, lowStockRes, customerRes] = await Promise.all([
-        supabase.from('orders').select('*').order('created_at', { ascending: false }),
-        supabase.from('products').select('*', { count: 'exact', head: true }).eq('track_inventory', true).lt('stock_quantity', 5),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
+        supabase.from('orders').select('*').order('created_at', { ascending: false }).abortSignal(controller.signal),
+        supabase.from('products').select('*', { count: 'exact', head: true }).eq('track_inventory', true).lt('stock_quantity', 5).abortSignal(controller.signal),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).abortSignal(controller.signal),
       ]);
+
+      clearTimeout(timeoutId);
 
       const orders: Order[] = ordersRes.data || [];
       const lowStockCount = lowStockRes.count || 0;
