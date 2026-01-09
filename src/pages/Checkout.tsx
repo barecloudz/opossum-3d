@@ -209,8 +209,9 @@ export default function Checkout() {
   };
 
   const handlePaymentSuccess = async () => {
-    // Store orderId before clearing cart
+    // Store data before clearing cart
     const confirmedOrderId = orderId;
+    const orderItems = [...items]; // Copy items before clearing
 
     // Mark payment as complete to prevent redirect to cart
     setPaymentComplete(true);
@@ -236,8 +237,38 @@ export default function Checkout() {
           if (error) console.error('Error updating order status:', error);
         });
 
+      // Send order confirmation email
+      fetch('/.netlify/functions/send-order-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: confirmedOrderId,
+          orderNumber: confirmedOrderId.slice(0, 8).toUpperCase(),
+          customerEmail: formData.email,
+          customerName: `${formData.firstName} ${formData.lastName}`,
+          items: orderItems.map(item => ({
+            product_name: item.product.name,
+            variant_name: item.variant?.name,
+            quantity: item.quantity,
+            unit_price: item.product.price + (item.variant?.price_adjustment || 0),
+            total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
+          })),
+          subtotal,
+          shipping,
+          discount: discount > 0 ? discount : undefined,
+          total,
+          shippingAddress: {
+            address_line_1: formData.address,
+            address_line_2: formData.apartment || undefined,
+            city: formData.city,
+            state: formData.state,
+            postal_code: formData.zip,
+          },
+        }),
+      }).catch(err => console.error('Error sending confirmation email:', err));
+
       // Update inventory
-      for (const item of items) {
+      for (const item of orderItems) {
         if (item.product.track_inventory) {
           if (item.variant) {
             const newStock = Math.max(0, item.variant.stock_quantity - item.quantity);
