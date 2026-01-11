@@ -4,9 +4,9 @@
 
 /* Theme CSS variables - these are overridden by JS when theme loads */
 :root {
-  --color-primary: #00ff66;
-  --color-secondary: #00cc52;
-  --color-accent: #00ff66;
+  --color-primary: #9AFF00;
+  --color-secondary: #7ACC00;
+  --color-accent: #9AFF00;
   --color-background: #0a0a0a;
   --color-surface: #1a1a1a;
   --color-text: #f5f5f5;

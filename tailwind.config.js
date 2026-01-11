@@ -13,10 +13,10 @@ export default {
           charcoal: 'var(--color-surface, #1a1a1a)',
           gray: 'var(--color-border, #2d2d2d)',
           'gray-light': '#404040',
-          neon: 'var(--color-primary, #00ff66)',
-          emerald: 'var(--color-secondary, #10b981)',
-          'emerald-dark': '#064e3b',
-          accent: 'var(--color-accent, #00ff66)',
+          neon: 'var(--color-primary, #9AFF00)',
+          emerald: 'var(--color-secondary, #7ACC00)',
+          'emerald-dark': '#3D6600',
+          accent: 'var(--color-accent, #9AFF00)',
         }
       },
       textColor: {
@@ -27,9 +27,9 @@ export default {
         'theme-surface': 'var(--color-surface, #1a1a1a)',
       },
       boxShadow: {
-        'neon': '0 0 15px rgba(0, 255, 102, 0.5)',
-        'neon-sm': '0 0 8px rgba(0, 255, 102, 0.4)',
-        'neon-lg': '0 0 25px rgba(0, 255, 102, 0.6)',
+        'neon': '0 0 15px rgba(154, 255, 0, 0.5)',
+        'neon-sm': '0 0 8px rgba(154, 255, 0, 0.4)',
+        'neon-lg': '0 0 25px rgba(154, 255, 0, 0.6)',
       }
     },
   },
