@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { useSettingsStore } from './store/settingsStore';
+import { useProductStore } from './store/productStore';
 
 // Layouts
 import MainLayout from './components/layout/MainLayout';
@@ -46,11 +47,14 @@ import { ToastContainer } from './components/ui/Toast';
 function App() {
   const { initialize, isLoading, setLoading } = useAuthStore();
   const { fetchSettings } = useSettingsStore();
+  const { fetchProducts } = useProductStore();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     initialize();
     fetchSettings();
+    // Pre-fetch products so they're ready when user navigates
+    fetchProducts();
 
     // Failsafe: proceed after 3 seconds even if auth hangs
     const timeout = setTimeout(() => {
@@ -59,7 +63,7 @@ function App() {
     }, 3000);
 
     return () => clearTimeout(timeout);
-  }, [initialize, fetchSettings, setLoading]);
+  }, [initialize, fetchSettings, fetchProducts, setLoading]);
 
   // Update ready state when loading finishes normally
   useEffect(() => {

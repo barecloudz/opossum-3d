@@ -1,9 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, ArrowRight, ShoppingCart, Bell, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
-import { useProducts } from '../hooks/useProducts';
+import { useProductStore } from '../store/productStore';
 
 // Category data with gradients
 const categories = [
@@ -40,14 +40,16 @@ export default function Home() {
   const navigate = useNavigate();
   const itemCount = getItemCount();
 
-  // Use the same hook as Products page for consistency
-  const { products, isLoading, error, refetch } = useProducts();
+  // Use global product store (cached across page navigations)
+  const { products, isLoading, error, fetchProducts } = useProductStore();
+
+  // Fetch products on mount (will use cache if available)
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   // Get first 6 products for featured section
   const featuredProducts = products.slice(0, 6);
-
-  // Debug logging
-  console.log('[Home] Products loaded:', products.length, 'Featured:', featuredProducts.length, 'Loading:', isLoading, 'Error:', error?.message);
 
   // Get user's first name
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ||
@@ -180,7 +182,7 @@ export default function Home() {
                 <p className="text-red-400 mb-2">Failed to load products</p>
                 <p className="text-gray-500 text-sm mb-4">{error.message}</p>
                 <button
-                  onClick={refetch}
+                  onClick={() => fetchProducts(true)}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-white hover:border-[var(--color-primary)] transition-colors"
                 >
                   <RefreshCw className="h-4 w-4" />

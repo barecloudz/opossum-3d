@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 import Input from '../components/ui/Input';
 import ProductCard from '../components/product/ProductCard';
 import Button from '../components/ui/Button';
 import { ProductGridSkeleton } from '../components/ui/Skeleton';
-import { useProducts } from '../hooks/useProducts';
+import { useProductStore } from '../store/productStore';
 import { useCategories } from '../hooks/useCategories';
 
 export default function Products() {
@@ -12,8 +12,14 @@ export default function Products() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'price-asc' | 'price-desc'>('newest');
 
-  const { products, isLoading, error, refetch } = useProducts();
+  // Use global product store (cached across page navigations)
+  const { products, isLoading, error, fetchProducts } = useProductStore();
   const { categories } = useCategories();
+
+  // Fetch products on mount (will use cache if available)
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const filteredProducts = products
     .filter((product) => {
@@ -91,7 +97,7 @@ export default function Products() {
           <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <p className="text-theme mb-2">Failed to load products</p>
           <p className="text-theme opacity-60 text-sm mb-4">{error.message}</p>
-          <Button onClick={refetch} variant="outline">
+          <Button onClick={() => fetchProducts(true)} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Try Again
           </Button>
