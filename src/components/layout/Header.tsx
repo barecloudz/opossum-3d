@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { ShoppingCart, Menu, X, User, Heart } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingCart, Menu, X, User, Heart, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
@@ -7,11 +7,18 @@ import { useWishlistStore } from '../../store/wishlistStore';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
   const { openCart, getItemCount } = useCartStore();
-  const { user, isAdmin } = useAuthStore();
+  const { user, isAdmin, signOut } = useAuthStore();
   const { items: wishlistItems } = useWishlistStore();
   const itemCount = getItemCount();
   const wishlistCount = wishlistItems.length;
+
+  const handleSignOut = async () => {
+    await signOut();
+    setMobileMenuOpen(false);
+    navigate('/');
+  };
 
   const navLinks = [
     { href: '/products', label: 'Products' },
@@ -174,6 +181,15 @@ export default function Header() {
                 >
                   Admin Dashboard
                 </Link>
+              )}
+              {user && (
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center justify-center gap-2 py-3 px-4 bg-[var(--color-surface)] hover:bg-red-500/10 border border-[var(--color-border)] hover:border-red-500/30 rounded-xl text-gray-400 hover:text-red-400 font-medium transition-all"
+                >
+                  <LogOut className="h-5 w-5" />
+                  Sign Out
+                </button>
               )}
             </nav>
           </div>

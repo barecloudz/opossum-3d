@@ -170,6 +170,26 @@ export default function AdminOrderDetail() {
       });
       setStatus('shipped');
 
+      // Send shipping confirmation email
+      if (order.guest_email) {
+        try {
+          await fetch('/.netlify/functions/send-shipping-confirmation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderNumber: order.order_number.toString(),
+              customerEmail: order.guest_email,
+              customerName: order.guest_name || 'Customer',
+              trackingNumber: data.trackingNumber,
+              shippingAddress: order.shipping_address,
+            }),
+          });
+        } catch (emailError) {
+          console.error('Failed to send shipping email:', emailError);
+          // Don't throw - label was generated successfully
+        }
+      }
+
     } catch (error: any) {
       console.error('Label generation error:', error);
       setLabelError(error.message || 'Failed to generate shipping label');
