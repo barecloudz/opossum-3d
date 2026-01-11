@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
-import { Tag, Check, X, CreditCard } from 'lucide-react';
+import { ChevronLeft, Tag, Check, X, Truck, Store } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
@@ -10,10 +10,11 @@ import { formatPrice } from '../lib/utils';
 import { DEFAULT_SHIPPING_COST } from '../lib/constants';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import Card from '../components/ui/Card';
 import PaymentForm from '../components/checkout/PaymentForm';
 import { useToast } from '../components/ui/Toast';
 import type { PromoCode } from '../types';
+
+type ShippingMethod = 'delivery' | 'pickup';
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export default function Checkout() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [step, setStep] = useState<'details' | 'payment'>('details');
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('delivery');
   const [promoCode, setPromoCode] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
@@ -44,7 +46,7 @@ export default function Checkout() {
   });
 
   const subtotal = getSubtotal();
-  const shipping = DEFAULT_SHIPPING_COST;
+  const shipping = shippingMethod === 'delivery' ? DEFAULT_SHIPPING_COST : 0;
 
   // Calculate discount
   let discount = 0;
@@ -126,12 +128,18 @@ export default function Checkout() {
 
     try {
       // Build shipping address
-      const shippingAddress = {
+      const shippingAddress = shippingMethod === 'delivery' ? {
         address_line_1: formData.address,
         address_line_2: formData.apartment || undefined,
         city: formData.city,
         state: formData.state,
         postal_code: formData.zip,
+        country: 'US',
+      } : {
+        address_line_1: 'Local Pickup',
+        city: 'Hendersonville',
+        state: 'NC',
+        postal_code: '28792',
         country: 'US',
       };
 
@@ -209,26 +217,20 @@ export default function Checkout() {
   };
 
   const handlePaymentSuccess = async () => {
-    // Store data before clearing cart
     const confirmedOrderId = orderId;
-    const orderItems = [...items]; // Copy items before clearing
+    const orderItems = [...items];
 
-    // Mark payment as complete to prevent redirect to cart
     setPaymentComplete(true);
-
-    // Clear cart and navigate immediately - don't let post-payment operations block this
     clearCart();
 
-    // Navigate to confirmation
     if (confirmedOrderId) {
       navigate(`/order-confirmation/${confirmedOrderId}`);
     } else {
       navigate('/');
     }
 
-    // Run post-payment operations in background (don't await)
+    // Background operations
     if (confirmedOrderId) {
-      // Update order status to paid
       supabase
         .from('orders')
         .update({ status: 'paid' })
@@ -237,7 +239,6 @@ export default function Checkout() {
           if (error) console.error('Error updating order status:', error);
         });
 
-      // Send order confirmation email
       fetch('/.netlify/functions/send-order-confirmation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -257,17 +258,16 @@ export default function Checkout() {
           shipping,
           discount: discount > 0 ? discount : undefined,
           total,
-          shippingAddress: {
+          shippingAddress: shippingMethod === 'delivery' ? {
             address_line_1: formData.address,
             address_line_2: formData.apartment || undefined,
             city: formData.city,
             state: formData.state,
             postal_code: formData.zip,
-          },
+          } : { address_line_1: 'Local Pickup - Hendersonville, NC' },
         }),
       }).catch(err => console.error('Error sending confirmation email:', err));
 
-      // Update inventory
       for (const item of orderItems) {
         if (item.product.track_inventory) {
           if (item.variant) {
@@ -286,7 +286,6 @@ export default function Checkout() {
         }
       }
 
-      // Update promo code usage
       if (appliedPromo) {
         supabase
           .from('promo_codes')
@@ -294,7 +293,6 @@ export default function Checkout() {
           .eq('id', appliedPromo.id);
       }
 
-      // Add email subscriber if opted in
       if (formData.marketingOptIn && formData.email) {
         supabase
           .from('email_subscribers')
@@ -321,67 +319,152 @@ export default function Checkout() {
     addToast(message, 'error');
   };
 
+  const isFormValid = formData.email && formData.firstName && formData.lastName &&
+    (shippingMethod === 'pickup' || (formData.address && formData.city && formData.state && formData.zip));
+
   if (items.length === 0) {
     return null;
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-theme mb-8">Checkout</h1>
+    <div className="min-h-screen pb-24 md:pb-8">
+      {/* Header */}
+      <div className="sticky top-0 z-30 bg-[var(--color-surface)]/95 backdrop-blur-sm border-b border-[var(--color-border)]">
+        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
+          <button
+            onClick={() => step === 'payment' ? setStep('details') : navigate(-1)}
+            className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <h1 className="text-xl font-bold text-white">Checkout</h1>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left Column - Form */}
-        <div className="space-y-8">
-          {step === 'details' ? (
-            <>
-              {/* Contact Information */}
-              <Card>
-                <h2 className="text-xl font-semibold text-theme mb-4">Contact Information</h2>
-                <div className="space-y-4">
-                  <Input
-                    label="Email"
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      name="marketingOptIn"
-                      id="marketingOptIn"
-                      checked={formData.marketingOptIn}
-                      onChange={handleInputChange}
-                      className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
-                    />
-                    <label htmlFor="marketingOptIn" className="text-theme opacity-60 text-sm">
-                      Email me with news and offers
-                    </label>
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        {/* Order Summary - Compact */}
+        <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4">
+          <div className="space-y-3">
+            {items.map((item) => {
+              const itemPrice = item.product.price + (item.variant?.price_adjustment || 0);
+              const primaryImage = item.product.images?.find(img => img.is_primary) || item.product.images?.[0];
+              return (
+                <div
+                  key={`${item.product.id}-${item.variant?.id || 'default'}`}
+                  className="flex items-center gap-4"
+                >
+                  <div className="w-16 h-16 bg-[var(--color-border)] rounded-xl flex-shrink-0 overflow-hidden">
+                    {primaryImage?.image_url ? (
+                      <img
+                        src={primaryImage.image_url}
+                        alt={item.product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">
+                        No image
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-white font-medium truncate">{item.product.name}</h3>
+                    <p className="text-gray-400 text-sm">
+                      Qty: {item.quantity}
+                      {item.variant && ` • ${item.variant.name}`}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[var(--color-primary)] font-bold">{formatPrice(itemPrice * item.quantity)}</p>
+                    <p className="text-gray-500 text-xs">incl. taxes</p>
                   </div>
                 </div>
-              </Card>
+              );
+            })}
+          </div>
+        </div>
 
-              {/* Shipping Address */}
-              <Card>
-                <h2 className="text-xl font-semibold text-theme mb-4">Shipping Address</h2>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      label="First Name"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <Input
-                      label="Last Name"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      required
-                    />
+        {step === 'details' ? (
+          <>
+            {/* Shipping Method */}
+            <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4">
+              <h2 className="text-white font-semibold mb-4">Shipping method</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShippingMethod('delivery')}
+                  className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 transition-all ${
+                    shippingMethod === 'delivery'
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-white'
+                      : 'border-[var(--color-border)] text-gray-400 hover:border-gray-500'
+                  }`}
+                >
+                  <Truck className="h-5 w-5" />
+                  <span className="font-medium">Home delivery</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShippingMethod('pickup')}
+                  className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 transition-all ${
+                    shippingMethod === 'pickup'
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-white'
+                      : 'border-[var(--color-border)] text-gray-400 hover:border-gray-500'
+                  }`}
+                >
+                  <Store className="h-5 w-5" />
+                  <span className="font-medium">Pick up</span>
+                </button>
+              </div>
+              {shippingMethod === 'pickup' && (
+                <p className="mt-3 text-sm text-gray-400">
+                  Pick up at Hendersonville, NC. We'll email you when your order is ready.
+                </p>
+              )}
+            </div>
+
+            {/* Contact & Address */}
+            <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4 space-y-4">
+              <h2 className="text-white font-semibold">Contact information</h2>
+
+              <Input
+                label="Email"
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="First Name"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  required
+                />
+                <Input
+                  label="Last Name"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+
+              <Input
+                label="Phone (optional)"
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+              />
+
+              {shippingMethod === 'delivery' && (
+                <>
+                  <div className="border-t border-[var(--color-border)] pt-4 mt-4">
+                    <h2 className="text-white font-semibold mb-4">Shipping address</h2>
                   </div>
+
                   <Input
                     label="Address"
                     name="address"
@@ -395,7 +478,7 @@ export default function Checkout() {
                     value={formData.apartment}
                     onChange={handleInputChange}
                   />
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-3">
                     <Input
                       label="City"
                       name="city"
@@ -411,179 +494,84 @@ export default function Checkout() {
                       required
                     />
                     <Input
-                      label="ZIP Code"
+                      label="ZIP"
                       name="zip"
                       value={formData.zip}
                       onChange={handleInputChange}
                       required
                     />
                   </div>
-                  <Input
-                    label="Phone (optional)"
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </Card>
+                </>
+              )}
 
-              <Button
-                onClick={createOrderAndPaymentIntent}
-                className="w-full"
-                size="lg"
-                isLoading={isLoading}
-                disabled={!formData.email || !formData.firstName || !formData.lastName || !formData.address || !formData.city || !formData.state || !formData.zip}
-              >
-                Continue to Payment
-              </Button>
-            </>
-          ) : (
-            <>
-              {/* Payment Section */}
-              <Card>
-                <div className="flex items-center gap-2 mb-4">
-                  <CreditCard className="h-5 w-5 text-[var(--color-primary)]" />
-                  <h2 className="text-xl font-semibold text-theme">Payment</h2>
-                </div>
-
-                <div className="mb-4 p-3 bg-[var(--color-background)] rounded-lg border border-[var(--color-border)]">
-                  <p className="text-theme opacity-60 text-sm">
-                    Shipping to: {formData.firstName} {formData.lastName}, {formData.address}, {formData.city}, {formData.state} {formData.zip}
-                  </p>
-                  <button
-                    onClick={() => setStep('details')}
-                    className="text-[var(--color-primary)] text-sm hover:underline mt-1"
-                  >
-                    Edit details
-                  </button>
-                </div>
-
-                {clientSecret && (
-                  <Elements
-                    stripe={stripePromise}
-                    options={{
-                      clientSecret,
-                      appearance: {
-                        theme: 'night',
-                        variables: {
-                          colorPrimary: '#00ff66',
-                          colorBackground: '#1a1a1a',
-                          colorText: '#f5f5f5',
-                          colorDanger: '#ef4444',
-                          fontFamily: 'system-ui, sans-serif',
-                          borderRadius: '8px',
-                        },
-                      },
-                    }}
-                  >
-                    <PaymentForm
-                      onSuccess={handlePaymentSuccess}
-                      onError={handlePaymentError}
-                      isProcessing={isLoading}
-                      setIsProcessing={setIsLoading}
-                    />
-                  </Elements>
-                )}
-              </Card>
-            </>
-          )}
-        </div>
-
-        {/* Right Column - Order Summary */}
-        <div>
-          <Card className="sticky top-24">
-            <h2 className="text-xl font-semibold text-theme mb-4">Order Summary</h2>
-
-            {/* Items */}
-            <div className="space-y-4 mb-6">
-              {items.map((item) => {
-                const itemPrice = item.product.price + (item.variant?.price_adjustment || 0);
-                return (
-                  <div
-                    key={`${item.product.id}-${item.variant?.id || 'default'}`}
-                    className="flex gap-4"
-                  >
-                    <div className="w-16 h-16 bg-[var(--color-border)] rounded-lg flex-shrink-0 relative overflow-hidden">
-                      {item.product.images?.[0]?.image_url ? (
-                        <img
-                          src={item.product.images[0].image_url}
-                          alt={item.product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : null}
-                      <span className="absolute -top-2 -right-2 bg-[var(--color-primary)] text-[var(--color-background)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                        {item.quantity}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-theme font-medium">{item.product.name}</p>
-                      {item.variant && (
-                        <p className="text-theme opacity-60 text-sm">{item.variant.name}</p>
-                      )}
-                    </div>
-                    <span className="text-theme opacity-60">
-                      {formatPrice(itemPrice * item.quantity)}
-                    </span>
-                  </div>
-                );
-              })}
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  name="marketingOptIn"
+                  id="marketingOptIn"
+                  checked={formData.marketingOptIn}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                />
+                <label htmlFor="marketingOptIn" className="text-gray-400 text-sm">
+                  Email me with news and offers
+                </label>
+              </div>
             </div>
 
             {/* Promo Code */}
-            {step === 'details' && (
-              <div className="border-t border-[var(--color-border)] pt-4 mb-4">
-                {appliedPromo ? (
-                  <div className="flex items-center justify-between bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-lg px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <Tag className="h-4 w-4 text-[var(--color-primary)]" />
-                      <span className="font-mono text-[var(--color-primary)] font-medium">{appliedPromo.code}</span>
-                      <span className="text-theme opacity-60 text-sm">
-                        ({appliedPromo.discount_type === 'percentage'
-                          ? `${appliedPromo.discount_value}% off`
-                          : `${formatPrice(appliedPromo.discount_value)} off`})
-                      </span>
+            <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4">
+              <h2 className="text-white font-semibold mb-4">Promo code</h2>
+              {appliedPromo ? (
+                <div className="flex items-center justify-between bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-[var(--color-primary)]" />
+                    <span className="font-mono text-[var(--color-primary)] font-medium">{appliedPromo.code}</span>
+                    <span className="text-gray-400 text-sm">
+                      ({appliedPromo.discount_type === 'percentage'
+                        ? `${appliedPromo.discount_value}% off`
+                        : `${formatPrice(appliedPromo.discount_value)} off`})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removePromoCode}
+                    className="text-gray-400 hover:text-red-400 transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Enter code"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                        className="font-mono"
+                      />
                     </div>
-                    <button
+                    <Button
                       type="button"
-                      onClick={removePromoCode}
-                      className="text-theme opacity-60 hover:text-red-400 transition-colors"
+                      variant="outline"
+                      onClick={applyPromoCode}
+                      isLoading={promoLoading}
+                      disabled={!promoCode.trim()}
                     >
-                      <X className="h-4 w-4" />
-                    </button>
+                      Apply
+                    </Button>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <Input
-                          placeholder="Promo code"
-                          value={promoCode}
-                          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                          className="font-mono"
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={applyPromoCode}
-                        isLoading={promoLoading}
-                        disabled={!promoCode.trim()}
-                      >
-                        Apply
-                      </Button>
-                    </div>
-                    {promoError && (
-                      <p className="text-red-400 text-sm">{promoError}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+                  {promoError && (
+                    <p className="text-red-400 text-sm">{promoError}</p>
+                  )}
+                </div>
+              )}
+            </div>
 
-            {/* Totals */}
-            <div className="border-t border-[var(--color-border)] pt-4 space-y-2">
-              <div className="flex justify-between text-theme opacity-60">
+            {/* Order Total */}
+            <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4 space-y-3">
+              <div className="flex justify-between text-gray-400">
                 <span>Subtotal</span>
                 <span>{formatPrice(subtotal)}</span>
               </div>
@@ -596,17 +584,87 @@ export default function Checkout() {
                   <span>-{formatPrice(discount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-theme opacity-60">
+              <div className="flex justify-between text-gray-400">
                 <span>Shipping</span>
-                <span>{formatPrice(shipping)}</span>
+                <span>{shippingMethod === 'pickup' ? 'Free' : formatPrice(shipping)}</span>
               </div>
-              <div className="flex justify-between text-lg font-semibold pt-2 border-t border-[var(--color-border)]">
-                <span className="text-theme">Total</span>
+              <div className="flex justify-between text-xl font-bold pt-3 border-t border-[var(--color-border)]">
+                <span className="text-white">Total</span>
                 <span className="text-[var(--color-primary)]">{formatPrice(total)}</span>
               </div>
             </div>
-          </Card>
-        </div>
+
+            {/* Continue Button */}
+            <Button
+              onClick={createOrderAndPaymentIntent}
+              className="w-full"
+              size="lg"
+              isLoading={isLoading}
+              disabled={!isFormValid}
+            >
+              Continue to Payment
+            </Button>
+          </>
+        ) : (
+          <>
+            {/* Payment Section */}
+            <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4">
+              <h2 className="text-white font-semibold mb-4">Select payment method</h2>
+
+              {/* Shipping summary */}
+              <div className="mb-4 p-3 bg-[var(--color-background)]/50 rounded-xl">
+                <p className="text-gray-400 text-sm">
+                  {shippingMethod === 'delivery' ? (
+                    <>Shipping to: {formData.firstName} {formData.lastName}, {formData.address}, {formData.city}, {formData.state} {formData.zip}</>
+                  ) : (
+                    <>Local pickup in Hendersonville, NC</>
+                  )}
+                </p>
+                <button
+                  onClick={() => setStep('details')}
+                  className="text-[var(--color-primary)] text-sm hover:underline mt-1"
+                >
+                  Edit details
+                </button>
+              </div>
+
+              {clientSecret && (
+                <Elements
+                  stripe={stripePromise}
+                  options={{
+                    clientSecret,
+                    appearance: {
+                      theme: 'night',
+                      variables: {
+                        colorPrimary: '#9AFF00',
+                        colorBackground: '#1a1a1a',
+                        colorText: '#f5f5f5',
+                        colorDanger: '#ef4444',
+                        fontFamily: 'system-ui, sans-serif',
+                        borderRadius: '12px',
+                      },
+                    },
+                  }}
+                >
+                  <PaymentForm
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    isProcessing={isLoading}
+                    setIsProcessing={setIsLoading}
+                  />
+                </Elements>
+              )}
+            </div>
+
+            {/* Order Total - Payment Step */}
+            <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4">
+              <div className="flex justify-between text-xl font-bold">
+                <span className="text-white">Total</span>
+                <span className="text-[var(--color-primary)]">{formatPrice(total)}</span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
