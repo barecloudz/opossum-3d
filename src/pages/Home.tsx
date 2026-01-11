@@ -1,13 +1,52 @@
-import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, Truck, Shield } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, ArrowRight, ShoppingCart, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import Button from '../components/ui/Button';
+import { useAuthStore } from '../store/authStore';
+import { useCartStore } from '../store/cartStore';
 import { supabase } from '../lib/supabase';
 import type { Product } from '../types';
+
+// Category data with gradients
+const categories = [
+  {
+    name: '3D Prints',
+    slug: 'products?category=3d-prints',
+    gradient: 'from-emerald-500 to-teal-600',
+    image: '/images/hero.jpg',
+  },
+  {
+    name: 'Laser Engraved',
+    slug: 'products?category=laser-engraved',
+    gradient: 'from-orange-500 to-red-600',
+    image: '/images/hero.jpg',
+  },
+  {
+    name: 'Keychains',
+    slug: 'products?category=keychains',
+    gradient: 'from-purple-500 to-pink-600',
+    image: '/images/hero.jpg',
+  },
+  {
+    name: 'Custom Orders',
+    slug: 'custom-quote',
+    gradient: 'from-cyan-500 to-blue-600',
+    image: '/images/hero.jpg',
+  },
+];
 
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuthStore();
+  const { getItemCount } = useCartStore();
+  const navigate = useNavigate();
+  const itemCount = getItemCount();
+
+  // Get user's first name
+  const firstName = user?.user_metadata?.full_name?.split(' ')[0] ||
+                    user?.email?.split('@')[0] ||
+                    'Guest';
 
   useEffect(() => {
     let retryCount = 0;
@@ -23,7 +62,7 @@ export default function Home() {
           .select('*, images:product_images(*)')
           .eq('is_active', true)
           .order('created_at', { ascending: false })
-          .limit(4)
+          .limit(6)
           .abortSignal(controller.signal);
 
         clearTimeout(timeoutId);
@@ -33,7 +72,6 @@ export default function Home() {
       } catch (err: any) {
         clearTimeout(timeoutId);
 
-        // Retry on timeout or network error
         if ((err.name === 'AbortError' || err.message?.includes('network')) && retryCount < maxRetries) {
           retryCount++;
           console.log(`Home: Retry attempt ${retryCount}/${maxRetries}`);
@@ -49,92 +87,122 @@ export default function Home() {
     fetchFeaturedProducts();
   }, []);
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
   return (
-    <div>
-      {/* Hero Section */}
-      <section className="relative h-[calc(100vh-8rem)] md:h-auto md:min-h-[400px]">
-        {/* Hero Background Image */}
-        <div className="absolute inset-0 z-0">
-          <img
-            src="/images/hero.jpg"
-            alt=""
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-brand-black/60" />
-        </div>
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-emerald-dark/20 to-transparent z-[1]" />
-        <div className="relative z-10 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-20 flex flex-col justify-center">
-          <div className="max-w-3xl">
-            <h1 className="text-3xl md:text-6xl font-bold text-white mb-4 md:mb-6">
-              Custom{' '}
-              <span className="text-brand-neon">3D Printed</span>{' '}
-              Creations
-            </h1>
-            <p className="text-lg md:text-xl text-white mb-6 md:mb-8 bg-brand-black/70 inline-block px-4 py-2 rounded-lg">
-              Precision crafted. Built to impress. Your vision, made real.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button as={Link} to="/products" size="lg">
-                Shop Now <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button as={Link} to="/custom-quote" variant="outline" size="lg">
-                Request Custom Quote
-              </Button>
+    <div className="min-h-screen">
+      {/* Header Section */}
+      <div className="px-4 pt-6 pb-4">
+        <div className="max-w-7xl mx-auto">
+          {/* Greeting & Icons Row */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-gray-400 text-sm">Hello,</p>
+              <h1 className="text-xl font-bold text-white">{firstName}</h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <button className="relative p-2 text-gray-400 hover:text-white transition-colors">
+                <Bell className="h-6 w-6" />
+              </button>
+              <Link to="/cart" className="relative p-2 text-gray-400 hover:text-white transition-colors">
+                <ShoppingCart className="h-6 w-6" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[var(--color-primary)] text-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {itemCount > 99 ? '99+' : itemCount}
+                  </span>
+                )}
+              </Link>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Features */}
-      <section className="py-16 bg-[var(--color-surface)]/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-6">
-              <div className="w-12 h-12 bg-[var(--color-primary)]/20 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="h-6 w-6 text-[var(--color-primary)]" />
+          {/* Search Bar */}
+          <form onSubmit={handleSearch} className="relative mb-8">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search products..."
+              className="w-full pl-12 pr-4 py-3 bg-[var(--color-surface)]/90 border border-[var(--color-border)] rounded-2xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent backdrop-blur-sm"
+            />
+          </form>
+        </div>
+      </div>
+
+      {/* Featured Banner */}
+      <div className="px-4 mb-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[var(--color-primary)] to-emerald-600 p-6 md:p-8">
+            <div className="relative z-10">
+              <div className="inline-block bg-black/20 rounded-lg px-3 py-1 text-sm font-medium text-white mb-2">
+                New Arrivals
               </div>
-              <h3 className="text-lg font-semibold text-theme mb-2">Premium Quality</h3>
-              <p className="text-theme opacity-60">
-                20 years of combined experience with $12k in professional equipment
+              <h2 className="text-3xl md:text-4xl font-bold text-black mb-2">
+                Custom 3D
+              </h2>
+              <p className="text-xl md:text-2xl font-bold text-black/80 mb-4">
+                Printed Creations
               </p>
+              <Link
+                to="/products"
+                className="inline-flex items-center gap-2 bg-black text-white px-5 py-2.5 rounded-xl font-medium hover:bg-black/80 transition-colors"
+              >
+                Shop Now <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
-            <div className="text-center p-6">
-              <div className="w-12 h-12 bg-[var(--color-primary)]/20 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Truck className="h-6 w-6 text-[var(--color-primary)]" />
-              </div>
-              <h3 className="text-lg font-semibold text-theme mb-2">Fast Shipping</h3>
-              <p className="text-theme opacity-60">
-                Affordable USPS shipping on all orders, typically around $5
-              </p>
-            </div>
-            <div className="text-center p-6">
-              <div className="w-12 h-12 bg-[var(--color-primary)]/20 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <Shield className="h-6 w-6 text-[var(--color-primary)]" />
-              </div>
-              <h3 className="text-lg font-semibold text-theme mb-2">Custom Orders</h3>
-              <p className="text-theme opacity-60">
-                Have something specific in mind? We can bring your vision to life
-              </p>
-            </div>
+            {/* Decorative circles */}
+            <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full" />
+            <div className="absolute -right-5 -bottom-10 w-32 h-32 bg-white/10 rounded-full" />
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Featured Products */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-theme">Featured Products</h2>
-            <Link to="/products" className="text-[var(--color-primary)] hover:opacity-80 transition-colors flex items-center">
+      {/* Categories */}
+      <div className="px-4 mb-8">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-lg font-bold text-white mb-4">Categories</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {categories.map((category) => (
+              <Link
+                key={category.name}
+                to={`/${category.slug}`}
+                className={`relative overflow-hidden rounded-2xl aspect-square bg-gradient-to-br ${category.gradient} p-4 flex flex-col justify-end group hover:scale-[1.02] transition-transform`}
+              >
+                {/* Overlay for better text readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                <span className="relative z-10 text-white font-semibold text-lg">
+                  {category.name}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Hot Products */}
+      <div className="px-4 pb-24 md:pb-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-white">Hot Products</h2>
+            <Link
+              to="/products"
+              className="text-[var(--color-primary)] hover:opacity-80 transition-colors flex items-center text-sm font-medium"
+            >
               View All <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {isLoading ? (
               // Loading skeletons
-              [1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-4">
-                  <div className="aspect-square bg-[var(--color-border)] rounded-lg mb-4 animate-pulse" />
+              [1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-3">
+                  <div className="aspect-square bg-[var(--color-border)] rounded-xl mb-3 animate-pulse" />
                   <div className="h-4 bg-[var(--color-border)] rounded w-3/4 mb-2 animate-pulse" />
                   <div className="h-4 bg-[var(--color-border)] rounded w-1/2 animate-pulse" />
                 </div>
@@ -146,9 +214,9 @@ export default function Home() {
                   <Link
                     key={product.id}
                     to={`/products/${product.slug}`}
-                    className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-4 hover:border-[var(--color-primary)]/50 transition-colors group"
+                    className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-3 hover:border-[var(--color-primary)]/50 transition-all group hover:scale-[1.02]"
                   >
-                    <div className="aspect-square bg-[var(--color-border)] rounded-lg mb-4 overflow-hidden">
+                    <div className="aspect-square bg-[var(--color-border)] rounded-xl mb-3 overflow-hidden">
                       {primaryImage ? (
                         <img
                           src={primaryImage.image_url}
@@ -156,49 +224,40 @@ export default function Home() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-theme opacity-50">
+                        <div className="w-full h-full flex items-center justify-center text-gray-500">
                           No image
                         </div>
                       )}
                     </div>
-                    <h3 className="font-semibold text-theme mb-1 group-hover:text-[var(--color-primary)] transition-colors">
+                    <h3 className="font-medium text-white text-sm mb-1 line-clamp-2 group-hover:text-[var(--color-primary)] transition-colors">
                       {product.name}
                     </h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-[var(--color-primary)] font-bold">${product.price.toFixed(2)}</span>
+                      <span className="text-[var(--color-primary)] font-bold">
+                        ${product.price.toFixed(2)}
+                      </span>
                       {product.compare_at_price && product.compare_at_price > product.price && (
-                        <span className="text-theme opacity-50 line-through text-sm">
+                        <span className="text-gray-500 line-through text-xs">
                           ${product.compare_at_price.toFixed(2)}
                         </span>
                       )}
                     </div>
+                    {product.stock_quantity !== undefined && product.stock_quantity < 10 && product.stock_quantity > 0 && (
+                      <span className="text-xs text-orange-400 mt-1 block">
+                        Only {product.stock_quantity} left
+                      </span>
+                    )}
                   </Link>
                 );
               })
             ) : (
-              <div className="col-span-full text-center py-8 text-theme opacity-60">
+              <div className="col-span-full text-center py-12 text-gray-400">
                 No products available yet. Check back soon!
               </div>
             )}
           </div>
         </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-16 bg-[var(--color-surface)]/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-theme mb-4">
-            Have a Custom Project in Mind?
-          </h2>
-          <p className="text-theme opacity-60 mb-8 max-w-2xl mx-auto">
-            Whether it's a unique gift, a custom sign, or a one-of-a-kind creation,
-            we're here to help bring your ideas to life.
-          </p>
-          <Button as={Link} to="/custom-quote" size="lg">
-            Get a Free Quote
-          </Button>
-        </div>
-      </section>
+      </div>
     </div>
   );
 }
