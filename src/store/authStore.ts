@@ -104,6 +104,26 @@ export const useAuthStore = create<AuthState>()(
         }
 
         set({ user: data.user, session: data.session });
+
+        // Update profile with the registration data
+        if (data.user && metadata) {
+          try {
+            await supabase
+              .from('profiles')
+              .update({
+                first_name: metadata.first_name || null,
+                last_name: metadata.last_name || null,
+                marketing_opt_in: metadata.marketing_opt_in || false,
+              })
+              .eq('id', data.user.id);
+
+            // Fetch the updated profile
+            await get().fetchProfile();
+          } catch (err) {
+            console.error('Error updating profile after signup:', err);
+          }
+        }
+
         return { error: null };
       },
 

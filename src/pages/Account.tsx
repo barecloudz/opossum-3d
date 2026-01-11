@@ -371,7 +371,7 @@ export default function Account() {
               <div className="flex justify-between">
                 <span className="text-theme opacity-60">Member since</span>
                 <span className="text-theme">
-                  {profile?.created_at ? formatDate(profile.created_at) : 'N/A'}
+                  {user?.created_at ? formatDate(user.created_at) : 'N/A'}
                 </span>
               </div>
             </div>
