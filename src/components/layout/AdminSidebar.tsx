@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronRight,
   Star,
+  Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -26,6 +27,7 @@ export const navItems = [
   { href: '/admin/categories', icon: FolderOpen, label: 'Categories' },
   { href: '/admin/orders', icon: ShoppingBag, label: 'Orders' },
   { href: '/admin/customers', icon: Users, label: 'Customers' },
+  { href: '/admin/team', icon: Shield, label: 'Team' },
   { href: '/admin/quotes', icon: MessageSquare, label: 'Quote Requests' },
   { href: '/admin/reviews', icon: Star, label: 'Reviews' },
   { href: '/admin/themes', icon: Palette, label: 'Themes' },
@@ -89,7 +91,7 @@ export default function AdminSidebar() {
 
       {/* Navigation */}
       <nav className={`flex-1 p-4 space-y-1 overflow-y-auto ${isMobile ? 'bg-brand-charcoal' : ''}`}>
-        {navItems.slice(0, 7).map((item) => (
+        {navItems.slice(0, 8).map((item) => (
           <Link
             key={item.href}
             to={item.href}
@@ -146,7 +148,7 @@ export default function AdminSidebar() {
           )}
         </div>
 
-        {navItems.slice(7).map((item) => (
+        {navItems.slice(8).map((item) => (
           <Link
             key={item.href}
             to={item.href}

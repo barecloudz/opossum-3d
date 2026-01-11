@@ -34,6 +34,78 @@ export function useCustomers() {
   return { customers, isLoading, error, refetch: fetchCustomers };
 }
 
+export function useTeamMembers() {
+  const [teamMembers, setTeamMembers] = useState<Profile[]>([]);
+  const [allUsers, setAllUsers] = useState<Profile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchTeamMembers = useCallback(async () => {
+    try {
+      setIsLoading(true);
+
+      // Fetch admin users
+      const { data: admins, error: adminError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'admin')
+        .order('created_at', { ascending: false });
+
+      if (adminError) throw adminError;
+      setTeamMembers(admins || []);
+
+      // Fetch all users for promotion dropdown
+      const { data: users, error: usersError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('email', { ascending: true });
+
+      if (usersError) throw usersError;
+      setAllUsers(users || []);
+
+    } catch (err) {
+      setError(err as Error);
+      console.error('Error fetching team members:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const promoteToAdmin = async (userId: string) => {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: 'admin' })
+      .eq('id', userId);
+
+    if (error) throw error;
+    await fetchTeamMembers();
+  };
+
+  const demoteToCustomer = async (userId: string) => {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: 'customer' })
+      .eq('id', userId);
+
+    if (error) throw error;
+    await fetchTeamMembers();
+  };
+
+  useEffect(() => {
+    fetchTeamMembers();
+  }, [fetchTeamMembers]);
+
+  return {
+    teamMembers,
+    allUsers,
+    isLoading,
+    error,
+    refetch: fetchTeamMembers,
+    promoteToAdmin,
+    demoteToCustomer,
+  };
+}
+
 export function useQuoteRequests() {
   const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
