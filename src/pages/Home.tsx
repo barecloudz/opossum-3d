@@ -1,10 +1,44 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ArrowRight, ShoppingCart, Bell, RefreshCw, Heart, Plus } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Search, ArrowRight, ShoppingCart, Bell, RefreshCw, Heart, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
 import { useProductStore } from '../store/productStore';
 import { useWishlistStore } from '../store/wishlistStore';
+
+// Banner slides data
+const bannerSlides = [
+  {
+    id: 1,
+    title: 'Custom 3D',
+    subtitle: 'Printed Creations',
+    badge: 'New Arrivals',
+    cta: 'Shop Now',
+    link: '/products',
+    gradient: 'from-[var(--color-primary)] to-emerald-600',
+    textColor: 'text-black',
+  },
+  {
+    id: 2,
+    title: 'Laser Engraved',
+    subtitle: 'Personalized Gifts',
+    badge: 'Popular',
+    cta: 'Explore',
+    link: '/products?category=laser-engraved',
+    gradient: 'from-purple-600 to-pink-600',
+    textColor: 'text-white',
+  },
+  {
+    id: 3,
+    title: 'Custom Orders',
+    subtitle: 'Your Ideas, Our Craft',
+    badge: 'Get a Quote',
+    cta: 'Start Now',
+    link: '/custom-quote',
+    gradient: 'from-cyan-500 to-blue-600',
+    textColor: 'text-white',
+  },
+];
 
 // Category data with gradients
 const categories = [
@@ -37,6 +71,7 @@ const categories = [
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
   const { user } = useAuthStore();
   const { getItemCount, addItem } = useCartStore();
   const { items: wishlistItems, addItem: addToWishlist, removeItem: removeFromWishlist } = useWishlistStore();
@@ -66,6 +101,20 @@ export default function Home() {
       addToWishlist(product);
     }
   };
+
+  // Banner carousel auto-rotation
+  const nextSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
+  }, []);
+
+  const prevSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev - 1 + bannerSlides.length) % bannerSlides.length);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(nextSlide, 5000); // Auto-rotate every 5 seconds
+    return () => clearInterval(timer);
+  }, [nextSlide]);
 
   // Fetch products on mount (will use cache if available)
   useEffect(() => {
@@ -127,30 +176,76 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Featured Banner */}
+      {/* Featured Banner Carousel */}
       <div className="px-4 mb-8">
         <div className="max-w-7xl mx-auto">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[var(--color-primary)] to-emerald-600 p-6 md:p-8">
-            <div className="relative z-10">
-              <div className="inline-block bg-black/20 rounded-lg px-3 py-1 text-sm font-medium text-white mb-2">
-                New Arrivals
-              </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-black mb-2">
-                Custom 3D
-              </h2>
-              <p className="text-xl md:text-2xl font-bold text-black/80 mb-4">
-                Printed Creations
-              </p>
-              <Link
-                to="/products"
-                className="inline-flex items-center gap-2 bg-black text-white px-5 py-2.5 rounded-xl font-medium hover:bg-black/80 transition-colors"
-              >
-                Shop Now <ArrowRight className="h-4 w-4" />
-              </Link>
+          <div className="relative overflow-hidden rounded-3xl">
+            {/* Slides */}
+            <div
+              className="flex transition-transform duration-500 ease-out"
+              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+            >
+              {bannerSlides.map((slide) => (
+                <div
+                  key={slide.id}
+                  className={`w-full flex-shrink-0 relative bg-gradient-to-r ${slide.gradient} p-6 md:p-8`}
+                >
+                  <div className="relative z-10">
+                    <div className={`inline-block bg-black/20 rounded-lg px-3 py-1 text-sm font-medium text-white mb-2`}>
+                      {slide.badge}
+                    </div>
+                    <h2 className={`text-3xl md:text-4xl font-bold ${slide.textColor} mb-2`}>
+                      {slide.title}
+                    </h2>
+                    <p className={`text-xl md:text-2xl font-bold ${slide.textColor}/80 mb-4`}>
+                      {slide.subtitle}
+                    </p>
+                    <Link
+                      to={slide.link}
+                      className={`inline-flex items-center gap-2 ${
+                        slide.textColor === 'text-black'
+                          ? 'bg-black text-white hover:bg-black/80'
+                          : 'bg-white text-black hover:bg-white/90'
+                      } px-5 py-2.5 rounded-xl font-medium transition-colors btn-press`}
+                    >
+                      {slide.cta} <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                  {/* Decorative circles */}
+                  <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full" />
+                  <div className="absolute -right-5 -bottom-10 w-32 h-32 bg-white/10 rounded-full" />
+                </div>
+              ))}
             </div>
-            {/* Decorative circles */}
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full" />
-            <div className="absolute -right-5 -bottom-10 w-32 h-32 bg-white/10 rounded-full" />
+
+            {/* Navigation Arrows */}
+            <button
+              onClick={prevSlide}
+              className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors backdrop-blur-sm btn-press"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={nextSlide}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors backdrop-blur-sm btn-press"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+
+            {/* Dots indicator */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+              {bannerSlides.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className={`transition-all ${
+                    currentSlide === index
+                      ? 'w-6 h-2 bg-white rounded-full'
+                      : 'w-2 h-2 bg-white/50 rounded-full hover:bg-white/70'
+                  }`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
