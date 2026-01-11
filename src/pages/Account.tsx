@@ -159,10 +159,6 @@ export default function Account() {
             <p className="text-theme opacity-60">{user?.email}</p>
           </div>
         </div>
-        <Button variant="ghost" onClick={handleSignOut}>
-          <LogOut className="h-5 w-5 mr-2" />
-          Sign Out
-        </Button>
       </div>
 
       {/* Tabs */}
@@ -379,6 +375,13 @@ export default function Account() {
                 </span>
               </div>
             </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-[var(--color-border)]">
+            <Button variant="outline" onClick={handleSignOut} className="w-full sm:w-auto">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
         </Card>
       )}
