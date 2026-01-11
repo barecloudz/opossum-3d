@@ -26,6 +26,7 @@ export default function AdminPromoCodes() {
     min_order_amount: '',
     max_uses: '',
     is_active: true,
+    show_on_checkout: false,
     expires_at: '',
   });
 
@@ -62,6 +63,7 @@ export default function AdminPromoCodes() {
         min_order_amount: formData.min_order_amount ? parseFloat(formData.min_order_amount) : null,
         max_uses: formData.max_uses ? parseInt(formData.max_uses) : null,
         is_active: formData.is_active,
+        show_on_checkout: formData.show_on_checkout,
         expires_at: formData.expires_at || null,
       };
 
@@ -101,6 +103,7 @@ export default function AdminPromoCodes() {
       min_order_amount: code.min_order_amount?.toString() || '',
       max_uses: code.max_uses?.toString() || '',
       is_active: code.is_active,
+      show_on_checkout: code.show_on_checkout || false,
       expires_at: code.expires_at ? code.expires_at.split('T')[0] : '',
     });
     setShowModal(true);
@@ -154,6 +157,7 @@ export default function AdminPromoCodes() {
       min_order_amount: '',
       max_uses: '',
       is_active: true,
+      show_on_checkout: false,
       expires_at: '',
     });
   };
@@ -224,6 +228,9 @@ export default function AdminPromoCodes() {
                     <Badge variant={code.is_active && !isExpired(code.expires_at) ? 'success' : 'danger'}>
                       {isExpired(code.expires_at) ? 'Expired' : code.is_active ? 'Active' : 'Inactive'}
                     </Badge>
+                    {code.show_on_checkout && (
+                      <Badge variant="default">Checkout</Badge>
+                    )}
                   </div>
                   <p className="text-gray-400 text-sm mb-2">
                     {code.description || 'No description'}
@@ -366,17 +373,31 @@ export default function AdminPromoCodes() {
                   onChange={(e) => setFormData({ ...formData, expires_at: e.target.value })}
                 />
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="is_active"
-                    checked={formData.is_active}
-                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                    className="w-4 h-4 rounded border-brand-gray bg-brand-black text-brand-neon focus:ring-brand-neon"
-                  />
-                  <label htmlFor="is_active" className="text-gray-300">
-                    Active
-                  </label>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="is_active"
+                      checked={formData.is_active}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      className="w-4 h-4 rounded border-brand-gray bg-brand-black text-brand-neon focus:ring-brand-neon"
+                    />
+                    <label htmlFor="is_active" className="text-gray-300">
+                      Active
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="show_on_checkout"
+                      checked={formData.show_on_checkout}
+                      onChange={(e) => setFormData({ ...formData, show_on_checkout: e.target.checked })}
+                      className="w-4 h-4 rounded border-brand-gray bg-brand-black text-brand-neon focus:ring-brand-neon"
+                    />
+                    <label htmlFor="show_on_checkout" className="text-gray-300">
+                      Show on checkout (customers can click to apply)
+                    </label>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-4">

@@ -38,6 +38,9 @@ export default function Checkout() {
   const [estimatedDelivery, setEstimatedDelivery] = useState<number | null>(null);
   const [isRateFallback, setIsRateFallback] = useState(false);
 
+  // Featured promo codes (shown on checkout)
+  const [featuredPromos, setFeaturedPromos] = useState<PromoCode[]>([]);
+
   const [formData, setFormData] = useState({
     email: user?.email || '',
     firstName: '',
@@ -143,6 +146,43 @@ export default function Checkout() {
     }
   }, [items.length, navigate, paymentComplete]);
 
+  // Fetch featured promo codes (shown on checkout when eligible)
+  useEffect(() => {
+    const fetchFeaturedPromos = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('promo_codes')
+          .select('*')
+          .eq('is_active', true)
+          .eq('show_on_checkout', true);
+
+        if (error) throw error;
+
+        // Filter valid promos (not expired, not maxed out)
+        const now = new Date();
+        const validPromos = (data || []).filter(promo => {
+          if (promo.expires_at && new Date(promo.expires_at) < now) return false;
+          if (promo.starts_at && new Date(promo.starts_at) > now) return false;
+          if (promo.max_uses && promo.uses_count >= promo.max_uses) return false;
+          return true;
+        });
+
+        setFeaturedPromos(validPromos);
+      } catch (err) {
+        console.error('Error fetching featured promos:', err);
+      }
+    };
+
+    fetchFeaturedPromos();
+  }, []);
+
+  // Get eligible featured promos (subtotal meets min order amount)
+  const eligiblePromos = featuredPromos.filter(promo => {
+    if (appliedPromo) return false; // Hide if a promo is already applied
+    if (promo.min_order_amount && subtotal < promo.min_order_amount) return false;
+    return true;
+  });
+
   const applyPromoCode = async () => {
     if (!promoCode.trim()) return;
 
@@ -188,6 +228,13 @@ export default function Checkout() {
 
   const removePromoCode = () => {
     setAppliedPromo(null);
+    setPromoError('');
+  };
+
+  // Apply a featured promo code directly (already validated)
+  const applyFeaturedPromo = (promo: PromoCode) => {
+    setAppliedPromo(promo);
+    setPromoCode('');
     setPromoError('');
   };
 
@@ -621,7 +668,7 @@ export default function Checkout() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <Input
@@ -643,6 +690,31 @@ export default function Checkout() {
                   </div>
                   {promoError && (
                     <p className="text-red-400 text-sm">{promoError}</p>
+                  )}
+
+                  {/* Featured promo codes */}
+                  {eligiblePromos.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-gray-500 text-xs">Available offers:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {eligiblePromos.map((promo) => (
+                          <button
+                            key={promo.id}
+                            type="button"
+                            onClick={() => applyFeaturedPromo(promo)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-lg text-sm hover:bg-[var(--color-primary)]/20 transition-colors"
+                          >
+                            <Tag className="h-3 w-3 text-[var(--color-primary)]" />
+                            <span className="font-mono text-[var(--color-primary)] font-medium">{promo.code}</span>
+                            <span className="text-gray-400">
+                              {promo.discount_type === 'percentage'
+                                ? `${promo.discount_value}% off`
+                                : `${formatPrice(promo.discount_value)} off`}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               )}

@@ -178,6 +178,7 @@ export interface PromoCode {
   max_uses: number | null;
   uses_count: number;
   is_active: boolean;
+  show_on_checkout: boolean;
   starts_at: string | null;
   expires_at: string | null;
   created_at: string;
