@@ -1,10 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ArrowRight, ShoppingCart, Bell } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Search, ArrowRight, ShoppingCart, Bell, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
-import { supabase } from '../lib/supabase';
-import type { Product } from '../types';
+import { useProducts } from '../hooks/useProducts';
 
 // Category data with gradients
 const categories = [
@@ -35,57 +34,25 @@ const categories = [
 ];
 
 export default function Home() {
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const { user } = useAuthStore();
   const { getItemCount } = useCartStore();
   const navigate = useNavigate();
   const itemCount = getItemCount();
 
+  // Use the same hook as Products page for consistency
+  const { products, isLoading, error, refetch } = useProducts();
+
+  // Get first 6 products for featured section
+  const featuredProducts = products.slice(0, 6);
+
+  // Debug logging
+  console.log('[Home] Products loaded:', products.length, 'Featured:', featuredProducts.length, 'Loading:', isLoading, 'Error:', error?.message);
+
   // Get user's first name
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ||
                     user?.email?.split('@')[0] ||
                     'Guest';
-
-  useEffect(() => {
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    const fetchFeaturedProducts = async () => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-      try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('*, images:product_images(*)')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(6)
-          .abortSignal(controller.signal);
-
-        clearTimeout(timeoutId);
-        if (error) throw error;
-        setFeaturedProducts(data || []);
-        setIsLoading(false);
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-
-        if ((err.name === 'AbortError' || err.message?.includes('network')) && retryCount < maxRetries) {
-          retryCount++;
-          console.log(`Home: Retry attempt ${retryCount}/${maxRetries}`);
-          setTimeout(fetchFeaturedProducts, 1000 * retryCount);
-          return;
-        }
-
-        console.error('Error fetching products:', err);
-        setIsLoading(false);
-      }
-    };
-
-    fetchFeaturedProducts();
-  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,6 +174,19 @@ export default function Home() {
                   <div className="h-4 bg-[var(--color-border)] rounded w-1/2 animate-pulse" />
                 </div>
               ))
+            ) : error ? (
+              // Error state with retry
+              <div className="col-span-full text-center py-12">
+                <p className="text-red-400 mb-2">Failed to load products</p>
+                <p className="text-gray-500 text-sm mb-4">{error.message}</p>
+                <button
+                  onClick={refetch}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-white hover:border-[var(--color-primary)] transition-colors"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Try Again
+                </button>
+              </div>
             ) : featuredProducts.length > 0 ? (
               featuredProducts.map((product) => {
                 const primaryImage = product.images?.find((img) => img.is_primary) || product.images?.[0];

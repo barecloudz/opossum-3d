@@ -10,6 +10,9 @@ export function useProducts(includeInactive = false) {
   const maxRetries = 3;
 
   const fetchProducts = useCallback(async (isRetry = false) => {
+    const startTime = Date.now();
+    console.log('[useProducts] Starting fetch...', { isRetry, includeInactive });
+
     if (!isRetry) {
       setIsLoading(true);
       setError(null);
@@ -17,7 +20,10 @@ export function useProducts(includeInactive = false) {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => {
+      console.log('[useProducts] Request timeout after 15s');
+      controller.abort();
+    }, 15000);
 
     try {
       let query = supabase
@@ -38,6 +44,13 @@ export function useProducts(includeInactive = false) {
       const { data, error: fetchError } = await query;
       clearTimeout(timeoutId);
 
+      const duration = Date.now() - startTime;
+      console.log('[useProducts] Fetch complete', {
+        duration: `${duration}ms`,
+        productCount: data?.length || 0,
+        error: fetchError?.message
+      });
+
       if (fetchError) throw fetchError;
 
       setProducts(data || []);
@@ -45,16 +58,18 @@ export function useProducts(includeInactive = false) {
       setError(null);
     } catch (err: any) {
       clearTimeout(timeoutId);
+      const duration = Date.now() - startTime;
+      console.error('[useProducts] Fetch error', { duration: `${duration}ms`, error: err.message, name: err.name });
 
       // If aborted (timeout) or network error, retry
       if ((err.name === 'AbortError' || err.message?.includes('network')) && retryCount.current < maxRetries) {
         retryCount.current++;
-        console.log(`Retry attempt ${retryCount.current}/${maxRetries}`);
+        console.log(`[useProducts] Retry attempt ${retryCount.current}/${maxRetries}`);
         setTimeout(() => fetchProducts(true), 1000 * retryCount.current);
         return;
       }
 
-      console.error('Error fetching products:', err);
+      console.error('[useProducts] Final error:', err);
       const errorMessage = err.name === 'AbortError'
         ? 'Request timed out. Please check your connection and try again.'
         : err.message || 'Failed to load products';
