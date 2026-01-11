@@ -94,7 +94,7 @@ export default function Account() {
           .from('email_subscribers')
           .select('id')
           .eq('email', user.email.toLowerCase())
-          .single();
+          .maybeSingle();
 
         if (existingSub) {
           await supabase
