@@ -5,6 +5,8 @@ import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
 import { useProductStore } from '../store/productStore';
 import { useWishlistStore } from '../store/wishlistStore';
+import { supabase } from '../lib/supabase';
+import type { Category } from '../types';
 
 // Banner slides data
 const bannerSlides = [
@@ -40,38 +42,22 @@ const bannerSlides = [
   },
 ];
 
-// Category data with gradients
-const categories = [
-  {
-    name: '3D Prints',
-    slug: 'products?category=3d-prints',
-    gradient: 'from-emerald-500 to-teal-600',
-    image: '/images/hero.jpg',
-  },
-  {
-    name: 'Laser Engraved',
-    slug: 'products?category=laser-engraved',
-    gradient: 'from-orange-500 to-red-600',
-    image: '/images/hero.jpg',
-  },
-  {
-    name: 'Keychains',
-    slug: 'products?category=keychains',
-    gradient: 'from-purple-500 to-pink-600',
-    image: '/images/hero.jpg',
-  },
-  {
-    name: 'Custom Orders',
-    slug: 'custom-quote',
-    gradient: 'from-cyan-500 to-blue-600',
-    image: '/images/hero.jpg',
-  },
+// Gradient colors for categories without images
+const categoryGradients = [
+  'from-emerald-500 to-teal-600',
+  'from-orange-500 to-red-600',
+  'from-purple-500 to-pink-600',
+  'from-cyan-500 to-blue-600',
+  'from-rose-500 to-pink-600',
+  'from-indigo-500 to-purple-600',
 ];
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const { user } = useAuthStore();
   const { getItemCount, addItem } = useCartStore();
   const { items: wishlistItems, addItem: addToWishlist, removeItem: removeFromWishlist } = useWishlistStore();
@@ -81,13 +67,35 @@ export default function Home() {
   // Use global product store (cached across page navigations)
   const { products, isLoading, error, fetchProducts } = useProductStore();
 
-  const isInWishlist = (productId: string) => wishlistItems.some(item => item.id === productId);
+  // Fetch categories from database
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+
+        if (error) throw error;
+        setCategories(data || []);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  const isProductInWishlist = (productId: string) => wishlistItems.includes(productId);
 
   const handleQuickAdd = async (e: React.MouseEvent, product: any) => {
     e.preventDefault();
     e.stopPropagation();
     setAddingToCart(product.id);
-    addItem(product, 1);
+    addItem(product, undefined, 1);
     // Brief delay to show animation
     setTimeout(() => setAddingToCart(null), 600);
   };
@@ -95,10 +103,10 @@ export default function Home() {
   const handleWishlist = (e: React.MouseEvent, product: any) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isInWishlist(product.id)) {
+    if (isProductInWishlist(product.id)) {
       removeFromWishlist(product.id);
     } else {
-      addToWishlist(product);
+      addToWishlist(product.id);
     }
   };
 
@@ -255,21 +263,43 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <h2 className="text-lg font-bold text-white mb-4">Categories</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in-stagger">
-            {categories.map((category) => (
-              <Link
-                key={category.name}
-                to={`/${category.slug}`}
-                className={`relative overflow-hidden rounded-2xl aspect-square bg-gradient-to-br ${category.gradient} p-4 flex flex-col justify-end group card-hover btn-press`}
-              >
-                {/* Shimmer overlay on hover */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                {/* Overlay for better text readability */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                <span className="relative z-10 text-white font-semibold text-lg drop-shadow-lg">
-                  {category.name}
-                </span>
-              </Link>
-            ))}
+            {categoriesLoading ? (
+              // Loading skeletons
+              [1, 2, 3, 4].map((i) => (
+                <div key={i} className="aspect-square rounded-2xl bg-[var(--color-surface)] animate-pulse" />
+              ))
+            ) : categories.length > 0 ? (
+              categories.map((category, index) => (
+                <Link
+                  key={category.id}
+                  to={`/products?category=${category.slug}`}
+                  className={`relative overflow-hidden rounded-2xl aspect-square p-4 flex flex-col justify-end group card-hover btn-press ${
+                    !category.image_url ? `bg-gradient-to-br ${categoryGradients[index % categoryGradients.length]}` : ''
+                  }`}
+                >
+                  {/* Category image */}
+                  {category.image_url && (
+                    <img
+                      src={category.image_url}
+                      alt={category.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  )}
+                  {/* Shimmer overlay on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                  {/* Overlay for better text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                  <span className="relative z-10 text-white font-semibold text-lg drop-shadow-lg">
+                    {category.name}
+                  </span>
+                </Link>
+              ))
+            ) : (
+              // Fallback when no categories exist
+              <div className="col-span-full text-center py-8 text-gray-400">
+                No categories available yet.
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -313,7 +343,7 @@ export default function Home() {
             ) : featuredProducts.length > 0 ? (
               featuredProducts.map((product) => {
                 const primaryImage = product.images?.find((img) => img.is_primary) || product.images?.[0];
-                const inWishlist = isInWishlist(product.id);
+                const inWishlist = isProductInWishlist(product.id);
                 const isAdding = addingToCart === product.id;
                 return (
                   <Link

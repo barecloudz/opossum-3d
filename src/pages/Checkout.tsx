@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
-import { ChevronLeft, Tag, Check, X, Truck, Store } from 'lucide-react';
+import { ChevronLeft, Tag, Check, X, Truck, Store, Loader2 } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
@@ -32,6 +32,12 @@ export default function Checkout() {
   const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
   const [paymentComplete, setPaymentComplete] = useState(false);
 
+  // USPS shipping rate state
+  const [shippingRate, setShippingRate] = useState<number | null>(null);
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [estimatedDelivery, setEstimatedDelivery] = useState<number | null>(null);
+  const [isRateFallback, setIsRateFallback] = useState(false);
+
   const [formData, setFormData] = useState({
     email: user?.email || '',
     firstName: '',
@@ -46,7 +52,77 @@ export default function Checkout() {
   });
 
   const subtotal = getSubtotal();
-  const shipping = shippingMethod === 'delivery' ? DEFAULT_SHIPPING_COST : 0;
+  // Use dynamic USPS rate if available, otherwise fallback to default
+  const shipping = shippingMethod === 'delivery'
+    ? (shippingRate ?? DEFAULT_SHIPPING_COST)
+    : 0;
+
+  // Calculate total weight from cart items (in ounces)
+  const getTotalWeight = useCallback((): number => {
+    return items.reduce((total, item) => {
+      const weight = item.product.weight_oz || 8; // Default 8oz if not set
+      return total + (weight * item.quantity);
+    }, 0);
+  }, [items]);
+
+  // Fetch USPS shipping rate when address changes
+  useEffect(() => {
+    const fetchShippingRate = async () => {
+      // Only fetch if delivery selected
+      if (shippingMethod !== 'delivery') {
+        setShippingRate(0);
+        setShippingLoading(false);
+        return;
+      }
+
+      // Check if we have enough address info
+      if (!formData.zip || formData.zip.length < 5 ||
+          !formData.city || !formData.state || !formData.address) {
+        return;
+      }
+
+      setShippingLoading(true);
+
+      try {
+        const response = await fetch('/.netlify/functions/get-shipping-rate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            destinationAddress: {
+              streetAddress: formData.address,
+              secondaryAddress: formData.apartment,
+              city: formData.city,
+              state: formData.state,
+              zipCode: formData.zip,
+            },
+            totalWeightOz: getTotalWeight(),
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setShippingRate(data.rate);
+          setEstimatedDelivery(data.estimatedDeliveryDays);
+          setIsRateFallback(data.fallbackUsed);
+        } else {
+          // Use fallback rate on error
+          setShippingRate(DEFAULT_SHIPPING_COST);
+          setIsRateFallback(true);
+        }
+      } catch (error) {
+        console.error('Failed to fetch shipping rate:', error);
+        setShippingRate(DEFAULT_SHIPPING_COST);
+        setIsRateFallback(true);
+      } finally {
+        setShippingLoading(false);
+      }
+    };
+
+    // Debounce the fetch to avoid too many API calls while typing
+    const timeoutId = setTimeout(fetchShippingRate, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.zip, formData.city, formData.state, formData.address, formData.apartment, shippingMethod, getTotalWeight]);
 
   // Calculate discount
   let discount = 0;
@@ -320,7 +396,10 @@ export default function Checkout() {
   };
 
   const isFormValid = formData.email && formData.firstName && formData.lastName &&
-    (shippingMethod === 'pickup' || (formData.address && formData.city && formData.state && formData.zip));
+    (shippingMethod === 'pickup' || (
+      formData.address && formData.city && formData.state && formData.zip &&
+      shippingRate !== null && !shippingLoading
+    ));
 
   if (items.length === 0) {
     return null;
@@ -585,9 +664,24 @@ export default function Checkout() {
                 </div>
               )}
               <div className="flex justify-between text-gray-400">
-                <span>Shipping</span>
-                <span>{shippingMethod === 'pickup' ? 'Free' : formatPrice(shipping)}</span>
+                <span className="flex items-center gap-2">
+                  Shipping
+                  {shippingLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+                </span>
+                <span>
+                  {shippingMethod === 'pickup'
+                    ? 'Free'
+                    : shippingLoading
+                      ? 'Calculating...'
+                      : formatPrice(shipping)}
+                </span>
               </div>
+              {estimatedDelivery && !shippingLoading && shippingMethod === 'delivery' && (
+                <p className="text-xs text-gray-500 text-right">
+                  Est. {estimatedDelivery} business day{estimatedDelivery !== 1 ? 's' : ''} via USPS Priority Mail
+                  {isRateFallback && ' (standard rate)'}
+                </p>
+              )}
               <div className="flex justify-between text-xl font-bold pt-3 border-t border-[var(--color-border)]">
                 <span className="text-white">Total</span>
                 <span className="text-[var(--color-primary)]">{formatPrice(total)}</span>

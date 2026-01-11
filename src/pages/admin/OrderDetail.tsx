@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, MapPin, Save } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -21,6 +21,14 @@ export default function AdminOrderDetail() {
   const [status, setStatus] = useState<OrderStatus>('pending');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Shipping label state
+  const [isGeneratingLabel, setIsGeneratingLabel] = useState(false);
+  const [labelData, setLabelData] = useState<{
+    trackingNumber: string;
+    labelPdf: string;
+  } | null>(null);
+  const [labelError, setLabelError] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) fetchOrder();
@@ -78,6 +86,124 @@ export default function AdminOrderDetail() {
       alert('Failed to update order');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Calculate total weight from order items
+  const calculateOrderWeight = async (): Promise<number> => {
+    const productIds = items.map(item => item.product_id).filter(Boolean) as string[];
+
+    if (productIds.length === 0) {
+      return 8 * items.reduce((acc, item) => acc + item.quantity, 0); // Default 8oz per item
+    }
+
+    const { data: products } = await supabase
+      .from('products')
+      .select('id, weight_oz')
+      .in('id', productIds);
+
+    const weightMap = new Map(products?.map(p => [p.id, p.weight_oz || 8]) || []);
+
+    return items.reduce((total, item) => {
+      const weight = item.product_id ? (weightMap.get(item.product_id) || 8) : 8;
+      return total + (weight * item.quantity);
+    }, 0);
+  };
+
+  // Generate USPS shipping label
+  const handleGenerateLabel = async () => {
+    if (!order) return;
+
+    setIsGeneratingLabel(true);
+    setLabelError(null);
+
+    try {
+      const totalWeight = await calculateOrderWeight();
+
+      // Parse customer name
+      const fullName = order.guest_name || '';
+      const nameParts = fullName.split(' ');
+      const firstName = nameParts[0] || 'Customer';
+      const lastName = nameParts.slice(1).join(' ') || firstName;
+
+      const response = await fetch('/.netlify/functions/create-shipping-label', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          orderNumber: order.order_number,
+          recipientAddress: {
+            firstName,
+            lastName,
+            streetAddress: order.shipping_address.address_line_1,
+            secondaryAddress: order.shipping_address.address_line_2,
+            city: order.shipping_address.city,
+            state: order.shipping_address.state,
+            zipCode: order.shipping_address.postal_code,
+          },
+          totalWeightOz: totalWeight,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate label');
+      }
+
+      setLabelData(data);
+      setTrackingNumber(data.trackingNumber);
+
+      // Auto-save tracking number and update status
+      await supabase
+        .from('orders')
+        .update({
+          tracking_number: data.trackingNumber,
+          status: 'shipped',
+        })
+        .eq('id', order.id);
+
+      setOrder({
+        ...order,
+        tracking_number: data.trackingNumber,
+        status: 'shipped',
+      });
+      setStatus('shipped');
+
+    } catch (error: any) {
+      console.error('Label generation error:', error);
+      setLabelError(error.message || 'Failed to generate shipping label');
+    } finally {
+      setIsGeneratingLabel(false);
+    }
+  };
+
+  // Download label PDF
+  const handleDownloadLabel = () => {
+    if (!labelData?.labelPdf || !order) return;
+
+    try {
+      // Convert base64 to blob
+      const byteCharacters = atob(labelData.labelPdf);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `shipping-label-${order.order_number}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download error:', error);
+      setLabelError('Failed to download label');
     }
   };
 
@@ -253,6 +379,91 @@ export default function AdminOrderDetail() {
               <h2 className="text-xl font-semibold text-white mb-4">Payment</h2>
               <p className="text-gray-400 text-sm break-all">
                 Stripe Payment ID: {order.stripe_payment_intent_id}
+              </p>
+            </Card>
+          )}
+
+          {/* Shipping Label */}
+          {order.shipping_address.address_line_1 !== 'Local Pickup' ? (
+            <Card>
+              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <Truck className="h-5 w-5 text-brand-neon" />
+                Shipping Label
+              </h2>
+
+              {labelError && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-red-400 text-sm">{labelError}</p>
+                </div>
+              )}
+
+              {labelData ? (
+                <div className="space-y-4">
+                  <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg flex items-start gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-green-400 font-medium">Label Generated!</p>
+                      <p className="text-gray-400 text-sm mt-1">
+                        Tracking: <span className="font-mono text-white">{labelData.trackingNumber}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleDownloadLabel}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    <Download className="h-5 w-5 mr-2" />
+                    Download Label PDF
+                  </Button>
+                </div>
+              ) : order.tracking_number ? (
+                <div className="space-y-3">
+                  <p className="text-gray-400 text-sm">
+                    Tracking: <span className="font-mono text-white">{order.tracking_number}</span>
+                  </p>
+                  <p className="text-gray-500 text-xs">
+                    Label was generated previously. Generate a new one if needed.
+                  </p>
+                  <Button
+                    onClick={handleGenerateLabel}
+                    className="w-full"
+                    variant="outline"
+                    isLoading={isGeneratingLabel}
+                  >
+                    <Truck className="h-5 w-5 mr-2" />
+                    Generate New Label
+                  </Button>
+                </div>
+              ) : (order.status === 'paid' || order.status === 'pending' || order.status === 'processing') ? (
+                <div className="space-y-3">
+                  <p className="text-gray-400 text-sm">
+                    Generate a USPS Priority Mail shipping label for this order.
+                  </p>
+                  <Button
+                    onClick={handleGenerateLabel}
+                    className="w-full"
+                    isLoading={isGeneratingLabel}
+                  >
+                    <Truck className="h-5 w-5 mr-2" />
+                    Generate USPS Label
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">
+                  No shipping label generated for this order.
+                </p>
+              )}
+            </Card>
+          ) : (
+            <Card>
+              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <Truck className="h-5 w-5 text-brand-neon" />
+                Shipping
+              </h2>
+              <p className="text-gray-400 text-sm">
+                This is a local pickup order - no shipping label needed.
               </p>
             </Card>
           )}

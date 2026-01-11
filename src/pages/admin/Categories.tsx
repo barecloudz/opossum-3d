@@ -5,6 +5,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
 import Spinner from '../../components/ui/Spinner';
+import SingleImageUpload from '../../components/admin/SingleImageUpload';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/ui/Toast';
 import type { Category } from '../../types';
@@ -389,13 +390,12 @@ export default function AdminCategories() {
             />
           </div>
 
-          <Input
-            label="Image URL (optional)"
-            value={formData.image_url}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, image_url: e.target.value }))
+          <SingleImageUpload
+            label="Category Image (optional)"
+            image={formData.image_url || null}
+            onChange={(url) =>
+              setFormData((prev) => ({ ...prev, image_url: url || '' }))
             }
-            placeholder="https://..."
           />
 
           <div className="flex items-center gap-2">

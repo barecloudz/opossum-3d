@@ -2,6 +2,7 @@ export const APP_NAME = 'Opossum 3D';
 
 export const ORDER_STATUSES = {
   pending: { label: 'Pending', color: 'bg-yellow-500/20 text-yellow-400' },
+  paid: { label: 'Paid', color: 'bg-green-500/20 text-green-400' },
   processing: { label: 'Processing', color: 'bg-blue-500/20 text-blue-400' },
   shipped: { label: 'Shipped', color: 'bg-purple-500/20 text-purple-400' },
   delivered: { label: 'Delivered', color: 'bg-brand-emerald/20 text-brand-neon' },
