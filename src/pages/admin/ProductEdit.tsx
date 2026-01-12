@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, AlertCircle, X } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
@@ -28,6 +28,7 @@ export default function AdminProductEdit() {
   const [isSaving, setIsSaving] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [variants, setVariants] = useState<Variant[]>([]);
+  const [error, setError] = useState<{ message: string; details?: string } | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -156,18 +157,27 @@ export default function AdminProductEdit() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    setError(null);
 
     try {
+      // Validate required fields
+      if (!formData.name.trim()) {
+        throw new Error('Product name is required');
+      }
+      if (!formData.price || parseFloat(formData.price) < 0) {
+        throw new Error('Valid price is required');
+      }
+
       const productData = {
-        name: formData.name,
-        slug: formData.slug,
+        name: formData.name.trim(),
+        slug: formData.slug.trim() || slugify(formData.name),
         description: formData.description || null,
         price: parseFloat(formData.price),
         compare_at_price: formData.compare_at_price ? parseFloat(formData.compare_at_price) : null,
         cost_price: formData.cost_price ? parseFloat(formData.cost_price) : null,
         sku: formData.sku || null,
-        stock_quantity: parseInt(formData.stock_quantity),
-        low_stock_threshold: parseInt(formData.low_stock_threshold),
+        stock_quantity: parseInt(formData.stock_quantity) || 0,
+        low_stock_threshold: parseInt(formData.low_stock_threshold) || 5,
         category_id: formData.category_id || null,
         is_active: formData.is_active,
         is_featured: formData.is_featured,
@@ -177,25 +187,41 @@ export default function AdminProductEdit() {
         weight_oz: formData.weight_oz ? parseFloat(formData.weight_oz) : null,
       };
 
+      console.log('Saving product data:', productData);
+
       let productId = id;
 
       if (isNew) {
-        const { data: newProduct, error } = await supabase
+        console.log('Creating new product...');
+        const { data: newProduct, error: insertError } = await supabase
           .from('products')
           .insert(productData)
           .select('id')
           .single();
-        if (error) throw error;
+
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          throw new Error(`Failed to create product: ${insertError.message}${insertError.details ? ` - ${insertError.details}` : ''}`);
+        }
         productId = newProduct.id;
+        console.log('Product created with ID:', productId);
       } else {
-        const { error } = await supabase.from('products').update(productData).eq('id', id);
-        if (error) throw error;
+        console.log('Updating product:', id);
+        const { error: updateError } = await supabase.from('products').update(productData).eq('id', id);
+        if (updateError) {
+          console.error('Update error:', updateError);
+          throw new Error(`Failed to update product: ${updateError.message}${updateError.details ? ` - ${updateError.details}` : ''}`);
+        }
       }
 
       // Save images
       if (productId) {
+        console.log('Saving images...');
         // Delete existing images
-        await supabase.from('product_images').delete().eq('product_id', productId);
+        const { error: deleteImgError } = await supabase.from('product_images').delete().eq('product_id', productId);
+        if (deleteImgError) {
+          console.error('Delete images error:', deleteImgError);
+        }
 
         // Insert new images
         if (images.length > 0) {
@@ -210,12 +236,19 @@ export default function AdminProductEdit() {
             .from('product_images')
             .insert(imageRecords);
 
-          if (imgError) throw imgError;
+          if (imgError) {
+            console.error('Insert images error:', imgError);
+            throw new Error(`Failed to save images: ${imgError.message}`);
+          }
         }
 
         // Save variants
+        console.log('Saving variants...');
         // Delete existing variants
-        await supabase.from('product_variants').delete().eq('product_id', productId);
+        const { error: deleteVarError } = await supabase.from('product_variants').delete().eq('product_id', productId);
+        if (deleteVarError) {
+          console.error('Delete variants error:', deleteVarError);
+        }
 
         // Insert new variants
         if (variants.length > 0) {
@@ -235,15 +268,22 @@ export default function AdminProductEdit() {
               .from('product_variants')
               .insert(variantRecords);
 
-            if (varError) throw varError;
+            if (varError) {
+              console.error('Insert variants error:', varError);
+              throw new Error(`Failed to save variants: ${varError.message}`);
+            }
           }
         }
       }
 
+      console.log('Product saved successfully!');
       navigate('/admin/products');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving product:', err);
-      alert('Failed to save product. Please try again.');
+      setError({
+        message: err.message || 'Failed to save product',
+        details: err.details || err.hint || undefined,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -270,6 +310,37 @@ export default function AdminProductEdit() {
       <h1 className="text-3xl font-bold text-white mb-8">
         {isNew ? 'Add Product' : 'Edit Product'}
       </h1>
+
+      {/* Error Modal */}
+      {error && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-brand-charcoal border border-red-500/50 rounded-xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-red-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-white mb-2">Error Saving Product</h3>
+                <p className="text-red-400 mb-2">{error.message}</p>
+                {error.details && (
+                  <p className="text-gray-400 text-sm bg-brand-black/50 p-2 rounded font-mono">{error.details}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setError(null)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button onClick={() => setError(null)} variant="outline">
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
