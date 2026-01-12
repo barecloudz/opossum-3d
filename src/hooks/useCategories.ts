@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Category } from '../types';
 
-export function useCategories() {
+interface UseCategoriesOptions {
+  includeInactive?: boolean;
+}
+
+export function useCategories(options: UseCategoriesOptions = {}) {
+  const { includeInactive = false } = options;
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -10,11 +15,17 @@ export function useCategories() {
   const fetchCategories = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('categories')
         .select('*')
-        .eq('is_active', true)
         .order('display_order', { ascending: true });
+
+      // Only filter by active if not including inactive
+      if (!includeInactive) {
+        query = query.eq('is_active', true);
+      }
+
+      const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
 
@@ -25,7 +36,7 @@ export function useCategories() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [includeInactive]);
 
   useEffect(() => {
     fetchCategories();

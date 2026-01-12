@@ -22,7 +22,7 @@ export default function AdminProductEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNew = !id;
-  const { categories } = useCategories();
+  const { categories } = useCategories({ includeInactive: true });
 
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
@@ -598,7 +598,7 @@ export default function AdminProductEdit() {
                 <option value="">No Category</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
-                    {category.name}
+                    {category.name}{!category.is_active ? ' (Inactive)' : ''}
                   </option>
                 ))}
               </select>
