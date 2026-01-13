@@ -187,8 +187,8 @@ export default function AdminCategories() {
     const currentCategory = categories[index];
 
     try {
-      // Swap display orders
-      await Promise.all([
+      // Swap display orders - check each result for errors
+      const [result1, result2] = await Promise.all([
         supabase
           .from('categories')
           .update({ display_order: otherCategory.display_order })
@@ -198,6 +198,10 @@ export default function AdminCategories() {
           .update({ display_order: currentCategory.display_order })
           .eq('id', otherCategory.id),
       ]);
+
+      // Check for errors from either operation
+      if (result1.error) throw result1.error;
+      if (result2.error) throw result2.error;
 
       fetchCategories();
     } catch (err) {

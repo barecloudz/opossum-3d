@@ -352,16 +352,23 @@ export default function Checkout() {
       navigate('/');
     }
 
-    // Background operations
+    // Background operations - run after navigation, log all errors
     if (confirmedOrderId) {
+      // Critical: Update order status to 'paid'
       supabase
         .from('orders')
         .update({ status: 'paid' })
         .eq('id', confirmedOrderId)
         .then(({ error }) => {
-          if (error) console.error('Error updating order status:', error);
+          if (error) {
+            console.error('[Checkout] CRITICAL: Failed to update order status to paid:', error);
+            // TODO: Consider adding to a retry queue or alerting admin
+          } else {
+            console.log('[Checkout] Order status updated to paid');
+          }
         });
 
+      // Send confirmation email
       fetch('/.netlify/functions/send-order-confirmation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -389,8 +396,14 @@ export default function Checkout() {
             postal_code: formData.zip,
           } : { address_line_1: 'Local Pickup - Hendersonville, NC' },
         }),
-      }).catch(err => console.error('Error sending confirmation email:', err));
+      })
+        .then(res => {
+          if (!res.ok) console.error('[Checkout] Confirmation email failed:', res.status);
+          else console.log('[Checkout] Confirmation email sent');
+        })
+        .catch(err => console.error('[Checkout] Error sending confirmation email:', err));
 
+      // Update inventory with proper error handling
       for (const item of orderItems) {
         if (item.product.track_inventory) {
           if (item.variant) {
@@ -398,31 +411,49 @@ export default function Checkout() {
             supabase
               .from('product_variants')
               .update({ stock_quantity: newStock })
-              .eq('id', item.variant.id);
+              .eq('id', item.variant.id)
+              .then(({ error }) => {
+                if (error) console.error('[Checkout] Failed to update variant inventory:', error);
+                else console.log('[Checkout] Variant inventory updated');
+              });
           } else {
             const newStock = Math.max(0, item.product.stock_quantity - item.quantity);
             supabase
               .from('products')
               .update({ stock_quantity: newStock })
-              .eq('id', item.product.id);
+              .eq('id', item.product.id)
+              .then(({ error }) => {
+                if (error) console.error('[Checkout] Failed to update product inventory:', error);
+                else console.log('[Checkout] Product inventory updated');
+              });
           }
         }
       }
 
+      // Update promo code usage
       if (appliedPromo) {
         supabase
           .from('promo_codes')
           .update({ uses_count: appliedPromo.uses_count + 1 })
-          .eq('id', appliedPromo.id);
+          .eq('id', appliedPromo.id)
+          .then(({ error }) => {
+            if (error) console.error('[Checkout] Failed to update promo code usage:', error);
+            else console.log('[Checkout] Promo code usage updated');
+          });
       }
 
+      // Add to email subscribers if opted in
       if (formData.marketingOptIn && formData.email) {
         supabase
           .from('email_subscribers')
           .select('id')
           .eq('email', formData.email.toLowerCase())
-          .single()
-          .then(({ data: existingSub }) => {
+          .maybeSingle()
+          .then(({ data: existingSub, error }) => {
+            if (error) {
+              console.error('[Checkout] Error checking email subscriber:', error);
+              return;
+            }
             if (!existingSub) {
               supabase.from('email_subscribers').insert({
                 email: formData.email.toLowerCase(),
@@ -431,6 +462,9 @@ export default function Checkout() {
                 source: 'checkout',
                 is_subscribed: true,
                 subscribed_at: new Date().toISOString(),
+              }).then(({ error: insertError }) => {
+                if (insertError) console.error('[Checkout] Failed to add email subscriber:', insertError);
+                else console.log('[Checkout] Email subscriber added');
               });
             }
           });
