@@ -216,21 +216,32 @@ export default function AdminProductEdit() {
 
       // Save images
       if (productId) {
-        console.log('Saving images...');
-        // Delete existing images
-        const { error: deleteImgError } = await supabase.from('product_images').delete().eq('product_id', productId);
-        if (deleteImgError) {
-          console.error('Delete images error:', deleteImgError);
+        console.log('Saving images for product:', productId);
+        console.log('Images to save:', images.length);
+
+        // Only delete if editing existing product
+        if (!isNew) {
+          console.log('Deleting existing images...');
+          const { error: deleteImgError } = await supabase
+            .from('product_images')
+            .delete()
+            .eq('product_id', productId);
+          if (deleteImgError) {
+            console.error('Delete images error:', deleteImgError);
+          }
+          console.log('Delete images complete');
         }
 
         // Insert new images
         if (images.length > 0) {
+          console.log('Inserting images...');
           const imageRecords = images.map((img, index) => ({
             product_id: productId,
             image_url: img,
             display_order: index,
             is_primary: index === 0,
           }));
+          console.log('Image records:', imageRecords);
 
           const { error: imgError } = await supabase
             .from('product_images')
@@ -240,14 +251,23 @@ export default function AdminProductEdit() {
             console.error('Insert images error:', imgError);
             throw new Error(`Failed to save images: ${imgError.message}`);
           }
+          console.log('Images inserted successfully');
         }
 
         // Save variants
-        console.log('Saving variants...');
-        // Delete existing variants
-        const { error: deleteVarError } = await supabase.from('product_variants').delete().eq('product_id', productId);
-        if (deleteVarError) {
-          console.error('Delete variants error:', deleteVarError);
+        console.log('Processing variants...');
+
+        // Only delete if editing existing product
+        if (!isNew) {
+          console.log('Deleting existing variants...');
+          const { error: deleteVarError } = await supabase
+            .from('product_variants')
+            .delete()
+            .eq('product_id', productId);
+          if (deleteVarError) {
+            console.error('Delete variants error:', deleteVarError);
+          }
+          console.log('Delete variants complete');
         }
 
         // Insert new variants
@@ -264,6 +284,7 @@ export default function AdminProductEdit() {
             }));
 
           if (variantRecords.length > 0) {
+            console.log('Inserting variants:', variantRecords);
             const { error: varError } = await supabase
               .from('product_variants')
               .insert(variantRecords);
@@ -272,6 +293,7 @@ export default function AdminProductEdit() {
               console.error('Insert variants error:', varError);
               throw new Error(`Failed to save variants: ${varError.message}`);
             }
+            console.log('Variants inserted successfully');
           }
         }
       }
