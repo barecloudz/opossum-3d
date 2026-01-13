@@ -49,7 +49,13 @@ export default function ProductDetail() {
   const stockStatus = getStockStatus(product.stock_quantity, product.low_stock_threshold);
   const currentPrice = product.price + (selectedVariant?.price_adjustment || 0);
   const images = product.images || [];
-  const selectedImage = images[selectedImageIndex] || images[0];
+
+  // If variant has a specific image, show that; otherwise show the selected gallery image
+  const variantImageUrl = selectedVariant?.image_url;
+  const selectedImage = variantImageUrl
+    ? { image_url: variantImageUrl, alt_text: selectedVariant?.name || null }
+    : (images[selectedImageIndex] || images[0]);
+
   const inWishlist = isInWishlist(product.id);
 
   // Calculate discount percentage

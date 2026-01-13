@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, AlertCircle, X, Image as ImageIcon, Upload } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
@@ -16,6 +16,7 @@ interface Variant {
   sku: string;
   price_adjustment: string;
   stock_quantity: string;
+  image_url: string;
 }
 
 export default function AdminProductEdit() {
@@ -109,6 +110,7 @@ export default function AdminProductEdit() {
             sku: v.sku || '',
             price_adjustment: v.price_adjustment.toString(),
             stock_quantity: v.stock_quantity.toString(),
+            image_url: v.image_url || '',
           })));
         }
       }
@@ -141,7 +143,7 @@ export default function AdminProductEdit() {
   };
 
   const addVariant = () => {
-    setVariants([...variants, { name: '', sku: '', price_adjustment: '0', stock_quantity: '0' }]);
+    setVariants([...variants, { name: '', sku: '', price_adjustment: '0', stock_quantity: '0', image_url: '' }]);
   };
 
   const updateVariant = (index: number, field: keyof Variant, value: string) => {
@@ -152,6 +154,30 @@ export default function AdminProductEdit() {
 
   const removeVariant = (index: number) => {
     setVariants(variants.filter((_, i) => i !== index));
+  };
+
+  const handleVariantImageUpload = async (index: number, file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 5 * 1024 * 1024) return;
+
+    try {
+      const ext = file.name.split('.').pop();
+      const fileName = `variant-${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(fileName);
+
+      updateVariant(index, 'image_url', publicUrl);
+    } catch (err) {
+      console.error('Failed to upload variant image:', err);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -281,6 +307,7 @@ export default function AdminProductEdit() {
               price_adjustment: parseFloat(v.price_adjustment) || 0,
               stock_quantity: parseInt(v.stock_quantity) || 0,
               display_order: index,
+              image_url: v.image_url || null,
             }));
 
           if (variantRecords.length > 0) {
@@ -574,6 +601,72 @@ export default function AdminProductEdit() {
                           onChange={(e) => updateVariant(index, 'stock_quantity', e.target.value)}
                         />
                       </div>
+
+                      {/* Variant Image */}
+                      <div className="mt-4 pt-4 border-t border-brand-gray">
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Variant Image
+                        </label>
+                        <div className="flex items-center gap-4">
+                          {variant.image_url ? (
+                            <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-brand-gray">
+                              <img
+                                src={variant.image_url}
+                                alt={variant.name}
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => updateVariant(index, 'image_url', '')}
+                                className="absolute -top-1 -right-1 p-1 bg-red-600 rounded-full text-white hover:bg-red-700"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="w-16 h-16 rounded-lg border-2 border-dashed border-brand-gray flex items-center justify-center">
+                              <ImageIcon className="h-6 w-6 text-gray-500" />
+                            </div>
+                          )}
+
+                          <div className="flex-1 flex flex-wrap gap-2">
+                            {/* Select from product images */}
+                            {images.length > 0 && (
+                              <select
+                                value={variant.image_url}
+                                onChange={(e) => updateVariant(index, 'image_url', e.target.value)}
+                                className="px-3 py-1.5 bg-brand-charcoal border border-brand-gray rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-neon"
+                              >
+                                <option value="">Select from product images</option>
+                                {images.map((img, imgIndex) => (
+                                  <option key={img} value={img}>
+                                    Image {imgIndex + 1}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+
+                            {/* Upload new image */}
+                            <label className="inline-flex items-center gap-1 px-3 py-1.5 bg-brand-charcoal border border-brand-gray rounded-lg text-gray-300 text-sm cursor-pointer hover:border-brand-neon/50 transition-colors">
+                              <Upload className="h-4 w-4" />
+                              Upload
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleVariantImageUpload(index, file);
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                          </div>
+                        </div>
+                        <p className="text-gray-500 text-xs mt-2">
+                          This image will be shown when this option is selected
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -632,7 +725,7 @@ export default function AdminProductEdit() {
                 images={images}
                 onChange={setImages}
                 bucket="product-images"
-                maxImages={5}
+                maxImages={20}
               />
             </Card>
 
