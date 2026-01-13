@@ -137,18 +137,18 @@ export default function AdminProductEdit() {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+    // Single atomic state update to prevent race conditions
+    setFormData((prev) => {
+      const newValue = type === 'checkbox' ? checked : value;
+      const updates: Partial<typeof prev> = { [name]: newValue };
 
-    // Auto-generate slug from name
-    if (name === 'name') {
-      setFormData((prev) => ({
-        ...prev,
-        slug: slugify(value),
-      }));
-    }
+      // Auto-generate slug from name in the same update
+      if (name === 'name' && typeof newValue === 'string') {
+        updates.slug = slugify(newValue);
+      }
+
+      return { ...prev, ...updates };
+    });
   };
 
   const addVariant = () => {
@@ -288,23 +288,38 @@ export default function AdminProductEdit() {
         // Insert new images
         if (images.length > 0) {
           console.log('Inserting images...');
-          const imageRecords = images.map((img, index) => ({
-            product_id: productId,
-            image_url: img,
-            display_order: index,
-            is_primary: index === 0,
-          }));
-          console.log('Image records:', imageRecords);
 
-          const { error: imgError } = await supabase
-            .from('product_images')
-            .insert(imageRecords);
+          // Filter out invalid URLs (empty, uploading state, or non-http URLs)
+          const validImages = images.filter(img =>
+            img &&
+            typeof img === 'string' &&
+            img.startsWith('http') &&
+            !img.includes('uploading')
+          );
 
-          if (imgError) {
-            console.error('Insert images error:', imgError);
-            throw new Error(`Failed to save images: ${imgError.message}`);
+          if (validImages.length !== images.length) {
+            console.warn(`Filtered out ${images.length - validImages.length} invalid image URLs`);
           }
-          console.log('Images inserted successfully');
+
+          if (validImages.length > 0) {
+            const imageRecords = validImages.map((img, index) => ({
+              product_id: productId,
+              image_url: img,
+              display_order: index,
+              is_primary: index === 0,
+            }));
+            console.log('Image records:', imageRecords);
+
+            const { error: imgError } = await supabase
+              .from('product_images')
+              .insert(imageRecords);
+
+            if (imgError) {
+              console.error('Insert images error:', imgError);
+              throw new Error(`Failed to save images: ${imgError.message}`);
+            }
+            console.log('Images inserted successfully');
+          }
         }
 
         // Save variants
@@ -327,15 +342,24 @@ export default function AdminProductEdit() {
         if (variants.length > 0) {
           const variantRecords = variants
             .filter(v => v.name.trim()) // Only save variants with names
-            .map((v, index) => ({
-              product_id: productId,
-              name: v.name,
-              sku: v.sku || null,
-              price_adjustment: parseFloat(v.price_adjustment) || 0,
-              stock_quantity: parseInt(v.stock_quantity) || 0,
-              display_order: index,
-              image_url: v.image_url || null,
-            }));
+            .map((v, index) => {
+              // Validate variant image URL - filter out invalid states
+              const validImageUrl = v.image_url &&
+                v.image_url.startsWith('http') &&
+                !v.image_url.includes('uploading')
+                  ? v.image_url
+                  : null;
+
+              return {
+                product_id: productId,
+                name: v.name,
+                sku: v.sku || null,
+                price_adjustment: parseFloat(v.price_adjustment) || 0,
+                stock_quantity: parseInt(v.stock_quantity) || 0,
+                display_order: index,
+                image_url: validImageUrl,
+              };
+            });
 
           if (variantRecords.length > 0) {
             console.log('Inserting variants:', variantRecords);
