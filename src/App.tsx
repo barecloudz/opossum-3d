@@ -17,6 +17,8 @@ import Checkout from './pages/Checkout';
 import OrderConfirmation from './pages/OrderConfirmation';
 import CustomQuote from './pages/CustomQuote';
 import Wishlist from './pages/Wishlist';
+import ReturnPolicy from './pages/ReturnPolicy';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Account from './pages/Account';
@@ -102,6 +104,8 @@ function App() {
           <Route path="checkout" element={<Checkout />} />
           <Route path="order-confirmation/:id" element={<OrderConfirmation />} />
           <Route path="custom-quote" element={<CustomQuote />} />
+          <Route path="return-policy" element={<ReturnPolicy />} />
+          <Route path="privacy-policy" element={<PrivacyPolicy />} />
           <Route path="wishlist" element={<Wishlist />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
