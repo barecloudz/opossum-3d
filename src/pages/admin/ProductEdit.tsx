@@ -9,6 +9,7 @@ import ImageUpload from '../../components/admin/ImageUpload';
 import { supabase } from '../../lib/supabase';
 import { slugify } from '../../lib/utils';
 import { useCategories } from '../../hooks/useCategories';
+import { useProductStore } from '../../store/productStore';
 
 interface Variant {
   id?: string;
@@ -24,6 +25,7 @@ export default function AdminProductEdit() {
   const navigate = useNavigate();
   const isNew = !id;
   const { categories } = useCategories({ includeInactive: true });
+  const { invalidateCache } = useProductStore();
 
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
@@ -57,11 +59,18 @@ export default function AdminProductEdit() {
 
   const fetchProduct = async () => {
     try {
-      const { data, error } = await supabase
+      // Add timeout using Promise.race
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out')), 15000);
+      });
+
+      const fetchPromise = supabase
         .from('products')
         .select('*')
         .eq('id', id)
         .single();
+
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (error) throw error;
 
@@ -157,16 +166,32 @@ export default function AdminProductEdit() {
   };
 
   const handleVariantImageUpload = async (index: number, file: File) => {
-    if (!file.type.startsWith('image/')) return;
-    if (file.size > 5 * 1024 * 1024) return;
+    if (!file.type.startsWith('image/')) {
+      setError({ message: 'Only image files are allowed for variant images' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError({ message: 'Variant image must be under 5MB' });
+      return;
+    }
+
+    // Show uploading state
+    updateVariant(index, 'image_url', 'uploading...');
 
     try {
-      const ext = file.name.split('.').pop();
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `variant-${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
 
-      const { error: uploadError } = await supabase.storage
+      // Add timeout
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Upload timed out')), 30000);
+      });
+
+      const uploadPromise = supabase.storage
         .from('product-images')
         .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+      const { error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]);
 
       if (uploadError) throw uploadError;
 
@@ -175,8 +200,10 @@ export default function AdminProductEdit() {
         .getPublicUrl(fileName);
 
       updateVariant(index, 'image_url', publicUrl);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to upload variant image:', err);
+      updateVariant(index, 'image_url', ''); // Clear the uploading state
+      setError({ message: `Failed to upload variant image: ${err.message}` });
     }
   };
 
@@ -326,6 +353,8 @@ export default function AdminProductEdit() {
       }
 
       console.log('Product saved successfully!');
+      // Invalidate cache so product list refreshes
+      invalidateCache();
       navigate('/admin/products');
     } catch (err: any) {
       console.error('Error saving product:', err);
@@ -608,7 +637,11 @@ export default function AdminProductEdit() {
                           Variant Image
                         </label>
                         <div className="flex items-center gap-4">
-                          {variant.image_url ? (
+                          {variant.image_url === 'uploading...' ? (
+                            <div className="w-16 h-16 rounded-lg border-2 border-brand-neon/50 bg-brand-gray flex items-center justify-center">
+                              <div className="w-6 h-6 border-2 border-brand-neon border-t-transparent rounded-full animate-spin" />
+                            </div>
+                          ) : variant.image_url ? (
                             <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-brand-gray">
                               <img
                                 src={variant.image_url}

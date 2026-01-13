@@ -10,6 +10,7 @@ interface ProductStore {
   loadingStartedAt: number | null;
   fetchProducts: (force?: boolean) => Promise<void>;
   resetLoading: () => void;
+  invalidateCache: () => void;
 }
 
 // Cache products for 5 minutes before refetching
@@ -27,6 +28,11 @@ export const useProductStore = create<ProductStore>((set, get) => ({
   resetLoading: () => {
     console.log('[ProductStore] Force resetting loading state');
     set({ isLoading: false, loadingStartedAt: null });
+  },
+
+  invalidateCache: () => {
+    console.log('[ProductStore] Invalidating cache - next fetch will be fresh');
+    set({ lastFetched: null });
   },
 
   fetchProducts: async (force = false) => {
