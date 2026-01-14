@@ -237,102 +237,128 @@ body {
   }
 }
 
-/* Product Description Card - Tech-style with neon glow */
+/* Sci-Fi HUD Panel - Cyberpunk style with clipped corners */
 .desc-card {
-  --desc-card-bg: rgba(14, 17, 20, 0.94);
-  --desc-stroke: rgba(139, 255, 31, 0.35);
-  --desc-glow1: rgba(139, 255, 31, 0.15);
-  --desc-glow2: rgba(139, 255, 31, 0.12);
-  --desc-text: #e5e7ea;
-  --desc-muted: #b7bcc2;
-  --desc-accent: #8bff1f;
-  --desc-radius: 14px;
+  --hud-green: #39ff14;
+  --hud-green-dim: rgba(57, 255, 20, 0.7);
+  --hud-bg: rgba(57, 255, 20, 0.08);
+  --hud-text: #e0ffe0;
 
   position: relative;
-  overflow: hidden;
-  background: var(--desc-card-bg);
-  border: 1px solid var(--desc-stroke);
-  border-radius: var(--desc-radius);
-  padding: 26px 28px;
-  box-shadow:
-    0 0 0 1px var(--desc-glow1),
-    0 0 24px var(--desc-glow2),
-    0 14px 40px rgba(0, 0, 0, 0.55);
+  background: var(--hud-bg);
+  padding: 24px 28px;
+  clip-path: polygon(
+    0 12px,
+    12px 0,
+    calc(100% - 12px) 0,
+    100% 12px,
+    100% calc(100% - 12px),
+    calc(100% - 12px) 100%,
+    12px 100%,
+    0 calc(100% - 12px)
+  );
 }
 
-/* Subtle carbon/diagonal weave texture */
+/* Main border frame */
 .desc-card::before {
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(135deg,
-      rgba(255, 255, 255, 0.06) 0%,
-      rgba(255, 255, 255, 0) 40%),
-    repeating-linear-gradient(135deg,
-      rgba(255, 255, 255, 0.045) 0 2px,
-      rgba(255, 255, 255, 0) 2px 8px);
-  opacity: 0.10;
+  background: transparent;
+  border: 2px solid var(--hud-green);
+  clip-path: polygon(
+    0 12px,
+    12px 0,
+    calc(100% - 12px) 0,
+    100% 12px,
+    100% calc(100% - 12px),
+    calc(100% - 12px) 100%,
+    12px 100%,
+    0 calc(100% - 12px)
+  );
   pointer-events: none;
 }
 
-/* Fine noise overlay */
+/* Corner accents - top left */
 .desc-card::after {
   content: "";
   position: absolute;
-  inset: -40px;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
-  opacity: 0.06;
-  mix-blend-mode: overlay;
+  top: 4px;
+  left: 16px;
+  width: 60px;
+  height: 3px;
+  background: var(--hud-green);
+  box-shadow: 0 0 8px var(--hud-green);
   pointer-events: none;
-  transform: rotate(2deg);
 }
 
-/* Left hex accent strip */
+/* Top accent bar container */
 .desc-card-accent {
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 12px;
-  background:
-    linear-gradient(180deg,
-      rgba(139, 255, 31, 0.25),
-      rgba(139, 255, 31, 0.08)),
-    repeating-linear-gradient(60deg,
-      rgba(139, 255, 31, 0.22) 0 6px,
-      rgba(0, 0, 0, 0) 6px 12px);
-  opacity: 0.75;
-  box-shadow: 0 0 18px rgba(139, 255, 31, 0.10);
+  top: 4px;
+  right: 16px;
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+}
+
+/* Decorative accent bars */
+.desc-card-accent::before {
+  content: "";
+  width: 40px;
+  height: 3px;
+  background: var(--hud-green);
+  box-shadow: 0 0 8px var(--hud-green);
+}
+
+.desc-card-accent::after {
+  content: "";
+  width: 20px;
+  height: 3px;
+  background: var(--hud-green);
+  box-shadow: 0 0 8px var(--hud-green);
+}
+
+/* Bottom corner accent */
+.desc-card-corner {
+  position: absolute;
+  bottom: 4px;
+  left: 16px;
+  width: 30px;
+  height: 3px;
+  background: var(--hud-green);
+  box-shadow: 0 0 8px var(--hud-green);
   pointer-events: none;
 }
 
 .desc-card-title {
   position: relative;
-  margin: 0 0 10px 0;
-  color: var(--desc-accent);
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  color: var(--hud-green);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  text-shadow: 0 0 8px rgba(139, 255, 31, 0.25);
-  font-size: 0.875rem;
+  text-shadow: 0 0 10px var(--hud-green), 0 0 20px rgba(57, 255, 20, 0.5);
+  border-bottom: 1px solid var(--hud-green-dim);
 }
 
 .desc-card-text {
   position: relative;
-  color: var(--desc-text);
+  color: var(--hud-text);
   margin: 0;
-  line-height: 1.65;
+  line-height: 1.7;
   font-size: 1.0625rem;
+  text-shadow: 0 0 2px rgba(57, 255, 20, 0.3);
 }
 
 .desc-card-list {
   position: relative;
   padding-left: 18px;
-  margin: 10px 0 0 0;
-  color: var(--desc-muted);
-  line-height: 1.65;
+  margin: 12px 0 0 0;
+  color: var(--hud-text);
+  line-height: 1.7;
   font-size: 1rem;
 }
 
@@ -340,13 +366,25 @@ body {
   margin: 6px 0;
 }
 
+.desc-card-list li::marker {
+  color: var(--hud-green);
+}
+
+/* Glow effect around the whole card */
+.desc-card-wrapper {
+  filter: drop-shadow(0 0 8px rgba(57, 255, 20, 0.3));
+}
+
 /* Mobile spacing */
 @media (max-width: 640px) {
   .desc-card {
-    padding: 18px 18px;
+    padding: 20px 20px;
   }
   .desc-card-text,
   .desc-card-list {
     font-size: 0.9375rem;
+  }
+  .desc-card-title {
+    font-size: 0.875rem;
   }
 }
