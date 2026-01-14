@@ -249,7 +249,11 @@ export default function ProductDetail() {
 
             {/* Description */}
             {product.description && (
-              <p className="text-gray-400 leading-relaxed">{product.description}</p>
+              <div className="desc-card">
+                <div className="desc-card-accent" aria-hidden="true"></div>
+                <h2 className="desc-card-title">Product Description</h2>
+                <p className="desc-card-text">{product.description}</p>
+              </div>
             )}
 
             {/* Variants */}

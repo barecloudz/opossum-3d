@@ -12,7 +12,7 @@
   --color-text: #f5f5f5;
   --color-border: #2d2d2d;
 
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
@@ -234,5 +234,119 @@ body {
   /* Theme-aware text that adapts to light/dark backgrounds */
   .text-theme {
     color: var(--color-text);
+  }
+}
+
+/* Product Description Card - Tech-style with neon glow */
+.desc-card {
+  --desc-card-bg: rgba(14, 17, 20, 0.94);
+  --desc-stroke: rgba(139, 255, 31, 0.35);
+  --desc-glow1: rgba(139, 255, 31, 0.15);
+  --desc-glow2: rgba(139, 255, 31, 0.12);
+  --desc-text: #e5e7ea;
+  --desc-muted: #b7bcc2;
+  --desc-accent: #8bff1f;
+  --desc-radius: 14px;
+
+  position: relative;
+  overflow: hidden;
+  background: var(--desc-card-bg);
+  border: 1px solid var(--desc-stroke);
+  border-radius: var(--desc-radius);
+  padding: 26px 28px;
+  box-shadow:
+    0 0 0 1px var(--desc-glow1),
+    0 0 24px var(--desc-glow2),
+    0 14px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* Subtle carbon/diagonal weave texture */
+.desc-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.06) 0%,
+      rgba(255, 255, 255, 0) 40%),
+    repeating-linear-gradient(135deg,
+      rgba(255, 255, 255, 0.045) 0 2px,
+      rgba(255, 255, 255, 0) 2px 8px);
+  opacity: 0.10;
+  pointer-events: none;
+}
+
+/* Fine noise overlay */
+.desc-card::after {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  transform: rotate(2deg);
+}
+
+/* Left hex accent strip */
+.desc-card-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  background:
+    linear-gradient(180deg,
+      rgba(139, 255, 31, 0.25),
+      rgba(139, 255, 31, 0.08)),
+    repeating-linear-gradient(60deg,
+      rgba(139, 255, 31, 0.22) 0 6px,
+      rgba(0, 0, 0, 0) 6px 12px);
+  opacity: 0.75;
+  box-shadow: 0 0 18px rgba(139, 255, 31, 0.10);
+  pointer-events: none;
+}
+
+.desc-card-title {
+  position: relative;
+  margin: 0 0 10px 0;
+  color: var(--desc-accent);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px rgba(139, 255, 31, 0.25);
+  font-size: 0.875rem;
+}
+
+.desc-card-text {
+  position: relative;
+  color: var(--desc-text);
+  margin: 0;
+  line-height: 1.65;
+  font-size: 1.0625rem;
+}
+
+.desc-card-list {
+  position: relative;
+  padding-left: 18px;
+  margin: 10px 0 0 0;
+  color: var(--desc-muted);
+  line-height: 1.65;
+  font-size: 1rem;
+}
+
+.desc-card-list li {
+  margin: 6px 0;
+}
+
+/* Mobile spacing */
+@media (max-width: 640px) {
+  .desc-card {
+    padding: 18px 18px;
+  }
+  .desc-card-text,
+  .desc-card-list {
+    font-size: 0.9375rem;
   }
 }
