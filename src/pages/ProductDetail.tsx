@@ -251,6 +251,7 @@ export default function ProductDetail() {
             {product.description && (
               <div className="desc-card-wrapper">
                 <div className="desc-card">
+                  <div className="desc-card-titlebar" aria-hidden="true"></div>
                   <div className="desc-card-accent" aria-hidden="true"></div>
                   <div className="desc-card-corner" aria-hidden="true"></div>
                   <div className="desc-card-edge" aria-hidden="true"></div>
