@@ -253,6 +253,7 @@ export default function ProductDetail() {
                 <div className="desc-card">
                   <div className="desc-card-accent" aria-hidden="true"></div>
                   <div className="desc-card-corner" aria-hidden="true"></div>
+                  <div className="desc-card-edge" aria-hidden="true"></div>
                   <h2 className="desc-card-title">Product Description</h2>
                   <p className="desc-card-text">{product.description}</p>
                 </div>

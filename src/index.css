@@ -237,95 +237,144 @@ body {
   }
 }
 
-/* Sci-Fi HUD Panel - Cyberpunk style with clipped corners */
+/* Sci-Fi HUD Panel - Cyberpunk style matching reference */
 .desc-card {
   --hud-green: #39ff14;
-  --hud-green-dim: rgba(57, 255, 20, 0.7);
-  --hud-bg: rgba(57, 255, 20, 0.08);
+  --hud-green-mid: rgba(57, 255, 20, 0.6);
+  --hud-green-dim: rgba(57, 255, 20, 0.25);
+  --hud-bg: rgba(57, 255, 20, 0.12);
   --hud-text: #e0ffe0;
+  --corner-size: 20px;
 
   position: relative;
-  background: var(--hud-bg);
-  padding: 24px 28px;
+  background:
+    linear-gradient(135deg, rgba(57, 255, 20, 0.15) 0%, transparent 50%),
+    linear-gradient(315deg, rgba(57, 255, 20, 0.1) 0%, transparent 50%),
+    var(--hud-bg);
+  padding: 32px 28px 28px;
   clip-path: polygon(
-    0 12px,
-    12px 0,
-    calc(100% - 12px) 0,
-    100% 12px,
-    100% calc(100% - 12px),
-    calc(100% - 12px) 100%,
-    12px 100%,
-    0 calc(100% - 12px)
+    0 var(--corner-size),
+    var(--corner-size) 0,
+    calc(100% - var(--corner-size)) 0,
+    100% var(--corner-size),
+    100% calc(100% - var(--corner-size)),
+    calc(100% - var(--corner-size)) 100%,
+    var(--corner-size) 100%,
+    0 calc(100% - var(--corner-size))
   );
 }
 
-/* Main border frame */
+/* Outer border frame */
 .desc-card::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: transparent;
   border: 2px solid var(--hud-green);
   clip-path: polygon(
-    0 12px,
-    12px 0,
-    calc(100% - 12px) 0,
-    100% 12px,
-    100% calc(100% - 12px),
-    calc(100% - 12px) 100%,
-    12px 100%,
-    0 calc(100% - 12px)
+    0 var(--corner-size),
+    var(--corner-size) 0,
+    calc(100% - var(--corner-size)) 0,
+    100% var(--corner-size),
+    100% calc(100% - var(--corner-size)),
+    calc(100% - var(--corner-size)) 100%,
+    var(--corner-size) 100%,
+    0 calc(100% - var(--corner-size))
   );
   pointer-events: none;
 }
 
-/* Corner accents - top left */
+/* Inner border frame for double-line effect */
 .desc-card::after {
   content: "";
   position: absolute;
-  top: 4px;
-  left: 16px;
-  width: 60px;
-  height: 3px;
-  background: var(--hud-green);
-  box-shadow: 0 0 8px var(--hud-green);
+  inset: 6px;
+  border: 1px solid var(--hud-green-mid);
+  clip-path: polygon(
+    0 calc(var(--corner-size) - 6px),
+    calc(var(--corner-size) - 6px) 0,
+    calc(100% - var(--corner-size) + 6px) 0,
+    100% calc(var(--corner-size) - 6px),
+    100% calc(100% - var(--corner-size) + 6px),
+    calc(100% - var(--corner-size) + 6px) 100%,
+    calc(var(--corner-size) - 6px) 100%,
+    0 calc(100% - var(--corner-size) + 6px)
+  );
   pointer-events: none;
 }
 
-/* Top accent bar container */
+/* Top-left corner accent with diagonal stripes */
 .desc-card-accent {
   position: absolute;
-  top: 4px;
-  right: 16px;
-  display: flex;
-  gap: 4px;
+  top: 0;
+  left: calc(var(--corner-size) + 8px);
+  width: 100px;
+  height: 8px;
+  background:
+    repeating-linear-gradient(
+      -60deg,
+      var(--hud-green) 0px,
+      var(--hud-green) 3px,
+      transparent 3px,
+      transparent 6px
+    );
+  clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+  box-shadow: 0 0 12px var(--hud-green);
   pointer-events: none;
 }
 
-/* Decorative accent bars */
+/* Top-right corner accent */
 .desc-card-accent::before {
   content: "";
-  width: 40px;
-  height: 3px;
-  background: var(--hud-green);
-  box-shadow: 0 0 8px var(--hud-green);
+  position: absolute;
+  right: -180px;
+  top: 0;
+  width: 60px;
+  height: 8px;
+  background:
+    repeating-linear-gradient(
+      -60deg,
+      var(--hud-green) 0px,
+      var(--hud-green) 3px,
+      transparent 3px,
+      transparent 6px
+    );
+  clip-path: polygon(5% 0, 100% 0, 100% 100%, 0 100%);
+  box-shadow: 0 0 12px var(--hud-green);
 }
 
-.desc-card-accent::after {
-  content: "";
-  width: 20px;
-  height: 3px;
-  background: var(--hud-green);
-  box-shadow: 0 0 8px var(--hud-green);
-}
-
-/* Bottom corner accent */
+/* Bottom-left corner accent */
 .desc-card-corner {
   position: absolute;
-  bottom: 4px;
-  left: 16px;
-  width: 30px;
-  height: 3px;
+  bottom: 0;
+  left: calc(var(--corner-size) + 8px);
+  width: 50px;
+  height: 6px;
+  background: var(--hud-green);
+  clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%);
+  box-shadow: 0 0 10px var(--hud-green);
+  pointer-events: none;
+}
+
+/* Bottom-right corner accent */
+.desc-card-corner::before {
+  content: "";
+  position: absolute;
+  right: -120px;
+  bottom: 0;
+  width: 40px;
+  height: 6px;
+  background: var(--hud-green);
+  clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%);
+  box-shadow: 0 0 10px var(--hud-green);
+}
+
+/* Left edge vertical accent */
+.desc-card-edge {
+  position: absolute;
+  left: 0;
+  top: calc(var(--corner-size) + 20px);
+  width: 4px;
+  height: 40px;
   background: var(--hud-green);
   box-shadow: 0 0 8px var(--hud-green);
   pointer-events: none;
@@ -333,37 +382,55 @@ body {
 
 .desc-card-title {
   position: relative;
-  margin: 0 0 12px 0;
-  padding-bottom: 8px;
+  margin: 0 0 16px 0;
+  padding: 0 0 10px 0;
   color: var(--hud-green);
   font-weight: 700;
-  font-size: 1rem;
-  letter-spacing: 0.15em;
+  font-size: 1.125rem;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  text-shadow: 0 0 10px var(--hud-green), 0 0 20px rgba(57, 255, 20, 0.5);
-  border-bottom: 1px solid var(--hud-green-dim);
+  text-shadow:
+    0 0 10px var(--hud-green),
+    0 0 20px var(--hud-green),
+    0 0 40px rgba(57, 255, 20, 0.4);
+  border-bottom: 2px solid var(--hud-green-mid);
+}
+
+/* Decorative dots after title */
+.desc-card-title::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 14px;
+  width: 8px;
+  height: 8px;
+  background: var(--hud-green);
+  box-shadow:
+    -14px 0 0 var(--hud-green),
+    -28px 0 0 var(--hud-green),
+    0 0 8px var(--hud-green);
 }
 
 .desc-card-text {
   position: relative;
   color: var(--hud-text);
   margin: 0;
-  line-height: 1.7;
+  line-height: 1.75;
   font-size: 1.0625rem;
-  text-shadow: 0 0 2px rgba(57, 255, 20, 0.3);
+  text-shadow: 0 0 3px rgba(57, 255, 20, 0.2);
 }
 
 .desc-card-list {
   position: relative;
-  padding-left: 18px;
-  margin: 12px 0 0 0;
+  padding-left: 20px;
+  margin: 14px 0 0 0;
   color: var(--hud-text);
-  line-height: 1.7;
+  line-height: 1.75;
   font-size: 1rem;
 }
 
 .desc-card-list li {
-  margin: 6px 0;
+  margin: 8px 0;
 }
 
 .desc-card-list li::marker {
@@ -372,19 +439,31 @@ body {
 
 /* Glow effect around the whole card */
 .desc-card-wrapper {
-  filter: drop-shadow(0 0 8px rgba(57, 255, 20, 0.3));
+  filter: drop-shadow(0 0 15px rgba(57, 255, 20, 0.4));
 }
 
-/* Mobile spacing */
+/* Mobile adjustments */
 @media (max-width: 640px) {
   .desc-card {
-    padding: 20px 20px;
+    --corner-size: 14px;
+    padding: 28px 20px 24px;
+  }
+  .desc-card-accent {
+    width: 70px;
+  }
+  .desc-card-accent::before {
+    right: -100px;
+    width: 40px;
   }
   .desc-card-text,
   .desc-card-list {
     font-size: 0.9375rem;
   }
   .desc-card-title {
-    font-size: 0.875rem;
+    font-size: 1rem;
+    letter-spacing: 0.15em;
+  }
+  .desc-card-title::after {
+    display: none;
   }
 }
