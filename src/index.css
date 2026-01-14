@@ -411,7 +411,7 @@ body {
 }
 
 .desc-card-text {
-  color: #111;
+  color: #ffffff;
   font-family: 'Montserrat', sans-serif;
   font-weight: 600;
   margin: 0;
@@ -422,7 +422,7 @@ body {
 .desc-card-list {
   padding-left: 20px;
   margin: 12px 0 0 0;
-  color: #111;
+  color: #ffffff;
   font-family: 'Montserrat', sans-serif;
   font-weight: 600;
   line-height: 1.7;
