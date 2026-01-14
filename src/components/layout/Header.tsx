@@ -119,6 +119,17 @@ export default function Header() {
               )}
             </button>
 
+            {/* Logout button - Desktop (rightmost) */}
+            {user && (
+              <button
+                onClick={handleSignOut}
+                className="hidden md:flex items-center text-theme hover:text-red-400 transition-colors"
+                title="Sign Out"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            )}
+
             {/* Mobile Right - Login/Menu */}
             <div className="flex items-center space-x-2 md:hidden">
               {!user && (
