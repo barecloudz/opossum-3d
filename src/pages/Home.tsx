@@ -142,6 +142,13 @@ export default function Home() {
     }
   };
 
+  // Reset slide index if banners change and current index is out of bounds
+  useEffect(() => {
+    if (currentSlide >= banners.length) {
+      setCurrentSlide(0);
+    }
+  }, [banners.length, currentSlide]);
+
   // Banner carousel auto-rotation
   const nextSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev + 1) % banners.length);
@@ -152,9 +159,10 @@ export default function Home() {
   }, [banners.length]);
 
   useEffect(() => {
+    if (banners.length === 0) return;
     const timer = setInterval(nextSlide, 5000); // Auto-rotate every 5 seconds
     return () => clearInterval(timer);
-  }, [nextSlide]);
+  }, [nextSlide, banners.length]);
 
   // Fetch products on mount (will use cache if available)
   useEffect(() => {
