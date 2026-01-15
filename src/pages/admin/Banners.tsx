@@ -415,6 +415,7 @@ export default function AdminBanners() {
             label="Banner Image (optional - uses gradient as fallback)"
             image={formData.image_url || null}
             onChange={(url) => setFormData((prev) => ({ ...prev, image_url: url || '' }))}
+            bucket="product-images"
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
