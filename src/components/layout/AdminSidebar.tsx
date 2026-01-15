@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Star,
   Shield,
+  Image,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -30,6 +31,7 @@ export const navItems = [
   { href: '/admin/team', icon: Shield, label: 'Team' },
   { href: '/admin/quotes', icon: MessageSquare, label: 'Quote Requests' },
   { href: '/admin/reviews', icon: Star, label: 'Reviews' },
+  { href: '/admin/banners', icon: Image, label: 'Banners' },
   { href: '/admin/themes', icon: Palette, label: 'Themes' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];

@@ -39,6 +39,7 @@ import AdminPromoCodes from './pages/admin/PromoCodes';
 import AdminEmailSubscribers from './pages/admin/EmailSubscribers';
 import AdminReviews from './pages/admin/Reviews';
 import AdminTeam from './pages/admin/Team';
+import AdminBanners from './pages/admin/Banners';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -144,6 +145,7 @@ function App() {
           <Route path="subscribers" element={<AdminEmailSubscribers />} />
           <Route path="reviews" element={<AdminReviews />} />
           <Route path="themes" element={<AdminThemes />} />
+          <Route path="banners" element={<AdminBanners />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
       </Routes>

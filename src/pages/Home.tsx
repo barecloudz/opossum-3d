@@ -6,39 +6,51 @@ import { useCartStore } from '../store/cartStore';
 import { useProductStore } from '../store/productStore';
 import { useWishlistStore } from '../store/wishlistStore';
 import { supabase } from '../lib/supabase';
-import type { Category } from '../types';
+import type { Category, BannerSlide } from '../types';
 
-// Banner slides data
-const bannerSlides = [
+// Fallback banner slides (used when database is empty)
+const defaultBannerSlides = [
   {
-    id: 1,
+    id: '1',
     title: 'Custom 3D',
     subtitle: 'Printed Creations',
     badge: 'New Arrivals',
-    cta: 'Shop Now',
-    link: '/products',
+    cta_text: 'Shop Now',
+    cta_link: '/products',
+    image_url: null,
     gradient: 'from-[var(--color-primary)] to-emerald-600',
-    textColor: 'text-black',
+    text_color: 'dark' as const,
+    display_order: 1,
+    is_active: true,
+    created_at: '',
   },
   {
-    id: 2,
+    id: '2',
     title: 'Laser Engraved',
     subtitle: 'Personalized Gifts',
     badge: 'Popular',
-    cta: 'Explore',
-    link: '/products?category=laser-engraved',
+    cta_text: 'Explore',
+    cta_link: '/products?category=laser-engraved',
+    image_url: null,
     gradient: 'from-purple-600 to-pink-600',
-    textColor: 'text-white',
+    text_color: 'light' as const,
+    display_order: 2,
+    is_active: true,
+    created_at: '',
   },
   {
-    id: 3,
+    id: '3',
     title: 'Custom Orders',
     subtitle: 'Your Ideas, Our Craft',
     badge: 'Get a Quote',
-    cta: 'Start Now',
-    link: '/custom-quote',
+    cta_text: 'Start Now',
+    cta_link: '/custom-quote',
+    image_url: null,
     gradient: 'from-cyan-500 to-blue-600',
-    textColor: 'text-white',
+    text_color: 'light' as const,
+    display_order: 3,
+    is_active: true,
+    created_at: '',
   },
 ];
 
@@ -58,6 +70,7 @@ export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [banners, setBanners] = useState<BannerSlide[]>(defaultBannerSlides);
   const { user } = useAuthStore();
   const { getItemCount, addItem } = useCartStore();
   const { items: wishlistItems, addItem: addToWishlist, removeItem: removeFromWishlist } = useWishlistStore();
@@ -67,8 +80,26 @@ export default function Home() {
   // Use global product store (cached across page navigations)
   const { products, isLoading, error, fetchProducts } = useProductStore();
 
-  // Fetch categories from database
+  // Fetch banners and categories from database
   useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('banner_slides')
+          .select('*')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+
+        if (error) throw error;
+        if (data && data.length > 0) {
+          setBanners(data);
+        }
+      } catch (err) {
+        console.error('Error fetching banners:', err);
+        // Keep using default banners on error
+      }
+    };
+
     const fetchCategories = async () => {
       try {
         const { data, error } = await supabase
@@ -86,6 +117,7 @@ export default function Home() {
       }
     };
 
+    fetchBanners();
     fetchCategories();
   }, []);
 
@@ -112,12 +144,12 @@ export default function Home() {
 
   // Banner carousel auto-rotation
   const nextSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
-  }, []);
+    setCurrentSlide((prev) => (prev + 1) % banners.length);
+  }, [banners.length]);
 
   const prevSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev - 1 + bannerSlides.length) % bannerSlides.length);
-  }, []);
+    setCurrentSlide((prev) => (prev - 1 + banners.length) % banners.length);
+  }, [banners.length]);
 
   useEffect(() => {
     const timer = setInterval(nextSlide, 5000); // Auto-rotate every 5 seconds
@@ -193,30 +225,40 @@ export default function Home() {
               className="flex transition-transform duration-500 ease-out"
               style={{ transform: `translateX(-${currentSlide * 100}%)` }}
             >
-              {bannerSlides.map((slide) => (
+              {banners.map((slide) => (
                 <div
                   key={slide.id}
                   className={`w-full flex-shrink-0 relative bg-gradient-to-r ${slide.gradient} p-6 md:p-8`}
                 >
+                  {/* Banner image (if exists) */}
+                  {slide.image_url && (
+                    <img
+                      src={slide.image_url}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  )}
                   <div className="relative z-10">
-                    <div className={`inline-block bg-black/20 rounded-lg px-3 py-1 text-sm font-medium text-white mb-2`}>
-                      {slide.badge}
-                    </div>
-                    <h2 className={`text-3xl md:text-4xl font-bold ${slide.textColor} mb-2`}>
+                    {slide.badge && (
+                      <div className="inline-block bg-black/20 rounded-lg px-3 py-1 text-sm font-medium text-white mb-2">
+                        {slide.badge}
+                      </div>
+                    )}
+                    <h2 className={`text-3xl md:text-4xl font-bold ${slide.text_color === 'dark' ? 'text-black' : 'text-white'} mb-2`}>
                       {slide.title}
                     </h2>
-                    <p className={`text-xl md:text-2xl font-bold ${slide.textColor}/80 mb-4`}>
+                    <p className={`text-xl md:text-2xl font-bold ${slide.text_color === 'dark' ? 'text-black/80' : 'text-white/80'} mb-4`}>
                       {slide.subtitle}
                     </p>
                     <Link
-                      to={slide.link}
+                      to={slide.cta_link}
                       className={`inline-flex items-center gap-2 ${
-                        slide.textColor === 'text-black'
+                        slide.text_color === 'dark'
                           ? 'bg-black text-white hover:bg-black/80'
                           : 'bg-white text-black hover:bg-white/90'
                       } px-5 py-2.5 rounded-xl font-medium transition-colors btn-press`}
                     >
-                      {slide.cta} <ArrowRight className="h-4 w-4" />
+                      {slide.cta_text} <ArrowRight className="h-4 w-4" />
                     </Link>
                   </div>
                   {/* Decorative circles */}
@@ -242,7 +284,7 @@ export default function Home() {
 
             {/* Dots indicator */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-              {bannerSlides.map((_, index) => (
+              {banners.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentSlide(index)}

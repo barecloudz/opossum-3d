@@ -220,3 +220,18 @@ export interface Wishlist {
   created_at: string;
   product?: Product;
 }
+
+export interface BannerSlide {
+  id: string;
+  title: string;
+  subtitle: string;
+  badge: string | null;
+  cta_text: string;
+  cta_link: string;
+  image_url: string | null;
+  gradient: string;
+  text_color: 'light' | 'dark';
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+}

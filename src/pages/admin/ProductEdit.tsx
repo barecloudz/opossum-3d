@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, AlertCircle, X, Image as ImageIcon, Upload } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, AlertCircle, X, Image as ImageIcon, Upload, FolderPlus } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
 import Spinner from '../../components/ui/Spinner';
+import Modal from '../../components/ui/Modal';
 import ImageUpload from '../../components/admin/ImageUpload';
+import SingleImageUpload from '../../components/admin/SingleImageUpload';
 import { supabase } from '../../lib/supabase';
 import { slugify } from '../../lib/utils';
 import { useCategories } from '../../hooks/useCategories';
 import { useProductStore } from '../../store/productStore';
+import { useToast } from '../../components/ui/Toast';
 
 interface Variant {
   id?: string;
@@ -24,14 +27,26 @@ export default function AdminProductEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNew = !id;
-  const { categories } = useCategories({ includeInactive: true });
+  const { categories, refetch: refetchCategories } = useCategories({ includeInactive: true });
   const { invalidateCache } = useProductStore();
+  const { addToast } = useToast();
 
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
+
+  // Category modal state
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    image_url: '',
+    is_active: true,
+  });
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -163,6 +178,75 @@ export default function AdminProductEdit() {
 
   const removeVariant = (index: number) => {
     setVariants(variants.filter((_, i) => i !== index));
+  };
+
+  // Category modal handlers
+  const generateCategorySlug = (name: string) => {
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  };
+
+  const handleCategoryNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const name = e.target.value;
+    setNewCategory((prev) => ({
+      ...prev,
+      name,
+      slug: generateCategorySlug(name),
+    }));
+  };
+
+  const openCategoryModal = () => {
+    setNewCategory({
+      name: '',
+      slug: '',
+      description: '',
+      image_url: '',
+      is_active: true,
+    });
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingCategory(true);
+
+    try {
+      const maxOrder = categories.length > 0
+        ? Math.max(...categories.map((c) => c.display_order))
+        : 0;
+
+      const { data, error: insertError } = await supabase
+        .from('categories')
+        .insert({
+          name: newCategory.name,
+          slug: newCategory.slug,
+          description: newCategory.description || null,
+          image_url: newCategory.image_url || null,
+          is_active: newCategory.is_active,
+          display_order: maxOrder + 1,
+        })
+        .select('id')
+        .single();
+
+      if (insertError) throw insertError;
+
+      addToast('Category created successfully', 'success');
+      setIsCategoryModalOpen(false);
+
+      // Refresh categories and select the new one
+      await refetchCategories();
+      if (data?.id) {
+        setFormData((prev) => ({ ...prev, category_id: data.id }));
+      }
+    } catch (err: any) {
+      console.error('Error creating category:', err);
+      if (err.code === '23505') {
+        addToast('A category with this slug already exists', 'error');
+      } else {
+        addToast('Failed to create category', 'error');
+      }
+    } finally {
+      setIsSavingCategory(false);
+    }
   };
 
   const handleVariantImageUpload = async (index: number, file: File) => {
@@ -764,7 +848,13 @@ export default function AdminProductEdit() {
               <select
                 name="category_id"
                 value={formData.category_id}
-                onChange={handleInputChange}
+                onChange={(e) => {
+                  if (e.target.value === '__add_new__') {
+                    openCategoryModal();
+                  } else {
+                    handleInputChange(e);
+                  }
+                }}
                 className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-neon"
               >
                 <option value="">No Category</option>
@@ -773,6 +863,7 @@ export default function AdminProductEdit() {
                     {category.name}{!category.is_active ? ' (Inactive)' : ''}
                   </option>
                 ))}
+                <option value="__add_new__" className="text-brand-neon">+ Add New Category</option>
               </select>
             </Card>
 
@@ -793,6 +884,86 @@ export default function AdminProductEdit() {
           </div>
         </div>
       </form>
+
+      {/* Create Category Modal */}
+      <Modal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        title="Create New Category"
+      >
+        <form onSubmit={handleSaveCategory} className="space-y-4">
+          <Input
+            label="Category Name"
+            value={newCategory.name}
+            onChange={handleCategoryNameChange}
+            required
+            placeholder="e.g., Home Decor"
+          />
+
+          <Input
+            label="URL Slug"
+            value={newCategory.slug}
+            onChange={(e) =>
+              setNewCategory((prev) => ({ ...prev, slug: generateCategorySlug(e.target.value) }))
+            }
+            required
+            placeholder="e.g., home-decor"
+            helperText="Used in the URL: /products?category=slug"
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Description (optional)
+            </label>
+            <textarea
+              value={newCategory.description}
+              onChange={(e) =>
+                setNewCategory((prev) => ({ ...prev, description: e.target.value }))
+              }
+              rows={3}
+              className="w-full px-4 py-2 rounded-lg bg-brand-black border border-brand-gray text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-neon focus:border-transparent resize-none"
+              placeholder="Brief description of this category"
+            />
+          </div>
+
+          <SingleImageUpload
+            label="Category Image (optional)"
+            image={newCategory.image_url || null}
+            onChange={(url) =>
+              setNewCategory((prev) => ({ ...prev, image_url: url || '' }))
+            }
+          />
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="category_is_active"
+              checked={newCategory.is_active}
+              onChange={(e) =>
+                setNewCategory((prev) => ({ ...prev, is_active: e.target.checked }))
+              }
+              className="w-4 h-4 rounded border-brand-gray bg-brand-black text-brand-neon focus:ring-brand-neon"
+            />
+            <label htmlFor="category_is_active" className="text-gray-300">
+              Active (visible on storefront)
+            </label>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsCategoryModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={isSavingCategory}>
+              <FolderPlus className="h-4 w-4 mr-2" />
+              Create Category
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
