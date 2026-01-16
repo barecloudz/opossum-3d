@@ -8,52 +8,6 @@ import { useWishlistStore } from '../store/wishlistStore';
 import { supabase } from '../lib/supabase';
 import type { Category, BannerSlide } from '../types';
 
-// Fallback banner slides (used when database is empty)
-const defaultBannerSlides = [
-  {
-    id: '1',
-    title: 'Custom 3D',
-    subtitle: 'Printed Creations',
-    badge: 'New Arrivals',
-    cta_text: 'Shop Now',
-    cta_link: '/products',
-    image_url: null,
-    gradient: 'from-[var(--color-primary)] to-emerald-600',
-    text_color: 'dark' as const,
-    display_order: 1,
-    is_active: true,
-    created_at: '',
-  },
-  {
-    id: '2',
-    title: 'Laser Engraved',
-    subtitle: 'Personalized Gifts',
-    badge: 'Popular',
-    cta_text: 'Explore',
-    cta_link: '/products?category=laser-engraved',
-    image_url: null,
-    gradient: 'from-purple-600 to-pink-600',
-    text_color: 'light' as const,
-    display_order: 2,
-    is_active: true,
-    created_at: '',
-  },
-  {
-    id: '3',
-    title: 'Custom Orders',
-    subtitle: 'Your Ideas, Our Craft',
-    badge: 'Get a Quote',
-    cta_text: 'Start Now',
-    cta_link: '/custom-quote',
-    image_url: null,
-    gradient: 'from-cyan-500 to-blue-600',
-    text_color: 'light' as const,
-    display_order: 3,
-    is_active: true,
-    created_at: '',
-  },
-];
-
 // Gradient colors for categories without images
 const categoryGradients = [
   'from-emerald-500 to-teal-600',
@@ -70,7 +24,7 @@ export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [banners, setBanners] = useState<BannerSlide[]>(defaultBannerSlides);
+  const [banners, setBanners] = useState<BannerSlide[]>([]);
   const { user } = useAuthStore();
   const { getItemCount, addItem } = useCartStore();
   const { items: wishlistItems, addItem: addToWishlist, removeItem: removeFromWishlist } = useWishlistStore();
@@ -91,12 +45,9 @@ export default function Home() {
           .order('display_order', { ascending: true });
 
         if (error) throw error;
-        if (data && data.length > 0) {
-          setBanners(data);
-        }
+        setBanners(data || []);
       } catch (err) {
         console.error('Error fetching banners:', err);
-        // Keep using default banners on error
       }
     };
 
@@ -169,8 +120,8 @@ export default function Home() {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Get first 6 products for featured section
-  const featuredProducts = products.slice(0, 6);
+  // Get featured products (marked as featured in admin), limit to 6
+  const featuredProducts = products.filter((p) => p.is_featured).slice(0, 6);
 
   // Get user's first name
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ||
@@ -225,6 +176,7 @@ export default function Home() {
       </div>
 
       {/* Featured Banner Carousel */}
+      {banners.length > 0 && (
       <div className="px-4 mb-8">
         <div className="max-w-7xl mx-auto">
           <div className="relative overflow-hidden rounded-3xl">
@@ -307,6 +259,7 @@ export default function Home() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Categories */}
       <div className="px-4 mb-8">
