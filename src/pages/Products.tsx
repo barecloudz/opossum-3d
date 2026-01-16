@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 import Input from '../components/ui/Input';
 import ProductCard from '../components/product/ProductCard';
@@ -8,6 +9,7 @@ import { useProductStore } from '../store/productStore';
 import { useCategories } from '../hooks/useCategories';
 
 export default function Products() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'price-asc' | 'price-desc'>('newest');
@@ -15,6 +17,30 @@ export default function Products() {
   // Use global product store (cached across page navigations)
   const { products, isLoading, error, fetchProducts } = useProductStore();
   const { categories } = useCategories();
+
+  // Read category from URL on mount and when categories load
+  useEffect(() => {
+    const categorySlug = searchParams.get('category');
+    if (categorySlug && categories.length > 0) {
+      const category = categories.find((c) => c.slug === categorySlug);
+      if (category) {
+        setSelectedCategory(category.id);
+      }
+    }
+  }, [searchParams, categories]);
+
+  // Update URL when category changes
+  const handleCategoryChange = (categoryId: string | null) => {
+    setSelectedCategory(categoryId);
+    if (categoryId) {
+      const category = categories.find((c) => c.id === categoryId);
+      if (category) {
+        setSearchParams({ category: category.slug });
+      }
+    } else {
+      setSearchParams({});
+    }
+  };
 
   // Fetch products on mount (will use cache if available)
   useEffect(() => {
@@ -65,7 +91,7 @@ export default function Products() {
         <div className="flex gap-4">
           <select
             value={selectedCategory || ''}
-            onChange={(e) => setSelectedCategory(e.target.value || null)}
+            onChange={(e) => handleCategoryChange(e.target.value || null)}
             className="px-4 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-theme focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
           >
             <option value="">All Categories</option>
