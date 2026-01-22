@@ -40,36 +40,26 @@ export async function getUSPSAccessToken(): Promise<string> {
     throw new Error('USPS API credentials not configured');
   }
 
+  const tokenUrl = `${baseUrl}/oauth2/v3/token`;
+
   // Log environment info (not secrets)
   console.log(`USPS OAuth Request:`);
-  console.log(`  - Base URL: ${baseUrl}`);
+  console.log(`  - Token URL: ${tokenUrl}`);
   console.log(`  - Environment: ${process.env.USPS_ENVIRONMENT || 'production (default)'}`);
   console.log(`  - Consumer Key length: ${consumerKey.length} chars`);
   console.log(`  - Consumer Key prefix: ${consumerKey.substring(0, 8)}...`);
 
-  // USPS OAuth2 requires Basic auth header with base64 encoded credentials
-  const credentials = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
-
-  const tokenUrl = `${baseUrl}/oauth2/v3/token`;
-  console.log(`  - Token URL: ${tokenUrl}`);
-
-  // USPS requires scope parameter - request all needed API scopes
-  const scopes = [
-    'prices',
-    'labels',
-    'tracking',
-    'addresses',
-  ].join(' ');
-
+  // USPS OAuth2 V3 requires JSON body with credentials per official docs
+  // https://github.com/USPS/api-examples
   const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${credentials}`,
+      'Content-Type': 'application/json',
     },
-    body: new URLSearchParams({
+    body: JSON.stringify({
+      client_id: consumerKey,
+      client_secret: consumerSecret,
       grant_type: 'client_credentials',
-      scope: scopes,
     }),
   });
 
