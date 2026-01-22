@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
-import { ChevronLeft, Tag, Check, X, Truck, Store, Loader2 } from 'lucide-react';
+import { ChevronLeft, Tag, Check, X, Loader2 } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
@@ -12,8 +12,6 @@ import Input from '../components/ui/Input';
 import PaymentForm from '../components/checkout/PaymentForm';
 import { useToast } from '../components/ui/Toast';
 import type { PromoCode } from '../types';
-
-type ShippingMethod = 'delivery' | 'pickup';
 
 // Valid US state codes for validation
 const VALID_STATES = new Set([
@@ -34,7 +32,6 @@ export default function Checkout() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [step, setStep] = useState<'details' | 'payment'>('details');
-  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('delivery');
   const [promoCode, setPromoCode] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
@@ -66,9 +63,7 @@ export default function Checkout() {
 
   const subtotal = getSubtotal();
   // Use dynamic USPS rate - no fallback to prevent losing money on shipping
-  const shipping = shippingMethod === 'delivery'
-    ? (shippingRate ?? 0)
-    : 0;
+  const shipping = shippingRate ?? 0;
 
   // Calculate total weight from cart items (in ounces)
   const getTotalWeight = useCallback((): number => {
@@ -79,20 +74,11 @@ export default function Checkout() {
   }, [items]);
 
   // Check if address is complete enough to calculate shipping
-  const canCalculateShipping = shippingMethod === 'delivery' &&
-    formData.zip && formData.zip.length >= 5 &&
+  const canCalculateShipping = formData.zip && formData.zip.length >= 5 &&
     formData.city && formData.state && formData.address;
 
   // Fetch USPS shipping rate
   const fetchShippingRate = useCallback(async () => {
-    if (shippingMethod !== 'delivery') {
-      setShippingRate(0);
-      setShippingLoading(false);
-      setShippingError(null);
-      setIsRateFallback(false);
-      return;
-    }
-
     if (!canCalculateShipping) {
       return;
     }
@@ -142,18 +128,16 @@ export default function Checkout() {
     } finally {
       setShippingLoading(false);
     }
-  }, [formData.address, formData.apartment, formData.city, formData.state, formData.zip, shippingMethod, getTotalWeight, canCalculateShipping]);
+  }, [formData.address, formData.apartment, formData.city, formData.state, formData.zip, getTotalWeight, canCalculateShipping]);
 
   // Reset shipping when address changes significantly
   useEffect(() => {
-    if (shippingMethod === 'delivery') {
-      // Reset shipping rate when address changes - user must recalculate
-      setShippingRate(null);
-      setEstimatedDelivery(null);
-      setIsRateFallback(false);
-      setShippingError(null);
-    }
-  }, [formData.zip, formData.city, formData.state, shippingMethod]);
+    // Reset shipping rate when address changes - user must recalculate
+    setShippingRate(null);
+    setEstimatedDelivery(null);
+    setIsRateFallback(false);
+    setShippingError(null);
+  }, [formData.zip, formData.city, formData.state]);
 
   // Calculate discount
   let discount = 0;
@@ -286,18 +270,12 @@ export default function Checkout() {
 
     try {
       // Build shipping address
-      const shippingAddress = shippingMethod === 'delivery' ? {
+      const shippingAddress = {
         address_line_1: formData.address,
         address_line_2: formData.apartment || undefined,
         city: formData.city,
         state: formData.state,
         postal_code: formData.zip,
-        country: 'US',
-      } : {
-        address_line_1: 'Local Pickup',
-        city: 'Hendersonville',
-        state: 'NC',
-        postal_code: '28792',
         country: 'US',
       };
 
@@ -484,13 +462,13 @@ export default function Checkout() {
         shipping,
         discount: discount > 0 ? discount : undefined,
         total,
-        shippingAddress: shippingMethod === 'delivery' ? {
+        shippingAddress: {
           address_line_1: formData.address,
           address_line_2: formData.apartment || undefined,
           city: formData.city,
           state: formData.state,
           postal_code: formData.zip,
-        } : { address_line_1: 'Local Pickup - Hendersonville, NC' },
+        },
       }),
     })
       .then(res => {
@@ -508,11 +486,9 @@ export default function Checkout() {
   const hasValidShippingRate = shippingRate !== null && !isRateFallback;
 
   const isFormValid = formData.email && formData.firstName && formData.lastName &&
-    (shippingMethod === 'pickup' || (
-      formData.address && formData.city && formData.state && formData.zip &&
-      formData.zip.length >= 5 && isValidState &&
-      hasValidShippingRate && !shippingLoading
-    ));
+    formData.address && formData.city && formData.state && formData.zip &&
+    formData.zip.length >= 5 && isValidState &&
+    hasValidShippingRate && !shippingLoading;
 
   if (items.length === 0) {
     return null;
@@ -577,42 +553,6 @@ export default function Checkout() {
 
         {step === 'details' ? (
           <>
-            {/* Shipping Method */}
-            <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4">
-              <h2 className="text-white font-semibold mb-4">Shipping method</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShippingMethod('delivery')}
-                  className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 transition-all ${
-                    shippingMethod === 'delivery'
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-white'
-                      : 'border-[var(--color-border)] text-gray-400 hover:border-gray-500'
-                  }`}
-                >
-                  <Truck className="h-5 w-5" />
-                  <span className="font-medium">Home delivery</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShippingMethod('pickup')}
-                  className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 transition-all ${
-                    shippingMethod === 'pickup'
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-white'
-                      : 'border-[var(--color-border)] text-gray-400 hover:border-gray-500'
-                  }`}
-                >
-                  <Store className="h-5 w-5" />
-                  <span className="font-medium">Pick up</span>
-                </button>
-              </div>
-              {shippingMethod === 'pickup' && (
-                <p className="mt-3 text-sm text-gray-400">
-                  Pick up at Hendersonville, NC. We'll email you when your order is ready.
-                </p>
-              )}
-            </div>
-
             {/* Contact & Address */}
             <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4 space-y-4">
               <h2 className="text-white font-semibold">Contact information</h2>
@@ -651,99 +591,95 @@ export default function Checkout() {
                 onChange={handleInputChange}
               />
 
-              {shippingMethod === 'delivery' && (
-                <>
-                  <div className="border-t border-[var(--color-border)] pt-4 mt-4">
-                    <h2 className="text-white font-semibold mb-4">Shipping address</h2>
-                  </div>
+              <div className="border-t border-[var(--color-border)] pt-4 mt-4">
+                <h2 className="text-white font-semibold mb-4">Shipping address</h2>
+              </div>
 
-                  <Input
-                    label="Address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    required
-                  />
-                  <Input
-                    label="Apartment, suite, etc. (optional)"
-                    name="apartment"
-                    value={formData.apartment}
-                    onChange={handleInputChange}
-                  />
-                  <div className="grid grid-cols-3 gap-3">
-                    <Input
-                      label="City"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      required
-                    />
-                    <Input
-                      label="State"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleInputChange}
-                      required
-                      maxLength={2}
-                      placeholder="NC"
-                    />
-                    <Input
-                      label="ZIP"
-                      name="zip"
-                      value={formData.zip}
-                      onChange={handleInputChange}
-                      required
-                      maxLength={10}
-                      placeholder="28792"
-                    />
-                  </div>
-                  {formData.state && !isValidState && (
-                    <p className="text-red-400 text-sm mt-1">Please enter a valid US state code (e.g., NC, CA, NY)</p>
-                  )}
+              <Input
+                label="Address"
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                required
+              />
+              <Input
+                label="Apartment, suite, etc. (optional)"
+                name="apartment"
+                value={formData.apartment}
+                onChange={handleInputChange}
+              />
+              <div className="grid grid-cols-3 gap-3">
+                <Input
+                  label="City"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  required
+                />
+                <Input
+                  label="State"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleInputChange}
+                  required
+                  maxLength={2}
+                  placeholder="NC"
+                />
+                <Input
+                  label="ZIP"
+                  name="zip"
+                  value={formData.zip}
+                  onChange={handleInputChange}
+                  required
+                  maxLength={10}
+                  placeholder="28792"
+                />
+              </div>
+              {formData.state && !isValidState && (
+                <p className="text-red-400 text-sm mt-1">Please enter a valid US state code (e.g., NC, CA, NY)</p>
+              )}
 
-                  {/* Calculate Shipping Button */}
-                  {canCalculateShipping && isValidState && (
-                    <div className="mt-4 p-4 bg-[var(--color-background)]/50 rounded-xl">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-white font-medium">Shipping Cost</p>
-                          {shippingRate !== null && !isRateFallback ? (
-                            <p className="text-[var(--color-primary)] text-lg font-bold">
-                              {formatPrice(shippingRate)}
-                              {estimatedDelivery && (
-                                <span className="text-gray-400 text-sm font-normal ml-2">
-                                  ({estimatedDelivery} day{estimatedDelivery !== 1 ? 's' : ''})
-                                </span>
-                              )}
-                            </p>
-                          ) : shippingLoading ? (
-                            <p className="text-gray-400">Calculating...</p>
-                          ) : (
-                            <p className="text-gray-400">Click to calculate</p>
+              {/* Calculate Shipping Button */}
+              {canCalculateShipping && isValidState && (
+                <div className="mt-4 p-4 bg-[var(--color-background)]/50 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-white font-medium">Shipping Cost</p>
+                      {shippingRate !== null && !isRateFallback ? (
+                        <p className="text-[var(--color-primary)] text-lg font-bold">
+                          {formatPrice(shippingRate)}
+                          {estimatedDelivery && (
+                            <span className="text-gray-400 text-sm font-normal ml-2">
+                              ({estimatedDelivery} day{estimatedDelivery !== 1 ? 's' : ''})
+                            </span>
                           )}
-                        </div>
-                        <Button
-                          type="button"
-                          variant={shippingRate !== null && !isRateFallback ? 'outline' : 'primary'}
-                          onClick={fetchShippingRate}
-                          isLoading={shippingLoading}
-                          disabled={shippingLoading}
-                          className="shrink-0"
-                        >
-                          {shippingRate !== null && !isRateFallback ? 'Recalculate' : 'Calculate Shipping'}
-                        </Button>
-                      </div>
-                      {shippingError && (
-                        <p className="text-red-400 text-sm mt-2">{shippingError}</p>
-                      )}
-                      {isRateFallback && !shippingError && (
-                        <p className="text-orange-400 text-sm mt-2">
-                          Could not get exact USPS rate. Please verify your address and try again.
                         </p>
+                      ) : shippingLoading ? (
+                        <p className="text-gray-400">Calculating...</p>
+                      ) : (
+                        <p className="text-gray-400">Click to calculate</p>
                       )}
                     </div>
+                    <Button
+                      type="button"
+                      variant={shippingRate !== null && !isRateFallback ? 'outline' : 'primary'}
+                      onClick={fetchShippingRate}
+                      isLoading={shippingLoading}
+                      disabled={shippingLoading}
+                      className="shrink-0"
+                    >
+                      {shippingRate !== null && !isRateFallback ? 'Recalculate' : 'Calculate Shipping'}
+                    </Button>
+                  </div>
+                  {shippingError && (
+                    <p className="text-red-400 text-sm mt-2">{shippingError}</p>
                   )}
-                </>
+                  {isRateFallback && !shippingError && (
+                    <p className="text-orange-400 text-sm mt-2">
+                      Could not get exact USPS rate. Please verify your address and try again.
+                    </p>
+                  )}
+                </div>
               )}
 
               <div className="flex items-center gap-2 pt-2">
@@ -856,17 +792,15 @@ export default function Checkout() {
                   Shipping
                   {shippingLoading && <Loader2 className="h-3 w-3 animate-spin" />}
                 </span>
-                <span className={shippingMethod === 'delivery' && shippingRate === null && !shippingLoading ? 'text-orange-400' : ''}>
-                  {shippingMethod === 'pickup'
-                    ? 'Free'
-                    : shippingLoading
-                      ? 'Calculating...'
-                      : shippingRate !== null
-                        ? formatPrice(shipping)
-                        : 'Not calculated'}
+                <span className={shippingRate === null && !shippingLoading ? 'text-orange-400' : ''}>
+                  {shippingLoading
+                    ? 'Calculating...'
+                    : shippingRate !== null
+                      ? formatPrice(shipping)
+                      : 'Not calculated'}
                 </span>
               </div>
-              {!shippingLoading && shippingMethod === 'delivery' && (
+              {!shippingLoading && (
                 <p className="text-xs text-right">
                   {shippingRate === null ? (
                     <span className="text-orange-400">Please calculate shipping above to continue</span>
@@ -905,11 +839,7 @@ export default function Checkout() {
               {/* Shipping summary */}
               <div className="mb-4 p-3 bg-[var(--color-background)]/50 rounded-xl">
                 <p className="text-gray-400 text-sm">
-                  {shippingMethod === 'delivery' ? (
-                    <>Shipping to: {formData.firstName} {formData.lastName}, {formData.address}, {formData.city}, {formData.state} {formData.zip}</>
-                  ) : (
-                    <>Local pickup in Hendersonville, NC</>
-                  )}
+                  Shipping to: {formData.firstName} {formData.lastName}, {formData.address}, {formData.city}, {formData.state} {formData.zip}
                 </p>
                 <button
                   onClick={() => setStep('details')}
