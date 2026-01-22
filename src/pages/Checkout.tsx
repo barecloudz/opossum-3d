@@ -7,7 +7,6 @@ import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
 import { stripePromise } from '../lib/stripe';
 import { formatPrice } from '../lib/utils';
-import { DEFAULT_SHIPPING_COST } from '../lib/constants';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import PaymentForm from '../components/checkout/PaymentForm';
@@ -15,6 +14,16 @@ import { useToast } from '../components/ui/Toast';
 import type { PromoCode } from '../types';
 
 type ShippingMethod = 'delivery' | 'pickup';
+
+// Valid US state codes for validation
+const VALID_STATES = new Set([
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
+  'DC', 'PR', 'VI', 'GU', 'AS', 'MP',
+]);
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -37,6 +46,7 @@ export default function Checkout() {
   const [shippingLoading, setShippingLoading] = useState(false);
   const [estimatedDelivery, setEstimatedDelivery] = useState<number | null>(null);
   const [isRateFallback, setIsRateFallback] = useState(false);
+  const [shippingError, setShippingError] = useState<string | null>(null);
 
   // Featured promo codes (shown on checkout)
   const [featuredPromos, setFeaturedPromos] = useState<PromoCode[]>([]);
@@ -55,9 +65,9 @@ export default function Checkout() {
   });
 
   const subtotal = getSubtotal();
-  // Use dynamic USPS rate if available, otherwise fallback to default
+  // Use dynamic USPS rate - no fallback to prevent losing money on shipping
   const shipping = shippingMethod === 'delivery'
-    ? (shippingRate ?? DEFAULT_SHIPPING_COST)
+    ? (shippingRate ?? 0)
     : 0;
 
   // Calculate total weight from cart items (in ounces)
@@ -68,64 +78,82 @@ export default function Checkout() {
     }, 0);
   }, [items]);
 
-  // Fetch USPS shipping rate when address changes
-  useEffect(() => {
-    const fetchShippingRate = async () => {
-      // Only fetch if delivery selected
-      if (shippingMethod !== 'delivery') {
-        setShippingRate(0);
-        setShippingLoading(false);
-        return;
-      }
+  // Check if address is complete enough to calculate shipping
+  const canCalculateShipping = shippingMethod === 'delivery' &&
+    formData.zip && formData.zip.length >= 5 &&
+    formData.city && formData.state && formData.address;
 
-      // Check if we have enough address info
-      if (!formData.zip || formData.zip.length < 5 ||
-          !formData.city || !formData.state || !formData.address) {
-        return;
-      }
+  // Fetch USPS shipping rate
+  const fetchShippingRate = useCallback(async () => {
+    if (shippingMethod !== 'delivery') {
+      setShippingRate(0);
+      setShippingLoading(false);
+      setShippingError(null);
+      setIsRateFallback(false);
+      return;
+    }
 
-      setShippingLoading(true);
+    if (!canCalculateShipping) {
+      return;
+    }
 
-      try {
-        const response = await fetch('/.netlify/functions/get-shipping-rate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            destinationAddress: {
-              streetAddress: formData.address,
-              secondaryAddress: formData.apartment,
-              city: formData.city,
-              state: formData.state,
-              zipCode: formData.zip,
-            },
-            totalWeightOz: getTotalWeight(),
-          }),
-        });
+    setShippingLoading(true);
+    setShippingError(null);
 
-        const data = await response.json();
+    try {
+      const response = await fetch('/.netlify/functions/get-shipping-rate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          destinationAddress: {
+            streetAddress: formData.address,
+            secondaryAddress: formData.apartment,
+            city: formData.city,
+            state: formData.state,
+            zipCode: formData.zip,
+          },
+          totalWeightOz: getTotalWeight(),
+        }),
+      });
 
-        if (response.ok) {
-          setShippingRate(data.rate);
-          setEstimatedDelivery(data.estimatedDeliveryDays);
-          setIsRateFallback(data.fallbackUsed);
+      const data = await response.json();
+
+      if (response.ok) {
+        setShippingRate(data.rate);
+        setEstimatedDelivery(data.estimatedDeliveryDays);
+        setIsRateFallback(data.fallbackUsed);
+
+        if (data.fallbackUsed) {
+          setShippingError('Could not get exact rate from USPS. Using estimated rate.');
         } else {
-          // Use fallback rate on error
-          setShippingRate(DEFAULT_SHIPPING_COST);
-          setIsRateFallback(true);
+          setShippingError(null);
         }
-      } catch (error) {
-        console.error('Failed to fetch shipping rate:', error);
-        setShippingRate(DEFAULT_SHIPPING_COST);
+      } else {
+        // Don't use fallback - show error instead
+        setShippingRate(null);
         setIsRateFallback(true);
-      } finally {
-        setShippingLoading(false);
+        setShippingError(data.error || 'Failed to calculate shipping. Please try again.');
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch shipping rate:', error);
+      setShippingRate(null);
+      setIsRateFallback(true);
+      setShippingError('Unable to connect to shipping service. Please try again.');
+    } finally {
+      setShippingLoading(false);
+    }
+  }, [formData.address, formData.apartment, formData.city, formData.state, formData.zip, shippingMethod, getTotalWeight, canCalculateShipping]);
 
-    // Debounce the fetch to avoid too many API calls while typing
-    const timeoutId = setTimeout(fetchShippingRate, 500);
-    return () => clearTimeout(timeoutId);
-  }, [formData.zip, formData.city, formData.state, formData.address, formData.apartment, shippingMethod, getTotalWeight]);
+  // Reset shipping when address changes significantly
+  useEffect(() => {
+    if (shippingMethod === 'delivery') {
+      // Reset shipping rate when address changes - user must recalculate
+      setShippingRate(null);
+      setEstimatedDelivery(null);
+      setIsRateFallback(false);
+      setShippingError(null);
+    }
+  }, [formData.zip, formData.city, formData.state, shippingMethod]);
 
   // Calculate discount
   let discount = 0;
@@ -242,9 +270,17 @@ export default function Checkout() {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      // Auto-uppercase state code and limit to 2 chars
+      [name]: type === 'checkbox'
+        ? checked
+        : name === 'state'
+          ? value.toUpperCase().slice(0, 2)
+          : value,
     }));
   };
+
+  // Validate state code
+  const isValidState = !formData.state || VALID_STATES.has(formData.state.toUpperCase());
 
   const createOrderAndPaymentIntent = async () => {
     setIsLoading(true);
@@ -344,142 +380,139 @@ export default function Checkout() {
     const orderItems = [...items];
 
     setPaymentComplete(true);
-    clearCart();
 
-    if (confirmedOrderId) {
-      navigate(`/order-confirmation/${confirmedOrderId}`);
-    } else {
+    if (!confirmedOrderId) {
+      clearCart();
       navigate('/');
+      return;
     }
 
-    // Background operations - run after navigation, log all errors
-    if (confirmedOrderId) {
-      // Critical: Update order status to 'paid'
-      supabase
+    try {
+      // CRITICAL: Update order status to 'paid' - must complete before navigation
+      const { error: statusError } = await supabase
         .from('orders')
         .update({ status: 'paid' })
-        .eq('id', confirmedOrderId)
-        .then(({ error }) => {
-          if (error) {
-            console.error('[Checkout] CRITICAL: Failed to update order status to paid:', error);
-            // TODO: Consider adding to a retry queue or alerting admin
+        .eq('id', confirmedOrderId);
+
+      if (statusError) {
+        console.error('[Checkout] CRITICAL: Failed to update order status to paid:', statusError);
+        // Still continue - order exists, payment succeeded
+      } else {
+        console.log('[Checkout] Order status updated to paid');
+      }
+
+      // Update inventory - await to ensure stock is decremented
+      const inventoryPromises = orderItems
+        .filter(item => item.product.track_inventory)
+        .map(async (item) => {
+          if (item.variant) {
+            const newStock = Math.max(0, item.variant.stock_quantity - item.quantity);
+            const { error } = await supabase
+              .from('product_variants')
+              .update({ stock_quantity: newStock })
+              .eq('id', item.variant.id);
+            if (error) console.error('[Checkout] Failed to update variant inventory:', error);
           } else {
-            console.log('[Checkout] Order status updated to paid');
+            const newStock = Math.max(0, item.product.stock_quantity - item.quantity);
+            const { error } = await supabase
+              .from('products')
+              .update({ stock_quantity: newStock })
+              .eq('id', item.product.id);
+            if (error) console.error('[Checkout] Failed to update product inventory:', error);
           }
         });
 
-      // Send confirmation email
-      fetch('/.netlify/functions/send-order-confirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: confirmedOrderId,
-          orderNumber: confirmedOrderId.slice(0, 8).toUpperCase(),
-          customerEmail: formData.email,
-          customerName: `${formData.firstName} ${formData.lastName}`,
-          items: orderItems.map(item => ({
-            product_name: item.product.name,
-            variant_name: item.variant?.name,
-            quantity: item.quantity,
-            unit_price: item.product.price + (item.variant?.price_adjustment || 0),
-            total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
-          })),
-          subtotal,
-          shipping,
-          discount: discount > 0 ? discount : undefined,
-          total,
-          shippingAddress: shippingMethod === 'delivery' ? {
-            address_line_1: formData.address,
-            address_line_2: formData.apartment || undefined,
-            city: formData.city,
-            state: formData.state,
-            postal_code: formData.zip,
-          } : { address_line_1: 'Local Pickup - Hendersonville, NC' },
-        }),
-      })
-        .then(res => {
-          if (!res.ok) console.error('[Checkout] Confirmation email failed:', res.status);
-          else console.log('[Checkout] Confirmation email sent');
-        })
-        .catch(err => console.error('[Checkout] Error sending confirmation email:', err));
+      await Promise.all(inventoryPromises);
+      console.log('[Checkout] Inventory updated');
 
-      // Update inventory with proper error handling
-      for (const item of orderItems) {
-        if (item.product.track_inventory) {
-          if (item.variant) {
-            const newStock = Math.max(0, item.variant.stock_quantity - item.quantity);
-            supabase
-              .from('product_variants')
-              .update({ stock_quantity: newStock })
-              .eq('id', item.variant.id)
-              .then(({ error }) => {
-                if (error) console.error('[Checkout] Failed to update variant inventory:', error);
-                else console.log('[Checkout] Variant inventory updated');
-              });
-          } else {
-            const newStock = Math.max(0, item.product.stock_quantity - item.quantity);
-            supabase
-              .from('products')
-              .update({ stock_quantity: newStock })
-              .eq('id', item.product.id)
-              .then(({ error }) => {
-                if (error) console.error('[Checkout] Failed to update product inventory:', error);
-                else console.log('[Checkout] Product inventory updated');
-              });
-          }
-        }
-      }
-
-      // Update promo code usage
+      // Update promo code usage with atomic increment to prevent race condition
       if (appliedPromo) {
-        supabase
-          .from('promo_codes')
-          .update({ uses_count: appliedPromo.uses_count + 1 })
-          .eq('id', appliedPromo.id)
-          .then(({ error }) => {
-            if (error) console.error('[Checkout] Failed to update promo code usage:', error);
-            else console.log('[Checkout] Promo code usage updated');
-          });
+        const { error: promoError } = await supabase.rpc('increment_promo_usage', {
+          promo_id: appliedPromo.id
+        }).maybeSingle();
+
+        // Fallback if RPC doesn't exist - use regular update
+        if (promoError?.code === 'PGRST202') {
+          await supabase
+            .from('promo_codes')
+            .update({ uses_count: appliedPromo.uses_count + 1 })
+            .eq('id', appliedPromo.id);
+        }
+        console.log('[Checkout] Promo code usage updated');
       }
 
-      // Add to email subscribers if opted in
+      // Add to email subscribers if opted in (upsert to prevent duplicates)
       if (formData.marketingOptIn && formData.email) {
-        supabase
+        await supabase
           .from('email_subscribers')
-          .select('id')
-          .eq('email', formData.email.toLowerCase())
-          .maybeSingle()
-          .then(({ data: existingSub, error }) => {
-            if (error) {
-              console.error('[Checkout] Error checking email subscriber:', error);
-              return;
-            }
-            if (!existingSub) {
-              supabase.from('email_subscribers').insert({
-                email: formData.email.toLowerCase(),
-                first_name: formData.firstName || null,
-                last_name: formData.lastName || null,
-                source: 'checkout',
-                is_subscribed: true,
-                subscribed_at: new Date().toISOString(),
-              }).then(({ error: insertError }) => {
-                if (insertError) console.error('[Checkout] Failed to add email subscriber:', insertError);
-                else console.log('[Checkout] Email subscriber added');
-              });
-            }
-          });
+          .upsert({
+            email: formData.email.toLowerCase(),
+            first_name: formData.firstName || null,
+            last_name: formData.lastName || null,
+            source: 'checkout',
+            is_subscribed: true,
+            subscribed_at: new Date().toISOString(),
+          }, { onConflict: 'email', ignoreDuplicates: true });
+        console.log('[Checkout] Email subscriber processed');
       }
+
+    } catch (err) {
+      console.error('[Checkout] Error in post-payment processing:', err);
+      // Continue to confirmation - payment succeeded, these are secondary operations
     }
+
+    // Clear cart and navigate only after critical operations complete
+    clearCart();
+    navigate(`/order-confirmation/${confirmedOrderId}`);
+
+    // Send confirmation email in background (non-blocking)
+    fetch('/.netlify/functions/send-order-confirmation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: confirmedOrderId,
+        orderNumber: confirmedOrderId.slice(0, 8).toUpperCase(),
+        customerEmail: formData.email,
+        customerName: `${formData.firstName} ${formData.lastName}`,
+        items: orderItems.map(item => ({
+          product_name: item.product.name,
+          variant_name: item.variant?.name,
+          quantity: item.quantity,
+          unit_price: item.product.price + (item.variant?.price_adjustment || 0),
+          total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
+        })),
+        subtotal,
+        shipping,
+        discount: discount > 0 ? discount : undefined,
+        total,
+        shippingAddress: shippingMethod === 'delivery' ? {
+          address_line_1: formData.address,
+          address_line_2: formData.apartment || undefined,
+          city: formData.city,
+          state: formData.state,
+          postal_code: formData.zip,
+        } : { address_line_1: 'Local Pickup - Hendersonville, NC' },
+      }),
+    })
+      .then(res => {
+        if (!res.ok) console.error('[Checkout] Confirmation email failed:', res.status);
+        else console.log('[Checkout] Confirmation email sent');
+      })
+      .catch(err => console.error('[Checkout] Error sending confirmation email:', err));
   };
 
   const handlePaymentError = (message: string) => {
     addToast(message, 'error');
   };
 
+  // For delivery orders: require real USPS rate (not fallback) to prevent losing money
+  const hasValidShippingRate = shippingRate !== null && !isRateFallback;
+
   const isFormValid = formData.email && formData.firstName && formData.lastName &&
     (shippingMethod === 'pickup' || (
       formData.address && formData.city && formData.state && formData.zip &&
-      shippingRate !== null && !shippingLoading
+      formData.zip.length >= 5 && isValidState &&
+      hasValidShippingRate && !shippingLoading
     ));
 
   if (items.length === 0) {
@@ -652,6 +685,8 @@ export default function Checkout() {
                       value={formData.state}
                       onChange={handleInputChange}
                       required
+                      maxLength={2}
+                      placeholder="NC"
                     />
                     <Input
                       label="ZIP"
@@ -659,8 +694,56 @@ export default function Checkout() {
                       value={formData.zip}
                       onChange={handleInputChange}
                       required
+                      maxLength={10}
+                      placeholder="28792"
                     />
                   </div>
+                  {formData.state && !isValidState && (
+                    <p className="text-red-400 text-sm mt-1">Please enter a valid US state code (e.g., NC, CA, NY)</p>
+                  )}
+
+                  {/* Calculate Shipping Button */}
+                  {canCalculateShipping && isValidState && (
+                    <div className="mt-4 p-4 bg-[var(--color-background)]/50 rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">Shipping Cost</p>
+                          {shippingRate !== null && !isRateFallback ? (
+                            <p className="text-[var(--color-primary)] text-lg font-bold">
+                              {formatPrice(shippingRate)}
+                              {estimatedDelivery && (
+                                <span className="text-gray-400 text-sm font-normal ml-2">
+                                  ({estimatedDelivery} day{estimatedDelivery !== 1 ? 's' : ''})
+                                </span>
+                              )}
+                            </p>
+                          ) : shippingLoading ? (
+                            <p className="text-gray-400">Calculating...</p>
+                          ) : (
+                            <p className="text-gray-400">Click to calculate</p>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant={shippingRate !== null && !isRateFallback ? 'outline' : 'primary'}
+                          onClick={fetchShippingRate}
+                          isLoading={shippingLoading}
+                          disabled={shippingLoading}
+                          className="shrink-0"
+                        >
+                          {shippingRate !== null && !isRateFallback ? 'Recalculate' : 'Calculate Shipping'}
+                        </Button>
+                      </div>
+                      {shippingError && (
+                        <p className="text-red-400 text-sm mt-2">{shippingError}</p>
+                      )}
+                      {isRateFallback && !shippingError && (
+                        <p className="text-orange-400 text-sm mt-2">
+                          Could not get exact USPS rate. Please verify your address and try again.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
 
@@ -774,18 +857,27 @@ export default function Checkout() {
                   Shipping
                   {shippingLoading && <Loader2 className="h-3 w-3 animate-spin" />}
                 </span>
-                <span>
+                <span className={shippingMethod === 'delivery' && shippingRate === null && !shippingLoading ? 'text-orange-400' : ''}>
                   {shippingMethod === 'pickup'
                     ? 'Free'
                     : shippingLoading
                       ? 'Calculating...'
-                      : formatPrice(shipping)}
+                      : shippingRate !== null
+                        ? formatPrice(shipping)
+                        : 'Not calculated'}
                 </span>
               </div>
-              {estimatedDelivery && !shippingLoading && shippingMethod === 'delivery' && (
-                <p className="text-xs text-gray-500 text-right">
-                  Est. {estimatedDelivery} business day{estimatedDelivery !== 1 ? 's' : ''} via USPS Priority Mail
-                  {isRateFallback && ' (standard rate)'}
+              {!shippingLoading && shippingMethod === 'delivery' && (
+                <p className="text-xs text-right">
+                  {shippingRate === null ? (
+                    <span className="text-orange-400">Please calculate shipping above to continue</span>
+                  ) : isRateFallback ? (
+                    <span className="text-orange-400">Could not verify rate - please recalculate</span>
+                  ) : estimatedDelivery ? (
+                    <span className="text-gray-500">Est. {estimatedDelivery} business day{estimatedDelivery !== 1 ? 's' : ''} via USPS Priority Mail</span>
+                  ) : (
+                    <span className="text-gray-500">USPS Priority Mail</span>
+                  )}
                 </p>
               )}
               <div className="flex justify-between text-xl font-bold pt-3 border-t border-[var(--color-border)]">

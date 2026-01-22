@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { Resend } from 'resend';
+import { getCorsHeaders, getRequestOrigin } from './cors-helper';
 
 interface OrderItem {
   product_name: string;
@@ -29,12 +30,6 @@ interface OrderConfirmationRequest {
   total: number;
   shippingAddress: ShippingAddress;
 }
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
 
 const formatPrice = (cents: number) => {
   return `$${(cents / 100).toFixed(2)}`;
@@ -147,6 +142,9 @@ const generateEmailHtml = (order: OrderConfirmationRequest) => {
 };
 
 const handler: Handler = async (event) => {
+  const origin = getRequestOrigin(event.headers as Record<string, string>);
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {

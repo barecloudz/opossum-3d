@@ -1,17 +1,22 @@
 import type { Handler } from '@netlify/functions';
-import { getUSPSAccessToken } from './usps-auth';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import { getUSPSAccessToken, getUSPSBaseUrl } from './usps-auth';
+import { getCorsHeaders, getRequestOrigin } from './cors-helper';
 
 // Origin address (Marietta, SC)
 const ORIGIN_ZIP = '29661';
 
 // Default flat rate shipping cost (fallback)
 const DEFAULT_SHIPPING_RATE = 5.00;
+
+// Valid US state codes
+const VALID_STATES = new Set([
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
+  'DC', 'PR', 'VI', 'GU', 'AS', 'MP', // Territories
+]);
 
 interface ShippingRateRequest {
   destinationAddress: {
@@ -31,7 +36,40 @@ interface ShippingRateResponse {
   fallbackUsed: boolean;
 }
 
+// Retry helper for transient failures
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 2
+): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      // Don't retry on client errors (4xx), only server errors (5xx) or network issues
+      if (response.ok || (response.status >= 400 && response.status < 500)) {
+        return response;
+      }
+      lastError = new Error(`HTTP ${response.status}`);
+    } catch (error: any) {
+      lastError = error;
+    }
+
+    // Wait before retrying (exponential backoff: 500ms, 1000ms)
+    if (attempt < maxRetries) {
+      await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+      console.log(`Retrying USPS request (attempt ${attempt + 2}/${maxRetries + 1})`);
+    }
+  }
+
+  throw lastError || new Error('Request failed after retries');
+}
+
 const handler: Handler = async (event) => {
+  const origin = getRequestOrigin(event.headers as Record<string, string>);
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -55,6 +93,7 @@ const handler: Handler = async (event) => {
 
     // Validate required fields
     if (!destinationAddress?.zipCode) {
+      console.error('Validation failed: Missing ZIP code');
       return {
         statusCode: 400,
         headers: corsHeaders,
@@ -62,27 +101,45 @@ const handler: Handler = async (event) => {
       };
     }
 
-    if (!totalWeightOz || totalWeightOz <= 0) {
+    // Clean up and validate ZIP code (must be 5 digits)
+    const destZip = destinationAddress.zipCode.replace(/\D/g, '').slice(0, 5);
+    if (destZip.length !== 5) {
+      console.error(`Validation failed: Invalid ZIP code format: ${destinationAddress.zipCode}`);
       return {
         statusCode: 400,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'Valid package weight is required' }),
+        body: JSON.stringify({ error: 'ZIP code must be 5 digits' }),
       };
+    }
+
+    // Validate state code
+    const stateCode = destinationAddress.state?.toUpperCase().trim();
+    if (!stateCode || !VALID_STATES.has(stateCode)) {
+      console.error(`Validation failed: Invalid state code: ${destinationAddress.state}`);
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Valid US state code is required' }),
+      };
+    }
+
+    // Validate and ensure minimum weight (default to 8oz if missing/invalid)
+    const weightOz = (!totalWeightOz || totalWeightOz <= 0) ? 8 : totalWeightOz;
+    if (!totalWeightOz || totalWeightOz <= 0) {
+      console.warn(`Weight missing or invalid (${totalWeightOz}), using default 8oz`);
     }
 
     // Get USPS access token
     const accessToken = await getUSPSAccessToken();
 
-    // Clean up ZIP code (just first 5 digits)
-    const destZip = destinationAddress.zipCode.replace(/\D/g, '').slice(0, 5);
-
     // Convert weight from oz to pounds (USPS API uses pounds)
-    const weightLbs = totalWeightOz / 16;
+    const weightLbs = Math.max(0.1, weightOz / 16); // Minimum 0.1 lbs
 
-    console.log(`Fetching USPS rate: ${ORIGIN_ZIP} -> ${destZip}, weight: ${weightLbs}lbs`);
+    const baseUrl = getUSPSBaseUrl();
+    console.log(`Fetching USPS rate: ${ORIGIN_ZIP} -> ${destZip}, weight: ${weightLbs.toFixed(2)}lbs (${baseUrl})`);
 
-    // Call USPS Prices API
-    const ratesResponse = await fetch('https://api.usps.com/prices/v3/total-rates/search', {
+    // Call USPS Prices API with retry logic
+    const ratesResponse = await fetchWithRetry(`${baseUrl}/prices/v3/total-rates/search`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -91,7 +148,7 @@ const handler: Handler = async (event) => {
       body: JSON.stringify({
         originZIPCode: ORIGIN_ZIP,
         destinationZIPCode: destZip,
-        weight: Math.max(0.1, weightLbs), // Minimum 0.1 lbs
+        weight: weightLbs,
         length: 12,
         width: 8,
         height: 6,

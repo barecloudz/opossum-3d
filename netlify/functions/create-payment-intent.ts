@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import Stripe from 'stripe';
+import { getCorsHeaders, getRequestOrigin } from './cors-helper';
 
 interface PaymentIntentRequest {
   amount: number; // in cents
@@ -7,13 +8,13 @@ interface PaymentIntentRequest {
   customerEmail: string;
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+// Timeout for Stripe API calls (15 seconds)
+const STRIPE_TIMEOUT_MS = 15000;
 
 const handler: Handler = async (event) => {
+  const origin = getRequestOrigin(event.headers as Record<string, string>);
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -44,6 +45,7 @@ const handler: Handler = async (event) => {
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
     apiVersion: '2023-10-16',
+    timeout: STRIPE_TIMEOUT_MS,
   });
 
   try {
@@ -57,7 +59,7 @@ const handler: Handler = async (event) => {
       };
     }
 
-    // Create a PaymentIntent
+    // Create a PaymentIntent with timeout
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: 'usd',
@@ -82,11 +84,23 @@ const handler: Handler = async (event) => {
     };
   } catch (error: any) {
     console.error('Error creating payment intent:', error);
+
+    // Check for timeout error
+    if (error.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
+      return {
+        statusCode: 504,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          error: 'Payment service timed out. Please try again.',
+        }),
+      };
+    }
+
     return {
       statusCode: 500,
       headers: corsHeaders,
       body: JSON.stringify({
-        error: error.message || 'Failed to create payment intent'
+        error: error.message || 'Failed to create payment intent',
       }),
     };
   }

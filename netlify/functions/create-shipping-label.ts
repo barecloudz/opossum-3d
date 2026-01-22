@@ -1,11 +1,6 @@
 import type { Handler } from '@netlify/functions';
-import { getUSPSAccessToken } from './usps-auth';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import { getUSPSAccessToken, getUSPSBaseUrl } from './usps-auth';
+import { getCorsHeaders, getRequestOrigin } from './cors-helper';
 
 // Origin address (your business address)
 const FROM_ADDRESS = {
@@ -40,6 +35,9 @@ interface CreateLabelResponse {
 }
 
 const handler: Handler = async (event) => {
+  const origin = getRequestOrigin(event.headers as Record<string, string>);
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -91,14 +89,15 @@ const handler: Handler = async (event) => {
     // Convert weight from oz to pounds
     const weightLbs = Math.max(0.1, totalWeightOz / 16);
 
-    console.log(`Creating USPS label for order ${orderId}:`, {
+    const baseUrl = getUSPSBaseUrl();
+    console.log(`Creating USPS label for order ${orderId} (${baseUrl}):`, {
       to: `${recipientAddress.firstName} ${recipientAddress.lastName}`,
       destination: `${recipientAddress.city}, ${recipientAddress.state} ${destZip}`,
       weight: weightLbs,
     });
 
     // Call USPS Labels API
-    const labelResponse = await fetch('https://api.usps.com/labels/v3/label', {
+    const labelResponse = await fetch(`${baseUrl}/labels/v3/label`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,

@@ -10,6 +10,18 @@ interface USPSTokenCache {
 let tokenCache: USPSTokenCache | null = null;
 
 /**
+ * Get the USPS API base URL based on environment
+ * Set USPS_ENVIRONMENT=sandbox for testing, or production (default) for live
+ */
+export function getUSPSBaseUrl(): string {
+  const env = process.env.USPS_ENVIRONMENT?.toLowerCase();
+  if (env === 'sandbox' || env === 'test' || env === 'tem') {
+    return 'https://apis-tem.usps.com';
+  }
+  return 'https://apis.usps.com';
+}
+
+/**
  * Get a valid USPS access token, using cache when available
  * Tokens are cached until 5 minutes before expiration
  */
@@ -20,7 +32,8 @@ export async function getUSPSAccessToken(): Promise<string> {
     return tokenCache.accessToken;
   }
 
-  console.log('Requesting new USPS access token');
+  const baseUrl = getUSPSBaseUrl();
+  console.log(`Requesting new USPS access token (${baseUrl})`);
 
   const consumerKey = process.env.USPS_CONSUMER_KEY;
   const consumerSecret = process.env.USPS_CONSUMER_SECRET;
@@ -29,7 +42,7 @@ export async function getUSPSAccessToken(): Promise<string> {
     throw new Error('USPS API credentials not configured');
   }
 
-  const response = await fetch('https://api.usps.com/oauth2/v3/token', {
+  const response = await fetch(`${baseUrl}/oauth2/v3/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',

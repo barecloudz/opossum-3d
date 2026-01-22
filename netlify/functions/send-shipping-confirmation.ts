@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { Resend } from 'resend';
+import { getCorsHeaders, getRequestOrigin } from './cors-helper';
 
 interface ShippingAddress {
   address_line_1: string;
@@ -16,12 +17,6 @@ interface ShippingConfirmationRequest {
   trackingNumber: string;
   shippingAddress: ShippingAddress;
 }
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
 
 const generateEmailHtml = (data: ShippingConfirmationRequest) => {
   const trackingUrl = `https://tools.usps.com/go/TrackConfirmAction?tLabels=${data.trackingNumber}`;
@@ -102,6 +97,9 @@ const generateEmailHtml = (data: ShippingConfirmationRequest) => {
 };
 
 const handler: Handler = async (event) => {
+  const origin = getRequestOrigin(event.headers as Record<string, string>);
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {

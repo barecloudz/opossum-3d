@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check } from 'lucide-react';
+import { ChevronLeft, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { ProductDetailSkeleton } from '../components/ui/Skeleton';
 import RelatedProducts from '../components/product/RelatedProducts';
@@ -20,6 +20,7 @@ export default function ProductDetail() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const { addItem, openCart } = useCartStore();
   const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore();
   const { user } = useAuthStore();
@@ -256,7 +257,24 @@ export default function ProductDetail() {
                   <div className="desc-card-corner" aria-hidden="true"></div>
                   <div className="desc-card-edge" aria-hidden="true"></div>
                   <h2 className="desc-card-title">Product Description</h2>
-                  <p className="desc-card-text">{product.description}</p>
+                  <div className="desc-card-text">
+                    <p
+                      className={!isDescriptionExpanded ? 'line-clamp-4' : ''}
+                      style={{ whiteSpace: 'pre-line' }}
+                    >
+                      {product.description}
+                    </p>
+                    <button
+                      onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                      className="mt-3 text-[var(--color-primary)] hover:underline text-sm font-medium inline-flex items-center gap-1"
+                    >
+                      {isDescriptionExpanded ? (
+                        <>Show less <ChevronUp className="h-4 w-4" /></>
+                      ) : (
+                        <>Read more <ChevronDown className="h-4 w-4" /></>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -271,7 +289,7 @@ export default function ProductDetail() {
                   {product.variants.map((variant) => (
                     <button
                       key={variant.id}
-                      onClick={() => setSelectedVariant(variant)}
+                      onClick={() => setSelectedVariant(selectedVariant?.id === variant.id ? undefined : variant)}
                       className={`px-4 py-2.5 rounded-xl font-medium transition-all btn-press ${
                         selectedVariant?.id === variant.id
                           ? 'bg-[var(--color-primary)] text-black'

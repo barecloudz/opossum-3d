@@ -26,13 +26,13 @@ export const useWishlistStore = create<WishlistState>()(
 
         set({ items: [...items, productId] });
 
-        // If user is logged in, also save to database
+        // If user is logged in, also save to database (upsert to handle race conditions)
         if (userId) {
           try {
-            await supabase.from('wishlists').insert({
-              user_id: userId,
-              product_id: productId,
-            });
+            await supabase.from('wishlists').upsert(
+              { user_id: userId, product_id: productId },
+              { onConflict: 'user_id,product_id', ignoreDuplicates: true }
+            );
           } catch (err) {
             console.error('Error saving wishlist to database:', err);
           }
@@ -64,6 +64,9 @@ export const useWishlistStore = create<WishlistState>()(
       syncWithUser: async (userId) => {
         set({ isLoading: true });
         try {
+          // Get local items first to avoid race condition
+          const localItems = [...get().items];
+
           const { data, error } = await supabase
             .from('wishlists')
             .select('product_id')
@@ -72,17 +75,17 @@ export const useWishlistStore = create<WishlistState>()(
           if (error) throw error;
 
           const dbItems = data?.map(w => w.product_id) || [];
-          const localItems = get().items;
 
-          // Merge local items with database items
+          // Merge local items with database items (deduplicated)
           const mergedItems = [...new Set([...localItems, ...dbItems])];
           set({ items: mergedItems });
 
-          // Save any local-only items to database
+          // Save any local-only items to database using upsert to handle duplicates
           const itemsToAdd = localItems.filter(id => !dbItems.includes(id));
           if (itemsToAdd.length > 0) {
-            await supabase.from('wishlists').insert(
-              itemsToAdd.map(product_id => ({ user_id: userId, product_id }))
+            await supabase.from('wishlists').upsert(
+              itemsToAdd.map(product_id => ({ user_id: userId, product_id })),
+              { onConflict: 'user_id,product_id', ignoreDuplicates: true }
             );
           }
         } catch (err) {

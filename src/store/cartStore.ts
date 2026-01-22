@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Product, ProductVariant, CartItem } from '../types';
 
+// Maximum quantity per item to prevent abuse
+const MAX_QUANTITY_PER_ITEM = 99;
+
 interface CartState {
   items: CartItem[];
   isOpen: boolean;
@@ -27,6 +30,12 @@ export const useCartStore = create<CartState>()(
       isOpen: false,
 
       addItem: (product, variant, quantity = 1) => {
+        // Validate quantity - must be positive integer, max 99
+        const validQuantity = Math.min(
+          MAX_QUANTITY_PER_ITEM,
+          Math.max(1, Math.floor(quantity))
+        );
+
         set((state) => {
           const existingIndex = state.items.findIndex(
             (item) =>
@@ -36,12 +45,16 @@ export const useCartStore = create<CartState>()(
 
           if (existingIndex > -1) {
             const newItems = [...state.items];
-            newItems[existingIndex].quantity += quantity;
+            // Cap total quantity at max
+            newItems[existingIndex].quantity = Math.min(
+              MAX_QUANTITY_PER_ITEM,
+              newItems[existingIndex].quantity + validQuantity
+            );
             return { items: newItems };
           }
 
           return {
-            items: [...state.items, { product, variant, quantity }],
+            items: [...state.items, { product, variant, quantity: validQuantity }],
           };
         });
       },
@@ -56,15 +69,21 @@ export const useCartStore = create<CartState>()(
       },
 
       updateQuantity: (productId, quantity, variantId) => {
-        if (quantity <= 0) {
+        // Validate quantity - must be positive integer
+        const validQuantity = Math.floor(quantity);
+
+        if (validQuantity <= 0) {
           get().removeItem(productId, variantId);
           return;
         }
 
+        // Cap at max quantity
+        const cappedQuantity = Math.min(MAX_QUANTITY_PER_ITEM, validQuantity);
+
         set((state) => ({
           items: state.items.map((item) =>
             item.product.id === productId && item.variant?.id === variantId
-              ? { ...item, quantity }
+              ? { ...item, quantity: cappedQuantity }
               : item
           ),
         }));
