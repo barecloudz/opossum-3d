@@ -181,11 +181,11 @@ const handler: Handler = async (event) => {
     console.log('USPS rates response:', JSON.stringify(ratesData, null, 2));
 
     // Extract the rate from the response
-    const rates = ratesData.rates || ratesData.rateOptions || [];
-    const priorityRate = rates[0];
+    // USPS v3 API returns: { rateOptions: [{ totalBasePrice, rates: [{ price, ... }] }] }
+    const rateOptions = ratesData.rateOptions || [];
 
-    if (!priorityRate) {
-      console.warn('No rates returned from USPS, using fallback');
+    if (rateOptions.length === 0) {
+      console.warn('No rate options returned from USPS, using fallback');
       return {
         statusCode: 200,
         headers: corsHeaders,
@@ -198,18 +198,46 @@ const handler: Handler = async (event) => {
       };
     }
 
-    // Calculate estimated delivery days from commitment
+    // Find the cheapest rate option
+    let cheapestRate = rateOptions[0];
+    for (const option of rateOptions) {
+      if (option.totalBasePrice < cheapestRate.totalBasePrice) {
+        cheapestRate = option;
+      }
+    }
+
+    const ratePrice = cheapestRate.totalBasePrice || cheapestRate.rates?.[0]?.price;
+
+    if (!ratePrice) {
+      console.warn('Could not extract price from USPS response, using fallback');
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          rate: DEFAULT_SHIPPING_RATE,
+          estimatedDeliveryDays: 5,
+          mailClass: 'PRIORITY_MAIL',
+          fallbackUsed: true,
+        } as ShippingRateResponse),
+      };
+    }
+
+    // Get mail class from the rate details
+    const rateDetails = cheapestRate.rates?.[0];
+    const mailClass = rateDetails?.mailClass || 'PRIORITY_MAIL';
+
+    // Calculate estimated delivery days from commitment or product definition
     let estimatedDays = 3; // Default Priority Mail estimate
-    if (priorityRate.commitment?.scheduledDeliveryDate) {
-      const deliveryDate = new Date(priorityRate.commitment.scheduledDeliveryDate);
+    if (rateDetails?.commitment?.scheduledDeliveryDate) {
+      const deliveryDate = new Date(rateDetails.commitment.scheduledDeliveryDate);
       const today = new Date();
       estimatedDays = Math.ceil((deliveryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     }
 
     const response: ShippingRateResponse = {
-      rate: priorityRate.totalPrice || priorityRate.price || DEFAULT_SHIPPING_RATE,
+      rate: ratePrice,
       estimatedDeliveryDays: Math.max(1, estimatedDays),
-      mailClass: 'PRIORITY_MAIL',
+      mailClass,
       fallbackUsed: false,
     };
 
