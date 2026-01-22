@@ -26,6 +26,7 @@ export interface Product {
   continue_selling_when_out_of_stock: boolean;
   is_active: boolean;
   is_featured: boolean;
+  display_order: number;
   print_time_hours: number | null;
   weight_oz: number | null;
   created_at: string;
