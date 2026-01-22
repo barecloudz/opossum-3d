@@ -53,6 +53,14 @@ export async function getUSPSAccessToken(): Promise<string> {
   const tokenUrl = `${baseUrl}/oauth2/v3/token`;
   console.log(`  - Token URL: ${tokenUrl}`);
 
+  // USPS requires scope parameter - request all needed API scopes
+  const scopes = [
+    'prices',
+    'labels',
+    'tracking',
+    'addresses',
+  ].join(' ');
+
   const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
@@ -61,6 +69,7 @@ export async function getUSPSAccessToken(): Promise<string> {
     },
     body: new URLSearchParams({
       grant_type: 'client_credentials',
+      scope: scopes,
     }),
   });
 
