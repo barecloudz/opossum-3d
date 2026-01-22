@@ -226,7 +226,7 @@ const handler: Handler = async (event) => {
     const rateDetails = cheapestRate.rates?.[0];
     const mailClass = rateDetails?.mailClass || 'PRIORITY_MAIL';
 
-    // Calculate estimated delivery days from commitment or product definition
+    // Calculate estimated delivery days
     let estimatedDays = 3; // Default Priority Mail estimate
     if (rateDetails?.commitment?.scheduledDeliveryDate) {
       const deliveryDate = new Date(rateDetails.commitment.scheduledDeliveryDate);
