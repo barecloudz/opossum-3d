@@ -28,7 +28,6 @@ export function getUSPSBaseUrl(): string {
 export async function getUSPSAccessToken(): Promise<string> {
   // Check if cached token is still valid (with 5-minute buffer)
   if (tokenCache && tokenCache.expiresAt > Date.now() + 300000) {
-    console.log('Using cached USPS token');
     return tokenCache.accessToken;
   }
 
@@ -41,13 +40,6 @@ export async function getUSPSAccessToken(): Promise<string> {
   }
 
   const tokenUrl = `${baseUrl}/oauth2/v3/token`;
-
-  // Log environment info (not secrets)
-  console.log(`USPS OAuth Request:`);
-  console.log(`  - Token URL: ${tokenUrl}`);
-  console.log(`  - Environment: ${process.env.USPS_ENVIRONMENT || 'production (default)'}`);
-  console.log(`  - Consumer Key length: ${consumerKey.length} chars`);
-  console.log(`  - Consumer Key prefix: ${consumerKey.substring(0, 8)}...`);
 
   // USPS OAuth2 V3 requires JSON body with credentials per official docs
   // https://github.com/USPS/api-examples
@@ -87,8 +79,6 @@ export async function getUSPSAccessToken(): Promise<string> {
     accessToken: data.access_token,
     expiresAt: Date.now() + (data.expires_in * 1000),
   };
-
-  console.log('USPS token obtained successfully, expires in', data.expires_in, 'seconds');
 
   return data.access_token;
 }
