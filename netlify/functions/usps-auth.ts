@@ -33,34 +33,55 @@ export async function getUSPSAccessToken(): Promise<string> {
   }
 
   const baseUrl = getUSPSBaseUrl();
-  console.log(`Requesting new USPS access token (${baseUrl})`);
-
-  const consumerKey = process.env.USPS_CONSUMER_KEY;
-  const consumerSecret = process.env.USPS_CONSUMER_SECRET;
+  const consumerKey = process.env.USPS_CONSUMER_KEY?.trim();
+  const consumerSecret = process.env.USPS_CONSUMER_SECRET?.trim();
 
   if (!consumerKey || !consumerSecret) {
     throw new Error('USPS API credentials not configured');
   }
 
-  const response = await fetch(`${baseUrl}/oauth2/v3/token`, {
+  // Log environment info (not secrets)
+  console.log(`USPS OAuth Request:`);
+  console.log(`  - Base URL: ${baseUrl}`);
+  console.log(`  - Environment: ${process.env.USPS_ENVIRONMENT || 'production (default)'}`);
+  console.log(`  - Consumer Key length: ${consumerKey.length} chars`);
+  console.log(`  - Consumer Key prefix: ${consumerKey.substring(0, 8)}...`);
+
+  // USPS OAuth2 requires Basic auth header with base64 encoded credentials
+  const credentials = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+
+  const tokenUrl = `${baseUrl}/oauth2/v3/token`;
+  console.log(`  - Token URL: ${tokenUrl}`);
+
+  const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${credentials}`,
     },
     body: new URLSearchParams({
       grant_type: 'client_credentials',
-      client_id: consumerKey,
-      client_secret: consumerSecret,
     }),
   });
 
+  const responseText = await response.text();
+
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('USPS OAuth error:', errorText);
-    throw new Error(`USPS authentication failed: ${response.status}`);
+    console.error('USPS OAuth error response:', {
+      status: response.status,
+      statusText: response.statusText,
+      body: responseText,
+    });
+    throw new Error(`USPS authentication failed: ${response.status} - ${responseText}`);
   }
 
-  const data = await response.json();
+  let data;
+  try {
+    data = JSON.parse(responseText);
+  } catch (e) {
+    console.error('Failed to parse USPS token response:', responseText);
+    throw new Error('Invalid response from USPS OAuth');
+  }
 
   // Cache the token
   tokenCache = {
@@ -68,7 +89,7 @@ export async function getUSPSAccessToken(): Promise<string> {
     expiresAt: Date.now() + (data.expires_in * 1000),
   };
 
-  console.log('USPS token obtained, expires in', data.expires_in, 'seconds');
+  console.log('USPS token obtained successfully, expires in', data.expires_in, 'seconds');
 
   return data.access_token;
 }
