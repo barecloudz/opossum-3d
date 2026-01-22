@@ -27,6 +27,13 @@ interface ShippingRateRequest {
     zipCode: string;
   };
   totalWeightOz: number;
+  enabledServiceCodes?: string[]; // Service codes enabled by admin
+}
+
+interface ExtraService {
+  code: string;
+  name: string;
+  price: number;
 }
 
 interface ShippingRateResponse {
@@ -34,6 +41,7 @@ interface ShippingRateResponse {
   estimatedDeliveryDays: number;
   mailClass: string;
   fallbackUsed: boolean;
+  extraServices?: ExtraService[]; // Available optional services
 }
 
 // Retry helper for transient failures
@@ -89,7 +97,7 @@ const handler: Handler = async (event) => {
   }
 
   try {
-    const { destinationAddress, totalWeightOz } = JSON.parse(event.body || '{}') as ShippingRateRequest;
+    const { destinationAddress, totalWeightOz, enabledServiceCodes } = JSON.parse(event.body || '{}') as ShippingRateRequest;
 
     // Validate required fields
     if (!destinationAddress?.zipCode) {
@@ -232,11 +240,26 @@ const handler: Handler = async (event) => {
       estimatedDays = Math.ceil((deliveryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     }
 
+    // Extract enabled extra services from the USPS response
+    const availableExtraServices: ExtraService[] = [];
+    if (enabledServiceCodes && enabledServiceCodes.length > 0 && cheapestRate.extraServices) {
+      for (const svc of cheapestRate.extraServices) {
+        if (enabledServiceCodes.includes(svc.extraService) && svc.price > 0) {
+          availableExtraServices.push({
+            code: svc.extraService,
+            name: svc.name,
+            price: svc.price,
+          });
+        }
+      }
+    }
+
     const response: ShippingRateResponse = {
       rate: ratePrice,
       estimatedDeliveryDays: Math.max(1, estimatedDays),
       mailClass,
       fallbackUsed: false,
+      extraServices: availableExtraServices.length > 0 ? availableExtraServices : undefined,
     };
 
     console.log(`USPS: ${ORIGIN_ZIP} -> ${destZip}, ${weightLbs.toFixed(2)}lbs = $${ratePrice} (${mailClass})`);
