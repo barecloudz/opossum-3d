@@ -13,6 +13,20 @@ import PaymentForm from '../components/checkout/PaymentForm';
 import { useToast } from '../components/ui/Toast';
 import type { PromoCode } from '../types';
 
+interface ShippingService {
+  id: string;
+  service_code: string;
+  name: string;
+  description: string | null;
+  is_enabled: boolean;
+}
+
+interface AvailableExtraService {
+  code: string;
+  name: string;
+  price: number;
+}
+
 // Valid US state codes for validation
 const VALID_STATES = new Set([
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
@@ -45,6 +59,11 @@ export default function Checkout() {
   const [isRateFallback, setIsRateFallback] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
 
+  // Extra shipping services state
+  const [enabledShippingServices, setEnabledShippingServices] = useState<ShippingService[]>([]);
+  const [availableExtraServices, setAvailableExtraServices] = useState<AvailableExtraService[]>([]);
+  const [selectedExtraServices, setSelectedExtraServices] = useState<Set<string>>(new Set());
+
   // Featured promo codes (shown on checkout)
   const [featuredPromos, setFeaturedPromos] = useState<PromoCode[]>([]);
 
@@ -62,8 +81,12 @@ export default function Checkout() {
   });
 
   const subtotal = getSubtotal();
+  // Calculate extra services cost
+  const extraServicesCost = availableExtraServices
+    .filter(svc => selectedExtraServices.has(svc.code))
+    .reduce((sum, svc) => sum + svc.price, 0);
   // Use dynamic USPS rate - no fallback to prevent losing money on shipping
-  const shipping = shippingRate ?? 0;
+  const shipping = (shippingRate ?? 0) + extraServicesCost;
 
   // Calculate total weight from cart items (in ounces)
   const getTotalWeight = useCallback((): number => {
@@ -87,6 +110,9 @@ export default function Checkout() {
     setShippingError(null);
 
     try {
+      // Get enabled service codes to pass to API
+      const enabledServiceCodes = enabledShippingServices.map(s => s.service_code);
+
       const response = await fetch('/.netlify/functions/get-shipping-rate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,6 +125,7 @@ export default function Checkout() {
             zipCode: formData.zip,
           },
           totalWeightOz: getTotalWeight(),
+          enabledServiceCodes,
         }),
       });
 
@@ -108,6 +135,9 @@ export default function Checkout() {
         setShippingRate(data.rate);
         setEstimatedDelivery(data.estimatedDeliveryDays);
         setIsRateFallback(data.fallbackUsed);
+        setAvailableExtraServices(data.extraServices || []);
+        // Reset selected services when rate changes
+        setSelectedExtraServices(new Set());
 
         if (data.fallbackUsed) {
           setShippingError('Could not get exact rate from USPS. Using estimated rate.');
@@ -128,7 +158,7 @@ export default function Checkout() {
     } finally {
       setShippingLoading(false);
     }
-  }, [formData.address, formData.apartment, formData.city, formData.state, formData.zip, getTotalWeight, canCalculateShipping]);
+  }, [formData.address, formData.apartment, formData.city, formData.state, formData.zip, getTotalWeight, canCalculateShipping, enabledShippingServices]);
 
   // Reset shipping when address changes significantly
   useEffect(() => {
@@ -185,6 +215,25 @@ export default function Checkout() {
     };
 
     fetchFeaturedPromos();
+  }, []);
+
+  // Fetch enabled shipping services
+  useEffect(() => {
+    const fetchShippingServices = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('shipping_services')
+          .select('*')
+          .eq('is_enabled', true);
+
+        if (error) throw error;
+        setEnabledShippingServices(data || []);
+      } catch (err) {
+        console.error('Error fetching shipping services:', err);
+      }
+    };
+
+    fetchShippingServices();
   }, []);
 
   // Get eligible featured promos (subtotal meets min order amount)
@@ -678,6 +727,40 @@ export default function Checkout() {
                     <p className="text-orange-400 text-sm mt-2">
                       Could not get exact USPS rate. Please verify your address and try again.
                     </p>
+                  )}
+
+                  {/* Extra shipping services */}
+                  {availableExtraServices.length > 0 && shippingRate !== null && !isRateFallback && (
+                    <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+                      <p className="text-sm font-medium text-gray-300 mb-3">Optional shipping upgrades:</p>
+                      <div className="space-y-2">
+                        {availableExtraServices.map((service) => (
+                          <label
+                            key={service.code}
+                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedExtraServices.has(service.code)}
+                              onChange={(e) => {
+                                const newSelected = new Set(selectedExtraServices);
+                                if (e.target.checked) {
+                                  newSelected.add(service.code);
+                                } else {
+                                  newSelected.delete(service.code);
+                                }
+                                setSelectedExtraServices(newSelected);
+                              }}
+                              className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                            />
+                            <span className="flex-1 text-white text-sm">{service.name}</span>
+                            <span className="text-[var(--color-primary)] font-medium text-sm">
+                              +{formatPrice(service.price)}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
