@@ -136,7 +136,6 @@ const handler: Handler = async (event) => {
     const weightLbs = Math.max(0.1, weightOz / 16); // Minimum 0.1 lbs
 
     const baseUrl = getUSPSBaseUrl();
-    console.log(`Fetching USPS rate: ${ORIGIN_ZIP} -> ${destZip}, weight: ${weightLbs.toFixed(2)}lbs (${baseUrl})`);
 
     // Call USPS Prices API with retry logic
     const ratesResponse = await fetchWithRetry(`${baseUrl}/prices/v3/total-rates/search`, {
@@ -178,7 +177,6 @@ const handler: Handler = async (event) => {
     }
 
     const ratesData = await ratesResponse.json();
-    console.log('USPS rates response:', JSON.stringify(ratesData, null, 2));
 
     // Extract the rate from the response
     // USPS v3 API returns: { rateOptions: [{ totalBasePrice, rates: [{ price, ... }] }] }
@@ -241,7 +239,7 @@ const handler: Handler = async (event) => {
       fallbackUsed: false,
     };
 
-    console.log('Returning shipping rate:', response);
+    console.log(`USPS: ${ORIGIN_ZIP} -> ${destZip}, ${weightLbs.toFixed(2)}lbs = $${ratePrice} (${mailClass})`);
 
     return {
       statusCode: 200,
