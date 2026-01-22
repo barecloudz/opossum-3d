@@ -181,8 +181,7 @@ export default function Checkout() {
         const { data, error } = await supabase
           .from('promo_codes')
           .select('*')
-          .eq('is_active', true)
-          .eq('show_on_checkout', true);
+          .eq('is_active', true);
 
         if (error) throw error;
 
