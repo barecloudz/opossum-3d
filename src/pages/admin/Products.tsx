@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Edit, Trash2, Package, Star, Eye, EyeOff, ChevronUp, ChevronDown, FolderOpen } from 'lucide-react';
 import Button from '../../components/ui/Button';
@@ -12,7 +12,6 @@ import { formatPrice, getStockStatus } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import Spinner from '../../components/ui/Spinner';
 import { useToast } from '../../components/ui/Toast';
-import type { Category } from '../../types';
 
 export default function AdminProducts() {
   const { products, isLoading, refetch } = useProducts(true);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Package, Truck } from 'lucide-react';
+import { Save, Truck } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
