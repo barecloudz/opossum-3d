@@ -358,6 +358,7 @@ export default function AdminCategories() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingCategory ? 'Edit Category' : 'Create Category'}
+        size="lg"
       >
         <form onSubmit={handleSave} className="space-y-4">
           <Input
