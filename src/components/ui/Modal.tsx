@@ -49,43 +49,46 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Overlay */}
       <div className="fixed inset-0 bg-black/70" onClick={onClose} />
 
-      {/* Modal */}
-      <div
-        className={`
-          relative w-full ${sizeStyles[size]} my-8
-          bg-brand-charcoal border border-brand-gray rounded-xl shadow-xl
-          transform transition-all max-h-[90vh] flex flex-col
-        `}
-      >
-        {/* Header */}
-        {title && (
-          <div className="flex items-center justify-between p-4 border-b border-brand-gray flex-shrink-0">
-            <h2 className="text-lg font-semibold text-white">{title}</h2>
+      {/* Scroll container */}
+      <div className="min-h-full flex items-center justify-center p-4">
+        {/* Modal */}
+        <div
+          className={`
+            relative w-full ${sizeStyles[size]} my-8
+            bg-brand-charcoal border border-brand-gray rounded-xl shadow-xl
+            transform transition-all
+          `}
+        >
+          {/* Header */}
+          {title && (
+            <div className="flex items-center justify-between p-4 border-b border-brand-gray">
+              <h2 className="text-lg font-semibold text-white">{title}</h2>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+
+          {/* Close button if no title */}
+          {!title && (
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10"
             >
               <X className="h-5 w-5" />
             </button>
-          </div>
-        )}
+          )}
 
-        {/* Close button if no title */}
-        {!title && (
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        )}
-
-        {/* Content */}
-        <div className="p-4 overflow-y-auto flex-1">{children}</div>
+          {/* Content */}
+          <div className="p-4">{children}</div>
+        </div>
       </div>
     </div>
   );
