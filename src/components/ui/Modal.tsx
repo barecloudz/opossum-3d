@@ -49,47 +49,48 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <>
       {/* Overlay */}
-      <div className="fixed inset-0 bg-black/70" onClick={onClose} />
+      <div className="fixed inset-0 z-50 bg-black/70" onClick={onClose} />
 
-      {/* Scroll container */}
-      <div className="min-h-full flex items-center justify-center p-4">
-        {/* Modal */}
-        <div
-          className={`
-            relative w-full ${sizeStyles[size]} my-8
-            bg-brand-charcoal border border-brand-gray rounded-xl shadow-xl
-            transform transition-all
-          `}
-        >
-          {/* Header */}
-          {title && (
-            <div className="flex items-center justify-between p-4 border-b border-brand-gray">
-              <h2 className="text-lg font-semibold text-white">{title}</h2>
+      {/* Modal container - scrollable */}
+      <div className="fixed inset-0 z-50 overflow-y-auto pointer-events-none">
+        <div className="flex min-h-full items-start justify-center p-4 pt-10 pb-10">
+          {/* Modal */}
+          <div
+            className={`
+              pointer-events-auto relative w-full ${sizeStyles[size]}
+              bg-brand-charcoal border border-brand-gray rounded-xl shadow-xl
+            `}
+          >
+            {/* Header */}
+            {title && (
+              <div className="flex items-center justify-between p-4 border-b border-brand-gray">
+                <h2 className="text-lg font-semibold text-white">{title}</h2>
+                <button
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            )}
+
+            {/* Close button if no title */}
+            {!title && (
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10"
               >
                 <X className="h-5 w-5" />
               </button>
-            </div>
-          )}
+            )}
 
-          {/* Close button if no title */}
-          {!title && (
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          )}
-
-          {/* Content */}
-          <div className="p-4">{children}</div>
+            {/* Content */}
+            <div className="p-4">{children}</div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
