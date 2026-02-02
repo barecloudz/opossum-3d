@@ -48,7 +48,6 @@ const TIMELINE_OPTIONS = [
 
 // Budget options
 const BUDGET_OPTIONS = [
-  { value: 'under-25', label: 'Under $25' },
   { value: '25-50', label: '$25 - $50' },
   { value: '50-100', label: '$50 - $100' },
   { value: '100-200', label: '$100 - $200' },
