@@ -1,6 +1,6 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, Menu, X, User, Heart, LogOut } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
 import { useWishlistStore } from '../../store/wishlistStore';
@@ -8,6 +8,12 @@ import { useWishlistStore } from '../../store/wishlistStore';
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
   const { openCart, getItemCount } = useCartStore();
   const { user, isAdmin, signOut } = useAuthStore();
   const { items: wishlistItems } = useWishlistStore();

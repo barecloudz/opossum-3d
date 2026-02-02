@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { ProductDetailSkeleton } from '../components/ui/Skeleton';
 import RelatedProducts from '../components/product/RelatedProducts';
@@ -18,10 +18,45 @@ export default function ProductDetail() {
   const { product, isLoading } = useProduct(slug || '');
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [userSelectedImage, setUserSelectedImage] = useState(false); // Track if user clicked a thumbnail
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
   const { addItem, openCart } = useCartStore();
+
+  // Swipe support for main image
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const minSwipeDistance = 50;
+
+  const handleImageTouchStart = (e: React.TouchEvent) => {
+    touchEndX.current = null;
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleImageTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleImageTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    const images = product?.images || [];
+    if (images.length <= 1) return;
+
+    if (Math.abs(distance) >= minSwipeDistance) {
+      setUserSelectedImage(true);
+      if (distance > 0) {
+        // Swipe left - next image
+        setSelectedImageIndex((prev) => (prev + 1) % images.length);
+      } else {
+        // Swipe right - previous image
+        setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
+      }
+      setImageLoading(true);
+    }
+  };
   const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore();
   const { user } = useAuthStore();
 
@@ -51,9 +86,11 @@ export default function ProductDetail() {
   const currentPrice = product.price + (selectedVariant?.price_adjustment || 0);
   const images = product.images || [];
 
-  // If variant has a specific image, show that; otherwise show the selected gallery image
+  // If variant has a specific image and user hasn't clicked a thumbnail, show variant image
+  // Otherwise show the selected gallery image
   const variantImageUrl = selectedVariant?.image_url;
-  const selectedImage = variantImageUrl
+  const showVariantImage = variantImageUrl && !userSelectedImage;
+  const selectedImage = showVariantImage
     ? { image_url: variantImageUrl, alt_text: selectedVariant?.name || null }
     : (images[selectedImageIndex] || images[0]);
 
@@ -128,8 +165,13 @@ export default function ProductDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Image Gallery */}
           <div className="space-y-4 animate-fade-in">
-            {/* Main Image */}
-            <div className="relative aspect-square glass rounded-3xl overflow-hidden">
+            {/* Main Image - Swipeable */}
+            <div
+              className="relative aspect-square glass rounded-3xl overflow-hidden"
+              onTouchStart={handleImageTouchStart}
+              onTouchMove={handleImageTouchMove}
+              onTouchEnd={handleImageTouchEnd}
+            >
               {/* Sale badge */}
               {isOnSale && (
                 <div className="absolute top-4 left-4 z-10 bg-red-500 text-white text-sm font-bold px-3 py-1.5 rounded-xl">
@@ -137,16 +179,55 @@ export default function ProductDetail() {
                 </div>
               )}
 
+              {/* Loading skeleton */}
+              {imageLoading && selectedImage && (
+                <div className="absolute inset-0 bg-[var(--color-surface)] animate-pulse flex items-center justify-center z-5">
+                  <Package className="h-16 w-16 text-gray-600 animate-pulse" />
+                </div>
+              )}
+
               {selectedImage ? (
                 <img
                   src={selectedImage.image_url}
                   alt={selectedImage.alt_text || product.name}
-                  className="w-full h-full object-cover"
+                  className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
+                  onLoad={() => setImageLoading(false)}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Package className="h-24 w-24 text-gray-600" />
                 </div>
+              )}
+
+              {/* Navigation arrows - visible on larger screens or when multiple images */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={() => {
+                      setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
+                      setUserSelectedImage(true);
+                      setImageLoading(true);
+                    }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors backdrop-blur-sm btn-press z-10"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedImageIndex((prev) => (prev + 1) % images.length);
+                      setUserSelectedImage(true);
+                      setImageLoading(true);
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors backdrop-blur-sm btn-press z-10"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+
+                  {/* Image counter */}
+                  <div className="absolute bottom-4 right-4 px-3 py-1 rounded-full bg-black/40 text-white text-sm backdrop-blur-sm z-10">
+                    {selectedImageIndex + 1} / {images.length}
+                  </div>
+                </>
               )}
             </div>
 
@@ -156,9 +237,15 @@ export default function ProductDetail() {
                 {images.map((image, index) => (
                   <button
                     key={image.id}
-                    onClick={() => setSelectedImageIndex(index)}
+                    onClick={() => {
+                      if (selectedImageIndex !== index || showVariantImage) {
+                        setImageLoading(true);
+                      }
+                      setSelectedImageIndex(index);
+                      setUserSelectedImage(true);
+                    }}
                     className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden transition-all btn-press ${
-                      selectedImageIndex === index
+                      selectedImageIndex === index && !showVariantImage
                         ? 'ring-2 ring-[var(--color-primary)] ring-offset-2 ring-offset-[var(--color-background)]'
                         : 'opacity-60 hover:opacity-100'
                     }`}
@@ -167,6 +254,7 @@ export default function ProductDetail() {
                       src={image.image_url}
                       alt={image.alt_text || ''}
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                   </button>
                 ))}
@@ -179,9 +267,15 @@ export default function ProductDetail() {
                 {images.map((_, index) => (
                   <button
                     key={index}
-                    onClick={() => setSelectedImageIndex(index)}
+                    onClick={() => {
+                      if (selectedImageIndex !== index || showVariantImage) {
+                        setImageLoading(true);
+                      }
+                      setSelectedImageIndex(index);
+                      setUserSelectedImage(true);
+                    }}
                     className={`w-2 h-2 rounded-full transition-all ${
-                      selectedImageIndex === index
+                      selectedImageIndex === index && !showVariantImage
                         ? 'bg-[var(--color-primary)] w-6'
                         : 'bg-gray-600'
                     }`}
@@ -217,6 +311,43 @@ export default function ProductDetail() {
                 </span>
               )}
             </div>
+
+            {/* Variants */}
+            {product.variants && product.variants.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-3">
+                  Select Option
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {product.variants.map((variant) => (
+                    <button
+                      key={variant.id}
+                      onClick={() => {
+                        const newVariant = selectedVariant?.id === variant.id ? undefined : variant;
+                        setSelectedVariant(newVariant);
+                        setUserSelectedImage(false); // Reset so variant image shows
+                        if (newVariant?.image_url) {
+                          setImageLoading(true);
+                        }
+                      }}
+                      className={`px-4 py-2.5 rounded-xl font-medium transition-all btn-press ${
+                        selectedVariant?.id === variant.id
+                          ? 'bg-[var(--color-primary)] text-black'
+                          : 'glass text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {variant.name}
+                      {variant.price_adjustment !== 0 && (
+                        <span className="ml-1 opacity-70">
+                          ({variant.price_adjustment > 0 ? '+' : ''}
+                          {formatPrice(variant.price_adjustment)})
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Stock status */}
             <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
@@ -275,36 +406,6 @@ export default function ProductDetail() {
                       )}
                     </button>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Variants */}
-            {product.variants && product.variants.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-3">
-                  Select Option
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {product.variants.map((variant) => (
-                    <button
-                      key={variant.id}
-                      onClick={() => setSelectedVariant(selectedVariant?.id === variant.id ? undefined : variant)}
-                      className={`px-4 py-2.5 rounded-xl font-medium transition-all btn-press ${
-                        selectedVariant?.id === variant.id
-                          ? 'bg-[var(--color-primary)] text-black'
-                          : 'glass text-white hover:bg-white/10'
-                      }`}
-                    >
-                      {variant.name}
-                      {variant.price_adjustment !== 0 && (
-                        <span className="ml-1 opacity-70">
-                          ({variant.price_adjustment > 0 ? '+' : ''}
-                          {formatPrice(variant.price_adjustment)})
-                        </span>
-                      )}
-                    </button>
-                  ))}
                 </div>
               </div>
             )}

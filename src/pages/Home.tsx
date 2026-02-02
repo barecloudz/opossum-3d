@@ -1,12 +1,42 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, ArrowRight, ShoppingCart, Bell, RefreshCw, Heart, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
 import { useProductStore } from '../store/productStore';
 import { useWishlistStore } from '../store/wishlistStore';
 import { supabase } from '../lib/supabase';
 import type { Category, BannerSlide } from '../types';
+
+// Custom hook for touch/swipe support
+function useSwipe(onSwipeLeft: () => void, onSwipeRight: () => void) {
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchEndX.current = null;
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    const distance = touchStartX.current - touchEndX.current;
+    if (Math.abs(distance) >= minSwipeDistance) {
+      if (distance > 0) {
+        onSwipeLeft();
+      } else {
+        onSwipeRight();
+      }
+    }
+  };
+
+  return { onTouchStart, onTouchMove, onTouchEnd };
+}
 
 // Gradient colors for categories without images
 const categoryGradients = [
@@ -109,11 +139,51 @@ export default function Home() {
     setCurrentSlide((prev) => (prev - 1 + banners.length) % banners.length);
   }, [banners.length]);
 
+  // Banner swipe handlers
+  const bannerSwipe = useSwipe(nextSlide, prevSlide);
+
   useEffect(() => {
     if (banners.length === 0) return;
     const timer = setInterval(nextSlide, 5000); // Auto-rotate every 5 seconds
     return () => clearInterval(timer);
   }, [nextSlide, banners.length]);
+
+  // Category slider state
+  const categoryContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkCategoryScroll = useCallback(() => {
+    const container = categoryContainerRef.current;
+    if (!container) return;
+    setCanScrollLeft(container.scrollLeft > 0);
+    setCanScrollRight(container.scrollLeft < container.scrollWidth - container.clientWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    checkCategoryScroll();
+    const container = categoryContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkCategoryScroll);
+      window.addEventListener('resize', checkCategoryScroll);
+    }
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', checkCategoryScroll);
+      }
+      window.removeEventListener('resize', checkCategoryScroll);
+    };
+  }, [checkCategoryScroll, categories]);
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    const container = categoryContainerRef.current;
+    if (!container) return;
+    const scrollAmount = container.clientWidth * 0.8;
+    container.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
 
   // Fetch products on mount (will use cache if available)
   useEffect(() => {
@@ -179,7 +249,12 @@ export default function Home() {
       {banners.length > 0 && (
       <div className="px-4 mb-8">
         <div className="max-w-7xl mx-auto">
-          <div className="relative overflow-hidden rounded-3xl">
+          <div
+            className="relative overflow-hidden rounded-3xl"
+            onTouchStart={bannerSwipe.onTouchStart}
+            onTouchMove={bannerSwipe.onTouchMove}
+            onTouchEnd={bannerSwipe.onTouchEnd}
+          >
             {/* Slides */}
             <div
               className="flex transition-transform duration-500 ease-out"
@@ -198,7 +273,8 @@ export default function Home() {
                       className="absolute inset-0 w-full h-full object-cover"
                     />
                   )}
-                  <div className="relative z-10">
+                  {/* Content with padding to avoid arrow overlap */}
+                  <div className="relative z-10 ml-10 mr-10 md:ml-12 md:mr-12">
                     {slide.badge && (
                       <div className="inline-block bg-black/20 rounded-lg px-3 py-1 text-sm font-medium text-white mb-2">
                         {slide.badge}
@@ -231,13 +307,13 @@ export default function Home() {
             {/* Navigation Arrows */}
             <button
               onClick={prevSlide}
-              className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors backdrop-blur-sm btn-press"
+              className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors backdrop-blur-sm btn-press"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <button
               onClick={nextSlide}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors backdrop-blur-sm btn-press"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors backdrop-blur-sm btn-press"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
@@ -265,43 +341,70 @@ export default function Home() {
       <div className="px-4 mb-8">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-lg font-bold text-white mb-4">Categories</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in-stagger">
-            {categoriesLoading ? (
-              // Loading skeletons
-              [1, 2, 3, 4].map((i) => (
-                <div key={i} className="aspect-square rounded-2xl bg-[var(--color-surface)] animate-pulse" />
-              ))
-            ) : categories.length > 0 ? (
-              categories.map((category, index) => (
-                <Link
-                  key={category.id}
-                  to={`/products?category=${category.slug}`}
-                  className={`relative overflow-hidden rounded-2xl aspect-square p-4 flex flex-col justify-end group card-hover btn-press ${
-                    !category.image_url ? `bg-gradient-to-br ${categoryGradients[index % categoryGradients.length]}` : ''
-                  }`}
-                >
-                  {/* Category image */}
-                  {category.image_url && (
-                    <img
-                      src={category.image_url}
-                      alt={category.name}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  )}
-                  {/* Shimmer overlay on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                  {/* Overlay for better text readability */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                  <span className="relative z-10 text-white font-semibold text-lg drop-shadow-lg">
-                    {category.name}
-                  </span>
-                </Link>
-              ))
-            ) : (
-              // Fallback when no categories exist
-              <div className="col-span-full text-center py-8 text-gray-400">
-                No categories available yet.
-              </div>
+          <div className="relative">
+            {/* Scroll container */}
+            <div
+              ref={categoryContainerRef}
+              className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {categoriesLoading ? (
+                // Loading skeletons
+                [1, 2, 3, 4].map((i) => (
+                  <div key={i} className="w-40 h-40 flex-shrink-0 rounded-2xl bg-[var(--color-surface)] animate-pulse" />
+                ))
+              ) : categories.length > 0 ? (
+                categories.map((category, index) => (
+                  <Link
+                    key={category.id}
+                    to={`/products?category=${category.slug}`}
+                    className={`relative overflow-hidden rounded-2xl w-40 h-40 flex-shrink-0 p-4 flex flex-col justify-end group card-hover btn-press ${
+                      !category.image_url ? `bg-gradient-to-br ${categoryGradients[index % categoryGradients.length]}` : ''
+                    }`}
+                  >
+                    {/* Category image */}
+                    {category.image_url && (
+                      <img
+                        src={category.image_url}
+                        alt={category.name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    )}
+                    {/* Shimmer overlay on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                    {/* Overlay for better text readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                    <span className="relative z-10 text-white font-semibold text-lg drop-shadow-lg">
+                      {category.name}
+                    </span>
+                  </Link>
+                ))
+              ) : (
+                // Fallback when no categories exist
+                <div className="w-full text-center py-8 text-gray-400">
+                  No categories available yet.
+                </div>
+              )}
+            </div>
+
+            {/* Left Arrow */}
+            {canScrollLeft && (
+              <button
+                onClick={() => scrollCategories('left')}
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors backdrop-blur-sm btn-press z-10"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+            )}
+
+            {/* Right Arrow */}
+            {canScrollRight && (
+              <button
+                onClick={() => scrollCategories('right')}
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors backdrop-blur-sm btn-press z-10"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
             )}
           </div>
         </div>
