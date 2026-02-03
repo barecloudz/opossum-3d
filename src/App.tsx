@@ -40,6 +40,7 @@ import AdminEmailSubscribers from './pages/admin/EmailSubscribers';
 import AdminReviews from './pages/admin/Reviews';
 import AdminTeam from './pages/admin/Team';
 import AdminBanners from './pages/admin/Banners';
+import AdminExampleWorks from './pages/admin/ExampleWorks';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -146,6 +147,7 @@ function App() {
           <Route path="reviews" element={<AdminReviews />} />
           <Route path="themes" element={<AdminThemes />} />
           <Route path="banners" element={<AdminBanners />} />
+          <Route path="example-works" element={<AdminExampleWorks />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
       </Routes>

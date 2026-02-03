@@ -19,6 +19,7 @@ import {
   Star,
   Shield,
   Image,
+  Lightbulb,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -32,6 +33,7 @@ export const navItems = [
   { href: '/admin/quotes', icon: MessageSquare, label: 'Quote Requests' },
   { href: '/admin/reviews', icon: Star, label: 'Reviews' },
   { href: '/admin/banners', icon: Image, label: 'Banners' },
+  { href: '/admin/example-works', icon: Lightbulb, label: 'Example Works' },
   { href: '/admin/themes', icon: Palette, label: 'Themes' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];

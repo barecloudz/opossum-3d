@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Send,
   CheckCircle,
@@ -99,29 +99,12 @@ const FAQ_ITEMS = [
   },
 ];
 
-// Example gallery items
-const EXAMPLE_GALLERY = [
-  {
-    image: '/images/examples/custom-sign.jpg',
-    title: 'Custom Name Signs',
-    description: 'Personalized wall art'
-  },
-  {
-    image: '/images/examples/figurine.jpg',
-    title: 'Character Figurines',
-    description: 'Gaming & pop culture'
-  },
-  {
-    image: '/images/examples/functional.jpg',
-    title: 'Functional Parts',
-    description: 'Custom solutions'
-  },
-  {
-    image: '/images/examples/gift.jpg',
-    title: 'Personalized Gifts',
-    description: 'Unique presents'
-  },
-];
+interface ExampleWork {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string;
+}
 
 // FAQ Accordion Component
 function FAQAccordion({ items }: { items: typeof FAQ_ITEMS }) {
@@ -192,7 +175,28 @@ export default function CustomQuote() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [exampleWorks, setExampleWorks] = useState<ExampleWork[]>([]);
   const { addToast } = useToast();
+
+  // Fetch example works from database
+  useEffect(() => {
+    const fetchExampleWorks = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('example_works')
+          .select('id, title, description, image_url')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+
+        if (error) throw error;
+        setExampleWorks(data || []);
+      } catch (err) {
+        console.error('Error fetching example works:', err);
+      }
+    };
+
+    fetchExampleWorks();
+  }, []);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -669,27 +673,30 @@ ${formData.description}
           </Card>
 
           {/* Example Gallery */}
-          <Card>
-            <h3 className="font-semibold text-theme mb-3">Example Work</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {EXAMPLE_GALLERY.map((item, index) => (
-                <div key={index} className="relative group overflow-hidden rounded-lg aspect-square bg-[var(--color-background)]">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Package className="h-8 w-8 text-theme opacity-20" />
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="absolute bottom-0 left-0 right-0 p-2">
-                      <p className="text-white text-xs font-medium">{item.title}</p>
-                      <p className="text-white/70 text-xs">{item.description}</p>
+          {exampleWorks.length > 0 && (
+            <Card>
+              <h3 className="font-semibold text-theme mb-3">Example Work</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {exampleWorks.map((item) => (
+                  <div key={item.id} className="relative group overflow-hidden rounded-lg aspect-square bg-[var(--color-background)]">
+                    <img
+                      src={item.image_url}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-0 left-0 right-0 p-2">
+                        <p className="text-white text-xs font-medium">{item.title}</p>
+                        {item.description && (
+                          <p className="text-white/70 text-xs">{item.description}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-            <p className="text-theme opacity-50 text-xs mt-2 text-center">
-              Add your own example images in /public/images/examples/
-            </p>
-          </Card>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* Quick Stats */}
           <Card>
