@@ -20,27 +20,57 @@ import {
   Shield,
   Image,
   Lightbulb,
+  Store,
+  Layout,
 } from 'lucide-react';
 import { useState } from 'react';
 
-export const navItems = [
+// Top-level items (always visible)
+export const topNavItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+];
+
+// Store section
+export const storeSubItems = [
   { href: '/admin/products', icon: Package, label: 'Products' },
   { href: '/admin/categories', icon: FolderOpen, label: 'Categories' },
   { href: '/admin/orders', icon: ShoppingBag, label: 'Orders' },
+];
+
+// Customers section
+export const customersSubItems = [
   { href: '/admin/customers', icon: Users, label: 'Customers' },
-  { href: '/admin/team', icon: Shield, label: 'Team' },
   { href: '/admin/quotes', icon: MessageSquare, label: 'Quote Requests' },
   { href: '/admin/reviews', icon: Star, label: 'Reviews' },
+];
+
+// Storefront section
+export const storefrontSubItems = [
   { href: '/admin/banners', icon: Image, label: 'Banners' },
   { href: '/admin/example-works', icon: Lightbulb, label: 'Example Works' },
   { href: '/admin/themes', icon: Palette, label: 'Themes' },
-  { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
+// Marketing section
 export const marketingSubItems = [
   { href: '/admin/promo-codes', icon: Tag, label: 'Promo Codes' },
   { href: '/admin/subscribers', icon: Mail, label: 'Email Subscribers' },
+];
+
+// Bottom items (always visible)
+export const bottomNavItems = [
+  { href: '/admin/team', icon: Shield, label: 'Team' },
+  { href: '/admin/settings', icon: Settings, label: 'Settings' },
+];
+
+// All nav items for page title lookup
+export const navItems = [
+  ...topNavItems,
+  ...storeSubItems,
+  ...customersSubItems,
+  ...storefrontSubItems,
+  ...marketingSubItems,
+  ...bottomNavItems,
 ];
 
 export function getPageTitle(pathname: string): string {
@@ -70,6 +100,15 @@ export function getPageTitle(pathname: string): string {
 export default function AdminSidebar() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [storeOpen, setStoreOpen] = useState(
+    storeSubItems.some(item => location.pathname.startsWith(item.href))
+  );
+  const [customersOpen, setCustomersOpen] = useState(
+    customersSubItems.some(item => location.pathname.startsWith(item.href))
+  );
+  const [storefrontOpen, setStorefrontOpen] = useState(
+    storefrontSubItems.some(item => location.pathname.startsWith(item.href))
+  );
   const [marketingOpen, setMarketingOpen] = useState(
     marketingSubItems.some(item => location.pathname.startsWith(item.href))
   );
@@ -95,7 +134,8 @@ export default function AdminSidebar() {
 
       {/* Navigation */}
       <nav className={`flex-1 p-4 space-y-1 overflow-y-auto ${isMobile ? 'bg-brand-charcoal' : ''}`}>
-        {navItems.slice(0, 8).map((item) => (
+        {/* Dashboard */}
+        {topNavItems.map((item) => (
           <Link
             key={item.href}
             to={item.href}
@@ -111,7 +151,118 @@ export default function AdminSidebar() {
           </Link>
         ))}
 
-        {/* Marketing collapsible menu */}
+        {/* Store collapsible */}
+        <div>
+          <button
+            onClick={() => setStoreOpen(!storeOpen)}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
+              storeSubItems.some(item => isActive(item.href))
+                ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
+                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <Store className={`h-5 w-5 ${storeSubItems.some(item => isActive(item.href)) ? 'text-brand-neon' : ''}`} />
+              <span className="font-medium">Store</span>
+            </div>
+            {storeOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {storeOpen && (
+            <div className="ml-4 mt-1 space-y-1">
+              {storeSubItems.map((item) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all ${
+                    isActive(item.href)
+                      ? 'bg-brand-neon/10 text-brand-neon'
+                      : 'text-gray-400 hover:bg-brand-gray/50 hover:text-white'
+                  }`}
+                >
+                  <item.icon className={`h-4 w-4 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
+                  <span className="text-sm">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Customers collapsible */}
+        <div>
+          <button
+            onClick={() => setCustomersOpen(!customersOpen)}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
+              customersSubItems.some(item => isActive(item.href))
+                ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
+                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <Users className={`h-5 w-5 ${customersSubItems.some(item => isActive(item.href)) ? 'text-brand-neon' : ''}`} />
+              <span className="font-medium">Customers</span>
+            </div>
+            {customersOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {customersOpen && (
+            <div className="ml-4 mt-1 space-y-1">
+              {customersSubItems.map((item) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all ${
+                    isActive(item.href)
+                      ? 'bg-brand-neon/10 text-brand-neon'
+                      : 'text-gray-400 hover:bg-brand-gray/50 hover:text-white'
+                  }`}
+                >
+                  <item.icon className={`h-4 w-4 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
+                  <span className="text-sm">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Storefront collapsible */}
+        <div>
+          <button
+            onClick={() => setStorefrontOpen(!storefrontOpen)}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
+              storefrontSubItems.some(item => isActive(item.href))
+                ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
+                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <Layout className={`h-5 w-5 ${storefrontSubItems.some(item => isActive(item.href)) ? 'text-brand-neon' : ''}`} />
+              <span className="font-medium">Storefront</span>
+            </div>
+            {storefrontOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {storefrontOpen && (
+            <div className="ml-4 mt-1 space-y-1">
+              {storefrontSubItems.map((item) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all ${
+                    isActive(item.href)
+                      ? 'bg-brand-neon/10 text-brand-neon'
+                      : 'text-gray-400 hover:bg-brand-gray/50 hover:text-white'
+                  }`}
+                >
+                  <item.icon className={`h-4 w-4 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
+                  <span className="text-sm">{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Marketing collapsible */}
         <div>
           <button
             onClick={() => setMarketingOpen(!marketingOpen)}
@@ -125,11 +276,7 @@ export default function AdminSidebar() {
               <Megaphone className={`h-5 w-5 ${marketingSubItems.some(item => isActive(item.href)) ? 'text-brand-neon' : ''}`} />
               <span className="font-medium">Marketing</span>
             </div>
-            {marketingOpen ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
+            {marketingOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
           {marketingOpen && (
             <div className="ml-4 mt-1 space-y-1">
@@ -152,7 +299,8 @@ export default function AdminSidebar() {
           )}
         </div>
 
-        {navItems.slice(8).map((item) => (
+        {/* Bottom items - Team & Settings */}
+        {bottomNavItems.map((item) => (
           <Link
             key={item.href}
             to={item.href}
