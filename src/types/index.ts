@@ -98,6 +98,8 @@ export interface Order {
   stripe_charge_id: string | null;
   tracking_number: string | null;
   notes: string | null;
+  shipping_label_pdf?: string | null;
+  shipping_label_generated_at?: string | null;
   created_at: string;
   updated_at: string;
   items?: OrderItem[];

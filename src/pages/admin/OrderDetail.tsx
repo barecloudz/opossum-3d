@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle, Printer } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -56,6 +56,14 @@ export default function AdminOrderDetail() {
       setStatus(orderData.status);
       setTrackingNumber(orderData.tracking_number || '');
       setNotes(orderData.notes || '');
+
+      // Load stored label if available
+      if (orderData.shipping_label_pdf && orderData.tracking_number) {
+        setLabelData({
+          trackingNumber: orderData.tracking_number,
+          labelPdf: orderData.shipping_label_pdf,
+        });
+      }
     } catch (err) {
       console.error('Error fetching order:', err);
       navigate('/admin/orders');
@@ -154,11 +162,13 @@ export default function AdminOrderDetail() {
       setLabelData(data);
       setTrackingNumber(data.trackingNumber);
 
-      // Auto-save tracking number and update status
+      // Auto-save tracking number, label PDF, and update status
       await supabase
         .from('orders')
         .update({
           tracking_number: data.trackingNumber,
+          shipping_label_pdf: data.labelPdf,
+          shipping_label_generated_at: new Date().toISOString(),
           status: 'shipped',
         })
         .eq('id', order.id);
@@ -166,6 +176,8 @@ export default function AdminOrderDetail() {
       setOrder({
         ...order,
         tracking_number: data.trackingNumber,
+        shipping_label_pdf: data.labelPdf,
+        shipping_label_generated_at: new Date().toISOString(),
         status: 'shipped',
       });
       setStatus('shipped');
@@ -224,6 +236,26 @@ export default function AdminOrderDetail() {
     } catch (error) {
       console.error('Download error:', error);
       setLabelError('Failed to download label');
+    }
+  };
+
+  // Open label PDF in new tab for printing
+  const handlePrintLabel = () => {
+    if (!labelData?.labelPdf) return;
+
+    try {
+      const byteCharacters = atob(labelData.labelPdf);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Print error:', error);
+      setLabelError('Failed to open label for printing');
     }
   };
 
@@ -429,13 +461,31 @@ export default function AdminOrderDetail() {
                       </p>
                     </div>
                   </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handlePrintLabel}
+                      className="flex-1"
+                    >
+                      <Printer className="h-5 w-5 mr-2" />
+                      Print Label
+                    </Button>
+                    <Button
+                      onClick={handleDownloadLabel}
+                      className="flex-1"
+                      variant="outline"
+                    >
+                      <Download className="h-5 w-5 mr-2" />
+                      Download PDF
+                    </Button>
+                  </div>
                   <Button
-                    onClick={handleDownloadLabel}
+                    onClick={handleGenerateLabel}
                     className="w-full"
                     variant="outline"
+                    isLoading={isGeneratingLabel}
                   >
-                    <Download className="h-5 w-5 mr-2" />
-                    Download Label PDF
+                    <Truck className="h-5 w-5 mr-2" />
+                    Generate New Label
                   </Button>
                 </div>
               ) : order.tracking_number ? (

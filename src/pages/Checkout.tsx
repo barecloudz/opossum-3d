@@ -491,6 +491,15 @@ export default function Checkout() {
     clearCart();
     navigate(`/order-confirmation/${confirmedOrderId}`);
 
+    // Auto-generate shipping label in background (non-blocking)
+    if (formData.address !== 'Local Pickup') {
+      fetch('/.netlify/functions/auto-generate-shipping-label', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: confirmedOrderId }),
+      }).catch(err => console.error('[Checkout] Auto label generation failed:', err));
+    }
+
     // Send confirmation email in background (non-blocking)
     fetch('/.netlify/functions/send-order-confirmation', {
       method: 'POST',
