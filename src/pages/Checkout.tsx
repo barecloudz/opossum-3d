@@ -350,17 +350,31 @@ export default function Checkout() {
 
       if (orderError) throw orderError;
 
-      // Create order items
-      const orderItems = items.map((item) => ({
-        order_id: order.id,
-        product_id: item.product.id,
-        variant_id: item.variant?.id || null,
-        product_name: item.product.name,
-        variant_name: item.variant?.name || null,
-        quantity: item.quantity,
-        unit_price: item.product.price + (item.variant?.price_adjustment || 0),
-        total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
-      }));
+      // Validate variant IDs still exist in database before inserting
+      const variantIds = items.map(i => i.variant?.id).filter(Boolean) as string[];
+      let validVariantIds = new Set<string>();
+      if (variantIds.length > 0) {
+        const { data: validVariants } = await supabase
+          .from('product_variants')
+          .select('id')
+          .in('id', variantIds);
+        validVariantIds = new Set((validVariants || []).map(v => v.id));
+      }
+
+      // Create order items (set variant_id to null if variant no longer exists)
+      const orderItems = items.map((item) => {
+        const variantExists = item.variant?.id ? validVariantIds.has(item.variant.id) : false;
+        return {
+          order_id: order.id,
+          product_id: item.product.id,
+          variant_id: variantExists ? item.variant!.id : null,
+          product_name: item.product.name,
+          variant_name: item.variant?.name || null,
+          quantity: item.quantity,
+          unit_price: item.product.price + (item.variant?.price_adjustment || 0),
+          total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('order_items')
