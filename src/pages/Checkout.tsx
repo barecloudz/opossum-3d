@@ -40,7 +40,7 @@ const VALID_STATES = new Set([
 export default function Checkout() {
   const navigate = useNavigate();
   const { items, getSubtotal, clearCart } = useCartStore();
-  const { user } = useAuthStore();
+  const { user, isAdmin } = useAuthStore();
   const { addToast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -554,6 +554,132 @@ export default function Checkout() {
     addToast(message, 'error');
   };
 
+  // Admin test payment - skips Stripe entirely
+  const handleTestPayment = async () => {
+    if (!isAdmin) return;
+    setIsLoading(true);
+
+    try {
+      const shippingAddress = {
+        address_line_1: formData.address,
+        address_line_2: formData.apartment || undefined,
+        city: formData.city,
+        state: formData.state,
+        postal_code: formData.zip,
+        country: 'US',
+      };
+
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user?.id || null,
+          guest_email: !user ? formData.email : null,
+          guest_name: !user ? `${formData.firstName} ${formData.lastName}` : null,
+          status: 'paid',
+          subtotal,
+          shipping_cost: shipping,
+          tax: 0,
+          total,
+          shipping_address: shippingAddress,
+          billing_address: shippingAddress,
+          promo_code_id: appliedPromo?.id || null,
+          discount_amount: discount,
+          notes: 'TEST ORDER - Admin test payment',
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Validate variant IDs
+      const variantIds = items.map(i => i.variant?.id).filter(Boolean) as string[];
+      let validVariantIds = new Set<string>();
+      if (variantIds.length > 0) {
+        const { data: validVariants } = await supabase
+          .from('product_variants')
+          .select('id')
+          .in('id', variantIds);
+        validVariantIds = new Set((validVariants || []).map(v => v.id));
+      }
+
+      // Create order items
+      const orderItems = items.map((item) => {
+        const variantExists = item.variant?.id ? validVariantIds.has(item.variant.id) : false;
+        return {
+          order_id: order.id,
+          product_id: item.product.id,
+          variant_id: variantExists ? item.variant!.id : null,
+          product_name: item.product.name,
+          variant_name: item.variant?.name || null,
+          quantity: item.quantity,
+          unit_price: item.product.price + (item.variant?.price_adjustment || 0),
+          total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
+        };
+      });
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      // Update inventory
+      const inventoryPromises = items
+        .filter(item => item.product.track_inventory)
+        .map(async (item) => {
+          if (item.variant) {
+            const newStock = Math.max(0, item.variant.stock_quantity - item.quantity);
+            await supabase
+              .from('product_variants')
+              .update({ stock_quantity: newStock })
+              .eq('id', item.variant.id);
+          } else {
+            const newStock = Math.max(0, item.product.stock_quantity - item.quantity);
+            await supabase
+              .from('products')
+              .update({ stock_quantity: newStock })
+              .eq('id', item.product.id);
+          }
+        });
+
+      await Promise.all(inventoryPromises);
+
+      // Update promo usage
+      if (appliedPromo) {
+        const { error: promoError } = await supabase.rpc('increment_promo_usage', {
+          promo_id: appliedPromo.id
+        }).maybeSingle();
+
+        if (promoError?.code === 'PGRST202') {
+          await supabase
+            .from('promo_codes')
+            .update({ uses_count: appliedPromo.uses_count + 1 })
+            .eq('id', appliedPromo.id);
+        }
+      }
+
+      setPaymentComplete(true);
+      clearCart();
+      navigate(`/order-confirmation/${order.id}`);
+
+      // Auto-generate shipping label in background
+      if (formData.address !== 'Local Pickup') {
+        fetch('/.netlify/functions/auto-generate-shipping-label', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: order.id }),
+        }).catch(err => console.error('[Checkout] Auto label generation failed:', err));
+      }
+
+    } catch (err: any) {
+      console.error('[Checkout] Test payment error:', err);
+      addToast(err.message || 'Test payment failed', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // For delivery orders: require real USPS rate (not fallback) to prevent losing money
   const hasValidShippingRate = shippingRate !== null && !isRateFallback;
 
@@ -935,6 +1061,19 @@ export default function Checkout() {
             >
               Continue to Payment
             </Button>
+
+            {isAdmin && (
+              <Button
+                onClick={handleTestPayment}
+                className="w-full border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+                size="lg"
+                variant="outline"
+                isLoading={isLoading}
+                disabled={!isFormValid}
+              >
+                Test Payment (Admin Only)
+              </Button>
+            )}
           </>
         ) : (
           <>
