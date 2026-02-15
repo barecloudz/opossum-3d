@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Search, Package, ChevronRight, MapPin, Mail, Phone } from 'lucide-react';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
