@@ -26,10 +26,16 @@ interface ShippingRateRequest {
   totalWeightOz: number;
 }
 
-interface ShippingRateResponse {
+interface RateOption {
+  serviceToken: string;
+  serviceName: string;
+  provider: string;
   rate: number;
-  estimatedDeliveryDays: number;
-  mailClass: string;
+  estimatedDays: number | null;
+}
+
+interface ShippingRateResponse {
+  rates: RateOption[];
   fallbackUsed: boolean;
 }
 
@@ -111,49 +117,54 @@ const handler: Handler = async (event) => {
       async: false,
     });
 
-    // Filter for USPS Priority Mail rates
-    const uspsRates = shipment.rates.filter(r =>
-      r.provider === 'USPS' && r.servicelevel?.token?.includes('priority')
-    );
+    // Filter to USPS rates only and deduplicate by service level
+    const uspsRates = shipment.rates.filter(r => r.provider === 'USPS');
 
-    // If no USPS Priority rates, try any USPS rate, then any rate
-    let selectedRate = uspsRates[0];
-    if (!selectedRate) {
-      const anyUsps = shipment.rates.find(r => r.provider === 'USPS');
-      selectedRate = anyUsps || shipment.rates[0];
-    }
-
-    if (!selectedRate) {
-      console.warn('No rates returned from Shippo, using fallback');
+    if (uspsRates.length === 0) {
+      console.warn('No USPS rates returned from Shippo, using fallback');
       return {
         statusCode: 200,
         headers: corsHeaders,
         body: JSON.stringify({
-          rate: DEFAULT_SHIPPING_RATE,
-          estimatedDeliveryDays: 5,
-          mailClass: 'PRIORITY_MAIL',
+          rates: [{
+            serviceToken: 'usps_priority',
+            serviceName: 'Priority Mail',
+            provider: 'USPS',
+            rate: DEFAULT_SHIPPING_RATE,
+            estimatedDays: 3,
+          }],
           fallbackUsed: true,
         } as ShippingRateResponse),
       };
     }
 
-    const ratePrice = parseFloat(selectedRate.amount);
-    const estimatedDays = selectedRate.estimatedDays || 3;
-    const serviceName = selectedRate.servicelevel?.name || 'Priority Mail';
+    // Build rate options, sorted by price (cheapest first)
+    const seen = new Set<string>();
+    const rateOptions: RateOption[] = uspsRates
+      .filter(r => {
+        const token = r.servicelevel?.token || 'unknown';
+        if (seen.has(token)) return false;
+        seen.add(token);
+        return true;
+      })
+      .map(r => ({
+        serviceToken: r.servicelevel?.token || 'unknown',
+        serviceName: r.servicelevel?.name || r.provider,
+        provider: r.provider,
+        rate: parseFloat(r.amount),
+        estimatedDays: r.estimatedDays || null,
+      }))
+      .sort((a, b) => a.rate - b.rate);
 
-    console.log(`Shippo rate: ${destZip}, ${weightOz}oz = $${ratePrice} (${selectedRate.provider} ${serviceName})`);
-
-    const response: ShippingRateResponse = {
-      rate: ratePrice,
-      estimatedDeliveryDays: Math.max(1, estimatedDays),
-      mailClass: serviceName,
-      fallbackUsed: false,
-    };
+    console.log(`Shippo rates for ${destZip}, ${weightOz}oz:`, rateOptions.map(r => `${r.serviceName} $${r.rate}`));
 
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: JSON.stringify(response),
+      body: JSON.stringify({
+        rates: rateOptions,
+        fallbackUsed: false,
+      } as ShippingRateResponse),
     };
 
   } catch (error: any) {
@@ -164,9 +175,13 @@ const handler: Handler = async (event) => {
       statusCode: 200,
       headers: corsHeaders,
       body: JSON.stringify({
-        rate: DEFAULT_SHIPPING_RATE,
-        estimatedDeliveryDays: 5,
-        mailClass: 'PRIORITY_MAIL',
+        rates: [{
+          serviceToken: 'usps_priority',
+          serviceName: 'Priority Mail',
+          provider: 'USPS',
+          rate: DEFAULT_SHIPPING_RATE,
+          estimatedDays: 3,
+        }],
         fallbackUsed: true,
       } as ShippingRateResponse),
     };

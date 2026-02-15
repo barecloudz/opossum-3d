@@ -99,9 +99,10 @@ const handler: Handler = async (event) => {
       }
     }
 
-    // Parse customer name
+    // Parse customer name and service token
     const fullName = order.guest_name || '';
     const destZip = (order.shipping_address.postal_code || '').replace(/\D/g, '').slice(0, 5);
+    const serviceToken = order.shipping_address.shipping_service_token;
 
     const shippo = getShippoClient();
 
@@ -131,10 +132,16 @@ const handler: Handler = async (event) => {
       async: false,
     });
 
-    // Find USPS Priority Mail rate (preferred), fallback to cheapest USPS, then cheapest overall
-    let selectedRate = shipment.rates.find(r =>
-      r.provider === 'USPS' && r.servicelevel?.token?.includes('priority')
-    );
+    // Match the service level the customer selected at checkout
+    let selectedRate = serviceToken
+      ? shipment.rates.find(r => r.servicelevel?.token === serviceToken)
+      : undefined;
+    // Fallback: USPS Priority Mail, then any USPS, then cheapest
+    if (!selectedRate) {
+      selectedRate = shipment.rates.find(r =>
+        r.provider === 'USPS' && r.servicelevel?.token?.includes('priority')
+      );
+    }
     if (!selectedRate) {
       selectedRate = shipment.rates.find(r => r.provider === 'USPS');
     }

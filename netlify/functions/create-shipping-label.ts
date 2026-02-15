@@ -15,6 +15,7 @@ interface CreateLabelRequest {
     zipCode: string;
   };
   totalWeightOz: number;
+  serviceToken?: string;
 }
 
 interface CreateLabelResponse {
@@ -46,7 +47,7 @@ const handler: Handler = async (event) => {
   }
 
   try {
-    const { orderId, orderNumber, recipientAddress, totalWeightOz } = JSON.parse(event.body || '{}') as CreateLabelRequest;
+    const { orderId, orderNumber, recipientAddress, totalWeightOz, serviceToken } = JSON.parse(event.body || '{}') as CreateLabelRequest;
 
     // Validate required fields
     if (!orderId || !recipientAddress || !totalWeightOz) {
@@ -97,10 +98,16 @@ const handler: Handler = async (event) => {
       async: false,
     });
 
-    // Find USPS Priority Mail rate (preferred), fallback to cheapest USPS, then cheapest overall
-    let selectedRate = shipment.rates.find(r =>
-      r.provider === 'USPS' && r.servicelevel?.token?.includes('priority')
-    );
+    // Match the service level the customer selected at checkout
+    let selectedRate = serviceToken
+      ? shipment.rates.find(r => r.servicelevel?.token === serviceToken)
+      : undefined;
+    // Fallback: USPS Priority Mail, then any USPS, then cheapest
+    if (!selectedRate) {
+      selectedRate = shipment.rates.find(r =>
+        r.provider === 'USPS' && r.servicelevel?.token?.includes('priority')
+      );
+    }
     if (!selectedRate) {
       selectedRate = shipment.rates.find(r => r.provider === 'USPS');
     }

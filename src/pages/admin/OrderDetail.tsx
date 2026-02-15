@@ -150,6 +150,7 @@ export default function AdminOrderDetail() {
             zipCode: order.shipping_address.postal_code,
           },
           totalWeightOz: totalWeight,
+          serviceToken: order.shipping_address.shipping_service_token,
         }),
       });
 

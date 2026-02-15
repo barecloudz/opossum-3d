@@ -13,18 +13,12 @@ import PaymentForm from '../components/checkout/PaymentForm';
 import { useToast } from '../components/ui/Toast';
 import type { PromoCode } from '../types';
 
-interface ShippingService {
-  id: string;
-  service_code: string;
-  name: string;
-  description: string | null;
-  is_enabled: boolean;
-}
-
-interface AvailableExtraService {
-  code: string;
-  name: string;
-  price: number;
+interface RateOption {
+  serviceToken: string;
+  serviceName: string;
+  provider: string;
+  rate: number;
+  estimatedDays: number | null;
 }
 
 // Valid US state codes for validation
@@ -52,17 +46,12 @@ export default function Checkout() {
   const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
   const [paymentComplete, setPaymentComplete] = useState(false);
 
-  // USPS shipping rate state
-  const [shippingRate, setShippingRate] = useState<number | null>(null);
+  // Shipping rate state
+  const [shippingRates, setShippingRates] = useState<RateOption[]>([]);
+  const [selectedRateIndex, setSelectedRateIndex] = useState<number>(0);
   const [shippingLoading, setShippingLoading] = useState(false);
-  const [estimatedDelivery, setEstimatedDelivery] = useState<number | null>(null);
   const [isRateFallback, setIsRateFallback] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
-
-  // Extra shipping services state
-  const [enabledShippingServices, setEnabledShippingServices] = useState<ShippingService[]>([]);
-  const [availableExtraServices, setAvailableExtraServices] = useState<AvailableExtraService[]>([]);
-  const [selectedExtraServices, setSelectedExtraServices] = useState<Set<string>>(new Set());
 
   // Featured promo codes (shown on checkout)
   const [featuredPromos, setFeaturedPromos] = useState<PromoCode[]>([]);
@@ -81,12 +70,10 @@ export default function Checkout() {
   });
 
   const subtotal = getSubtotal();
-  // Calculate extra services cost
-  const extraServicesCost = availableExtraServices
-    .filter(svc => selectedExtraServices.has(svc.code))
-    .reduce((sum, svc) => sum + svc.price, 0);
-  // Use dynamic USPS rate - no fallback to prevent losing money on shipping
-  const shipping = (shippingRate ?? 0) + extraServicesCost;
+  const selectedRate = shippingRates[selectedRateIndex] || null;
+  const shippingRate = selectedRate?.rate ?? null;
+  const estimatedDelivery = selectedRate?.estimatedDays ?? null;
+  const shipping = shippingRate ?? 0;
 
   // Calculate total weight from cart items (in ounces)
   const getTotalWeight = useCallback((): number => {
@@ -100,7 +87,7 @@ export default function Checkout() {
   const canCalculateShipping = formData.zip && formData.zip.length >= 5 &&
     formData.city && formData.state && formData.address;
 
-  // Fetch USPS shipping rate
+  // Fetch shipping rates
   const fetchShippingRate = useCallback(async () => {
     if (!canCalculateShipping) {
       return;
@@ -110,9 +97,6 @@ export default function Checkout() {
     setShippingError(null);
 
     try {
-      // Get enabled service codes to pass to API
-      const enabledServiceCodes = enabledShippingServices.map(s => s.service_code);
-
       const response = await fetch('/.netlify/functions/get-shipping-rate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,46 +109,40 @@ export default function Checkout() {
             zipCode: formData.zip,
           },
           totalWeightOz: getTotalWeight(),
-          enabledServiceCodes,
         }),
       });
 
       const data = await response.json();
 
-      if (response.ok) {
-        setShippingRate(data.rate);
-        setEstimatedDelivery(data.estimatedDeliveryDays);
+      if (response.ok && data.rates?.length > 0) {
+        setShippingRates(data.rates);
+        setSelectedRateIndex(0); // Auto-select cheapest
         setIsRateFallback(data.fallbackUsed);
-        setAvailableExtraServices(data.extraServices || []);
-        // Reset selected services when rate changes
-        setSelectedExtraServices(new Set());
 
         if (data.fallbackUsed) {
-          setShippingError('Could not get exact rate from USPS. Using estimated rate.');
+          setShippingError('Could not get exact rates. Using estimated rate.');
         } else {
           setShippingError(null);
         }
       } else {
-        // Don't use fallback - show error instead
-        setShippingRate(null);
+        setShippingRates([]);
         setIsRateFallback(true);
         setShippingError(data.error || 'Failed to calculate shipping. Please try again.');
       }
     } catch (error) {
       console.error('Failed to fetch shipping rate:', error);
-      setShippingRate(null);
+      setShippingRates([]);
       setIsRateFallback(true);
       setShippingError('Unable to connect to shipping service. Please try again.');
     } finally {
       setShippingLoading(false);
     }
-  }, [formData.address, formData.apartment, formData.city, formData.state, formData.zip, getTotalWeight, canCalculateShipping, enabledShippingServices]);
+  }, [formData.address, formData.apartment, formData.city, formData.state, formData.zip, getTotalWeight, canCalculateShipping]);
 
   // Reset shipping when address changes significantly
   useEffect(() => {
-    // Reset shipping rate when address changes - user must recalculate
-    setShippingRate(null);
-    setEstimatedDelivery(null);
+    setShippingRates([]);
+    setSelectedRateIndex(0);
     setIsRateFallback(false);
     setShippingError(null);
   }, [formData.zip, formData.city, formData.state]);
@@ -217,24 +195,6 @@ export default function Checkout() {
     fetchFeaturedPromos();
   }, []);
 
-  // Fetch enabled shipping services
-  useEffect(() => {
-    const fetchShippingServices = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('shipping_services')
-          .select('*')
-          .eq('is_enabled', true);
-
-        if (error) throw error;
-        setEnabledShippingServices(data || []);
-      } catch (err) {
-        console.error('Error fetching shipping services:', err);
-      }
-    };
-
-    fetchShippingServices();
-  }, []);
 
   // Get eligible featured promos (subtotal meets min order amount)
   const eligiblePromos = featuredPromos.filter(promo => {
@@ -318,7 +278,7 @@ export default function Checkout() {
     setIsLoading(true);
 
     try {
-      // Build shipping address
+      // Build shipping address with selected service token for label generation
       const shippingAddress = {
         address_line_1: formData.address,
         address_line_2: formData.apartment || undefined,
@@ -326,6 +286,7 @@ export default function Checkout() {
         state: formData.state,
         postal_code: formData.zip,
         country: 'US',
+        shipping_service_token: selectedRate?.serviceToken,
       };
 
       // Create the order first (pending status)
@@ -567,6 +528,7 @@ export default function Checkout() {
         state: formData.state,
         postal_code: formData.zip,
         country: 'US',
+        shipping_service_token: selectedRate?.serviceToken,
       };
 
       // Create order
@@ -680,8 +642,8 @@ export default function Checkout() {
     }
   };
 
-  // For delivery orders: require real USPS rate (not fallback) to prevent losing money
-  const hasValidShippingRate = shippingRate !== null && !isRateFallback;
+  // For delivery orders: require a selected rate to prevent losing money
+  const hasValidShippingRate = shippingRates.length > 0 && shippingRate !== null && !isRateFallback;
 
   const isFormValid = formData.email && formData.firstName && formData.lastName &&
     formData.address && formData.city && formData.state && formData.zip &&
@@ -837,79 +799,76 @@ export default function Checkout() {
                 <p className="text-red-400 text-sm mt-1">Please enter a valid US state code (e.g., NC, CA, NY)</p>
               )}
 
-              {/* Calculate Shipping Button */}
+              {/* Shipping Options */}
               {canCalculateShipping && isValidState && (
                 <div className="mt-4 p-4 bg-[var(--color-background)]/50 rounded-xl">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-white font-medium">Shipping Cost</p>
-                      {shippingRate !== null && !isRateFallback ? (
-                        <p className="text-[var(--color-primary)] text-lg font-bold">
-                          {formatPrice(shippingRate)}
-                          {estimatedDelivery && (
-                            <span className="text-gray-400 text-sm font-normal ml-2">
-                              ({estimatedDelivery} day{estimatedDelivery !== 1 ? 's' : ''})
-                            </span>
-                          )}
-                        </p>
-                      ) : shippingLoading ? (
-                        <p className="text-gray-400">Calculating...</p>
-                      ) : (
-                        <p className="text-gray-400">Click to calculate</p>
-                      )}
-                    </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-white font-medium">Shipping Method</p>
                     <Button
                       type="button"
-                      variant={shippingRate !== null && !isRateFallback ? 'outline' : 'primary'}
+                      variant="outline"
+                      size="sm"
                       onClick={fetchShippingRate}
                       isLoading={shippingLoading}
                       disabled={shippingLoading}
                       className="shrink-0"
                     >
-                      {shippingRate !== null && !isRateFallback ? 'Recalculate' : 'Calculate Shipping'}
+                      {shippingRates.length > 0 ? 'Refresh Rates' : 'Get Rates'}
                     </Button>
                   </div>
+
+                  {shippingLoading && (
+                    <div className="flex items-center gap-2 text-gray-400 py-3">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Fetching shipping options...</span>
+                    </div>
+                  )}
+
+                  {!shippingLoading && shippingRates.length > 0 && (
+                    <div className="space-y-2">
+                      {shippingRates.map((rate, index) => (
+                        <label
+                          key={rate.serviceToken}
+                          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors border ${
+                            selectedRateIndex === index
+                              ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10'
+                              : 'border-[var(--color-border)] hover:bg-white/5'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="shippingRate"
+                            checked={selectedRateIndex === index}
+                            onChange={() => setSelectedRateIndex(index)}
+                            className="w-4 h-4 border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                          />
+                          <div className="flex-1">
+                            <span className="text-white text-sm font-medium">{rate.serviceName}</span>
+                            {rate.estimatedDays && (
+                              <span className="text-gray-400 text-xs ml-2">
+                                ({rate.estimatedDays} day{rate.estimatedDays !== 1 ? 's' : ''})
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[var(--color-primary)] font-bold text-sm">
+                            {formatPrice(rate.rate)}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {!shippingLoading && shippingRates.length === 0 && (
+                    <p className="text-gray-400 text-sm py-2">Click "Get Rates" to see shipping options</p>
+                  )}
+
                   {shippingError && (
                     <p className="text-red-400 text-sm mt-2">{shippingError}</p>
                   )}
                   {isRateFallback && !shippingError && (
                     <p className="text-orange-400 text-sm mt-2">
-                      Could not get exact USPS rate. Please verify your address and try again.
+                      Could not get exact rates. Please verify your address and try again.
                     </p>
-                  )}
-
-                  {/* Extra shipping services */}
-                  {availableExtraServices.length > 0 && shippingRate !== null && !isRateFallback && (
-                    <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
-                      <p className="text-sm font-medium text-gray-300 mb-3">Optional shipping upgrades:</p>
-                      <div className="space-y-2">
-                        {availableExtraServices.map((service) => (
-                          <label
-                            key={service.code}
-                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedExtraServices.has(service.code)}
-                              onChange={(e) => {
-                                const newSelected = new Set(selectedExtraServices);
-                                if (e.target.checked) {
-                                  newSelected.add(service.code);
-                                } else {
-                                  newSelected.delete(service.code);
-                                }
-                                setSelectedExtraServices(newSelected);
-                              }}
-                              className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
-                            />
-                            <span className="flex-1 text-white text-sm">{service.name}</span>
-                            <span className="text-[var(--color-primary)] font-medium text-sm">
-                              +{formatPrice(service.price)}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
                   )}
                 </div>
               )}
@@ -1035,14 +994,15 @@ export default function Checkout() {
               {!shippingLoading && (
                 <p className="text-xs text-right">
                   {shippingRate === null ? (
-                    <span className="text-orange-400">Please calculate shipping above to continue</span>
+                    <span className="text-orange-400">Select a shipping method above to continue</span>
                   ) : isRateFallback ? (
                     <span className="text-orange-400">Could not verify rate - please recalculate</span>
-                  ) : estimatedDelivery ? (
-                    <span className="text-gray-500">Est. {estimatedDelivery} business day{estimatedDelivery !== 1 ? 's' : ''} via USPS Priority Mail</span>
-                  ) : (
-                    <span className="text-gray-500">USPS Priority Mail</span>
-                  )}
+                  ) : selectedRate ? (
+                    <span className="text-gray-500">
+                      {selectedRate.serviceName}
+                      {estimatedDelivery && ` - Est. ${estimatedDelivery} business day${estimatedDelivery !== 1 ? 's' : ''}`}
+                    </span>
+                  ) : null}
                 </p>
               )}
               <div className="flex justify-between text-xl font-bold pt-3 border-t border-[var(--color-border)]">
