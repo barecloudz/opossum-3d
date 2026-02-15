@@ -294,8 +294,8 @@ export default function Checkout() {
         .from('orders')
         .insert({
           user_id: user?.id || null,
-          guest_email: !user ? formData.email : null,
-          guest_name: !user ? `${formData.firstName} ${formData.lastName}` : null,
+          guest_email: formData.email || user?.email || null,
+          guest_name: `${formData.firstName} ${formData.lastName}`.trim() || null,
           status: 'pending',
           subtotal: subtotal,
           shipping_cost: shipping,
@@ -536,8 +536,8 @@ export default function Checkout() {
         .from('orders')
         .insert({
           user_id: user?.id || null,
-          guest_email: !user ? formData.email : null,
-          guest_name: !user ? `${formData.firstName} ${formData.lastName}` : null,
+          guest_email: formData.email || user?.email || null,
+          guest_name: `${formData.firstName} ${formData.lastName}`.trim() || null,
           status: 'paid',
           subtotal,
           shipping_cost: shipping,
