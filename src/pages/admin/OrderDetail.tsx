@@ -345,6 +345,7 @@ export default function AdminOrderDetail() {
               </p>
               <p>{order.shipping_address.country}</p>
               {order.guest_email && <p className="mt-2">{order.guest_email}</p>}
+              {order.guest_phone && <p>{order.guest_phone}</p>}
             </address>
           </Card>
         </div>

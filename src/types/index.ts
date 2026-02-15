@@ -86,6 +86,7 @@ export interface Order {
   user_id: string | null;
   guest_email: string | null;
   guest_name: string | null;
+  guest_phone: string | null;
   status: OrderStatus;
   subtotal: number;
   shipping_cost: number;
