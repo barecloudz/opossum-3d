@@ -26,7 +26,7 @@ export default function AdminOrderDetail() {
   const [isGeneratingLabel, setIsGeneratingLabel] = useState(false);
   const [labelData, setLabelData] = useState<{
     trackingNumber: string;
-    labelPdf: string;
+    labelUrl: string;
   } | null>(null);
   const [labelError, setLabelError] = useState<string | null>(null);
 
@@ -61,7 +61,7 @@ export default function AdminOrderDetail() {
       if (orderData.shipping_label_pdf && orderData.tracking_number) {
         setLabelData({
           trackingNumber: orderData.tracking_number,
-          labelPdf: orderData.shipping_label_pdf,
+          labelUrl: orderData.shipping_label_pdf,
         });
       }
     } catch (err) {
@@ -118,7 +118,7 @@ export default function AdminOrderDetail() {
     }, 0);
   };
 
-  // Generate USPS shipping label
+  // Generate shipping label via Shippo
   const handleGenerateLabel = async () => {
     if (!order) return;
 
@@ -162,12 +162,12 @@ export default function AdminOrderDetail() {
       setLabelData(data);
       setTrackingNumber(data.trackingNumber);
 
-      // Auto-save tracking number, label PDF, and update status
+      // Auto-save tracking number, label URL, and update status
       await supabase
         .from('orders')
         .update({
           tracking_number: data.trackingNumber,
-          shipping_label_pdf: data.labelPdf,
+          shipping_label_pdf: data.labelUrl,
           shipping_label_generated_at: new Date().toISOString(),
           status: 'shipped',
         })
@@ -176,7 +176,7 @@ export default function AdminOrderDetail() {
       setOrder({
         ...order,
         tracking_number: data.trackingNumber,
-        shipping_label_pdf: data.labelPdf,
+        shipping_label_pdf: data.labelUrl,
         shipping_label_generated_at: new Date().toISOString(),
         status: 'shipped',
       });
@@ -212,51 +212,22 @@ export default function AdminOrderDetail() {
 
   // Download label PDF
   const handleDownloadLabel = () => {
-    if (!labelData?.labelPdf || !order) return;
+    if (!labelData?.labelUrl || !order) return;
 
-    try {
-      // Convert base64 to blob
-      const byteCharacters = atob(labelData.labelPdf);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'application/pdf' });
-
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `shipping-label-${order.order_number}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Download error:', error);
-      setLabelError('Failed to download label');
-    }
+    // Shippo returns a direct URL to the label PDF
+    const a = document.createElement('a');
+    a.href = labelData.labelUrl;
+    a.download = `shipping-label-${order.order_number}.pdf`;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   // Open label PDF in new tab for printing
   const handlePrintLabel = () => {
-    if (!labelData?.labelPdf) return;
-
-    try {
-      const byteCharacters = atob(labelData.labelPdf);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    } catch (error) {
-      console.error('Print error:', error);
-      setLabelError('Failed to open label for printing');
-    }
+    if (!labelData?.labelUrl) return;
+    window.open(labelData.labelUrl, '_blank');
   };
 
   if (isLoading) {
@@ -509,7 +480,7 @@ export default function AdminOrderDetail() {
               ) : (order.status === 'paid' || order.status === 'pending' || order.status === 'processing') ? (
                 <div className="space-y-3">
                   <p className="text-gray-400 text-sm">
-                    Generate a USPS Priority Mail shipping label for this order.
+                    Generate a shipping label for this order.
                   </p>
                   <Button
                     onClick={handleGenerateLabel}
@@ -517,7 +488,7 @@ export default function AdminOrderDetail() {
                     isLoading={isGeneratingLabel}
                   >
                     <Truck className="h-5 w-5 mr-2" />
-                    Generate USPS Label
+                    Generate Shipping Label
                   </Button>
                 </div>
               ) : (

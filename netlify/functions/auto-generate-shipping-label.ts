@@ -1,17 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
-import { getUSPSAccessToken, getUSPSBaseUrl } from './usps-auth';
-
-// Origin address (same as create-shipping-label.ts)
-const FROM_ADDRESS = {
-  firstName: 'Opossum',
-  lastName: 'Works',
-  streetAddress: '32 HICKEY RD',
-  city: 'MARIETTA',
-  state: 'SC',
-  ZIPCode: '29661',
-  ZIPPlus4: '9340',
-};
+import { getShippoClient, FROM_ADDRESS, DEFAULT_PARCEL } from './shippo-client';
 
 const handler: Handler = async (event) => {
   // Only allow POST
@@ -112,81 +101,65 @@ const handler: Handler = async (event) => {
 
     // Parse customer name
     const fullName = order.guest_name || '';
-    const nameParts = fullName.split(' ');
-    const firstName = nameParts[0] || 'Customer';
-    const lastName = nameParts.slice(1).join(' ') || firstName;
+    const destZip = (order.shipping_address.postal_code || '').replace(/\D/g, '').slice(0, 5);
 
-    // Parse ZIP code
-    const zipParts = (order.shipping_address.postal_code || '').replace(/\D/g, '');
-    const destZip = zipParts.slice(0, 5);
-    const destZipPlus4 = zipParts.slice(5, 9) || undefined;
+    const shippo = getShippoClient();
 
-    // Convert weight from oz to pounds
-    const weightLbs = Math.max(0.1, totalWeightOz / 16);
-
-    // Get USPS access token and create label
-    const accessToken = await getUSPSAccessToken();
-    const baseUrl = getUSPSBaseUrl();
-
-    console.log(`[auto-label] Creating USPS label:`, {
-      to: `${firstName} ${lastName}`,
+    console.log(`[auto-label] Creating Shippo label:`, {
+      to: fullName,
       destination: `${order.shipping_address.city}, ${order.shipping_address.state} ${destZip}`,
-      weight: weightLbs,
+      weight: totalWeightOz,
     });
 
-    const labelResponse = await fetch(`${baseUrl}/labels/v3/label`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+    // Step 1: Create shipment to get rates
+    const shipment = await shippo.shipments.create({
+      addressFrom: FROM_ADDRESS,
+      addressTo: {
+        name: fullName || 'Customer',
+        street1: order.shipping_address.address_line_1,
+        street2: order.shipping_address.address_line_2 || undefined,
+        city: order.shipping_address.city,
+        state: order.shipping_address.state,
+        zip: destZip,
+        country: 'US',
       },
-      body: JSON.stringify({
-        imageInfo: {
-          imageType: 'PDF',
-          labelType: '4X6LABEL',
-        },
-        toAddress: {
-          firstName: firstName.toUpperCase(),
-          lastName: lastName.toUpperCase(),
-          streetAddress: order.shipping_address.address_line_1.toUpperCase(),
-          secondaryAddress: order.shipping_address.address_line_2?.toUpperCase(),
-          city: order.shipping_address.city.toUpperCase(),
-          state: order.shipping_address.state.toUpperCase(),
-          ZIPCode: destZip,
-          ZIPPlus4: destZipPlus4,
-        },
-        fromAddress: FROM_ADDRESS,
-        packageDescription: {
-          weight: weightLbs,
-          length: 12,
-          width: 8,
-          height: 6,
-          mailClass: 'PRIORITY_MAIL',
-          processingCategory: 'MACHINABLE',
-          rateIndicator: 'DR',
-          destinationEntryFacilityType: 'NONE',
-          priceType: 'RETAIL',
-        },
-        customsInfo: null,
-      }),
+      parcels: [{
+        ...DEFAULT_PARCEL,
+        weight: String(totalWeightOz),
+        massUnit: 'oz',
+      }],
+      async: false,
     });
 
-    if (!labelResponse.ok) {
-      const errorText = await labelResponse.text();
-      console.error('[auto-label] USPS Labels API error:', labelResponse.status, errorText);
-      let errorMessage = 'Failed to create shipping label';
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.error?.message || errorData.message || errorMessage;
-      } catch {
-        // Use default error message
-      }
-      throw new Error(errorMessage);
+    // Find USPS Priority Mail rate (preferred), fallback to cheapest USPS, then cheapest overall
+    let selectedRate = shipment.rates.find(r =>
+      r.provider === 'USPS' && r.servicelevel?.token?.includes('priority')
+    );
+    if (!selectedRate) {
+      selectedRate = shipment.rates.find(r => r.provider === 'USPS');
+    }
+    if (!selectedRate) {
+      selectedRate = shipment.rates[0];
     }
 
-    const labelData = await labelResponse.json();
-    const trackingNumber = labelData.trackingNumber;
-    const labelPdf = labelData.labelImage; // Base64 encoded PDF
+    if (!selectedRate) {
+      throw new Error('No shipping rates available for this destination');
+    }
+
+    // Step 2: Purchase label
+    const transaction = await shippo.transactions.create({
+      rate: selectedRate.objectId,
+      labelFileType: 'PDF_4x6',
+      async: false,
+    });
+
+    if (transaction.status !== 'SUCCESS') {
+      const errorMessages = transaction.messages?.map(m => m.text).join('; ') || 'Label purchase failed';
+      throw new Error(errorMessages);
+    }
+
+    const trackingNumber = transaction.trackingNumber || '';
+    const labelUrl = transaction.labelUrl || '';
 
     console.log(`[auto-label] Label created, tracking: ${trackingNumber}`);
 
@@ -195,7 +168,7 @@ const handler: Handler = async (event) => {
       .from('orders')
       .update({
         tracking_number: trackingNumber,
-        shipping_label_pdf: labelPdf,
+        shipping_label_pdf: labelUrl, // Now storing URL instead of base64
         shipping_label_generated_at: new Date().toISOString(),
         status: 'shipped',
       })
@@ -208,14 +181,16 @@ const handler: Handler = async (event) => {
 
     console.log(`[auto-label] Order updated with tracking and label`);
 
-    // Send shipping confirmation email via Resend (inline, not through another function)
+    // Send shipping confirmation email via Resend
     const customerEmail = order.guest_email;
     const resendApiKey = process.env.RESEND_API_KEY;
     const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'Opossum Works <orders@resend.dev>';
 
     if (customerEmail && resendApiKey) {
       try {
-        const trackingUrl = `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`;
+        // Use carrier tracking URL if available, fall back to USPS
+        const trackingUrl = transaction.trackingUrlProvider
+          || `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`;
         const emailHtml = `
 <!DOCTYPE html>
 <html>
@@ -236,7 +211,7 @@ const handler: Handler = async (event) => {
           <span style="color: #3b82f6; font-size: 32px;">&#128230;</span>
         </div>
         <h2 style="color: #f5f5f5; font-size: 24px; margin: 0 0 8px 0;">Your order is on its way!</h2>
-        <p style="color: #9ca3af; margin: 0;">Hi ${fullName || 'there'}, great news! Your order has shipped via USPS Priority Mail.</p>
+        <p style="color: #9ca3af; margin: 0;">Hi ${fullName || 'there'}, great news! Your order has shipped.</p>
       </div>
       <div style="background-color: #0a0a0a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
