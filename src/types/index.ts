@@ -70,6 +70,7 @@ export interface Address {
   state: string;
   postal_code: string;
   country: string;
+  shipping_service_token?: string;
 }
 
 export interface SavedAddress extends Address {
