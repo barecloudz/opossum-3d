@@ -44,7 +44,7 @@ const generateEmailHtml = (data: ShippingConfirmationRequest) => {
           <span style="color: #3b82f6; font-size: 32px;">&#128230;</span>
         </div>
         <h2 style="color: #f5f5f5; font-size: 24px; margin: 0 0 8px 0;">Your order is on its way!</h2>
-        <p style="color: #9ca3af; margin: 0;">Hi ${data.customerName}, great news! Your order has shipped via USPS Priority Mail.</p>
+        <p style="color: #9ca3af; margin: 0;">Hi ${data.customerName}, great news! Your order has shipped!</p>
       </div>
 
       <div style="background-color: #0a0a0a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">

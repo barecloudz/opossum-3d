@@ -31,8 +31,8 @@ interface OrderConfirmationRequest {
   shippingAddress: ShippingAddress;
 }
 
-const formatPrice = (cents: number) => {
-  return `$${(cents / 100).toFixed(2)}`;
+const formatPrice = (dollars: number) => {
+  return `$${dollars.toFixed(2)}`;
 };
 
 const generateEmailHtml = (order: OrderConfirmationRequest) => {
@@ -44,7 +44,7 @@ const generateEmailHtml = (order: OrderConfirmationRequest) => {
         <div style="font-size: 14px; color: #9ca3af;">Qty: ${item.quantity}</div>
       </td>
       <td style="padding: 12px 0; border-bottom: 1px solid #2d2d2d; text-align: right; color: #f5f5f5;">
-        ${formatPrice(item.total_price * 100)}
+        ${formatPrice(item.total_price)}
       </td>
     </tr>
   `).join('');
@@ -96,21 +96,21 @@ const generateEmailHtml = (order: OrderConfirmationRequest) => {
       <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #2d2d2d;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
           <span style="color: #9ca3af;">Subtotal</span>
-          <span style="color: #f5f5f5;">${formatPrice(order.subtotal * 100)}</span>
+          <span style="color: #f5f5f5;">${formatPrice(order.subtotal)}</span>
         </div>
         ${order.discount && order.discount > 0 ? `
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
           <span style="color: #22c55e;">Discount</span>
-          <span style="color: #22c55e;">-${formatPrice(order.discount * 100)}</span>
+          <span style="color: #22c55e;">-${formatPrice(order.discount)}</span>
         </div>
         ` : ''}
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #9ca3af;">Shipping</span>
-          <span style="color: #f5f5f5;">${formatPrice(order.shipping * 100)}</span>
+          <span style="color: #f5f5f5;">${formatPrice(order.shipping)}</span>
         </div>
         <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #2d2d2d;">
           <span style="color: #f5f5f5; font-weight: 600; font-size: 18px;">Total</span>
-          <span style="color: #00ff66; font-weight: 600; font-size: 18px;">${formatPrice(order.total * 100)}</span>
+          <span style="color: #00ff66; font-weight: 600; font-size: 18px;">${formatPrice(order.total)}</span>
         </div>
       </div>
     </div>

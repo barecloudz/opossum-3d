@@ -69,6 +69,13 @@ export default function Checkout() {
     marketingOptIn: true,
   });
 
+  // Auto-populate email when user loads after initial render
+  useEffect(() => {
+    if (user?.email && !formData.email) {
+      setFormData(prev => ({ ...prev, email: user.email || '' }));
+    }
+  }, [user?.email]);
+
   const subtotal = getSubtotal();
   const selectedRate = shippingRates[selectedRateIndex] || null;
   const shippingRate = selectedRate?.rate ?? null;
@@ -173,7 +180,8 @@ export default function Checkout() {
         const { data, error } = await supabase
           .from('promo_codes')
           .select('*')
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .eq('show_on_checkout', true);
 
         if (error) throw error;
 
@@ -476,34 +484,43 @@ export default function Checkout() {
       }).catch(err => console.error('[Checkout] Auto label generation failed:', err));
     }
 
+    // Send admin notification email in background (non-blocking)
+    const orderPayload = {
+      orderNumber: confirmedOrderId.slice(0, 8).toUpperCase(),
+      customerEmail: formData.email,
+      customerName: `${formData.firstName} ${formData.lastName}`,
+      customerPhone: formData.phone || undefined,
+      items: orderItems.map(item => ({
+        product_name: item.product.name,
+        variant_name: item.variant?.name,
+        quantity: item.quantity,
+        unit_price: item.product.price + (item.variant?.price_adjustment || 0),
+        total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
+      })),
+      subtotal,
+      shipping,
+      discount: discount > 0 ? discount : undefined,
+      total,
+      shippingAddress: {
+        address_line_1: formData.address,
+        address_line_2: formData.apartment || undefined,
+        city: formData.city,
+        state: formData.state,
+        postal_code: formData.zip,
+      },
+    };
+
+    fetch('/.netlify/functions/send-admin-order-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderPayload),
+    }).catch(err => console.error('[Checkout] Admin notification failed:', err));
+
     // Send confirmation email in background (non-blocking)
     fetch('/.netlify/functions/send-order-confirmation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        orderId: confirmedOrderId,
-        orderNumber: confirmedOrderId.slice(0, 8).toUpperCase(),
-        customerEmail: formData.email,
-        customerName: `${formData.firstName} ${formData.lastName}`,
-        items: orderItems.map(item => ({
-          product_name: item.product.name,
-          variant_name: item.variant?.name,
-          quantity: item.quantity,
-          unit_price: item.product.price + (item.variant?.price_adjustment || 0),
-          total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
-        })),
-        subtotal,
-        shipping,
-        discount: discount > 0 ? discount : undefined,
-        total,
-        shippingAddress: {
-          address_line_1: formData.address,
-          address_line_2: formData.apartment || undefined,
-          city: formData.city,
-          state: formData.state,
-          postal_code: formData.zip,
-        },
-      }),
+      body: JSON.stringify({ ...orderPayload, orderId: confirmedOrderId }),
     })
       .then(res => {
         if (!res.ok) console.error('[Checkout] Confirmation email failed:', res.status);
@@ -635,6 +652,45 @@ export default function Checkout() {
           body: JSON.stringify({ orderId: order.id }),
         }).catch(err => console.error('[Checkout] Auto label generation failed:', err));
       }
+
+      // Send admin notification email
+      const testOrderPayload = {
+        orderNumber: order.id.slice(0, 8).toUpperCase(),
+        customerEmail: formData.email,
+        customerName: `${formData.firstName} ${formData.lastName}`,
+        customerPhone: formData.phone || undefined,
+        items: items.map(item => ({
+          product_name: item.product.name,
+          variant_name: item.variant?.name,
+          quantity: item.quantity,
+          unit_price: item.product.price + (item.variant?.price_adjustment || 0),
+          total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
+        })),
+        subtotal,
+        shipping,
+        discount: discount > 0 ? discount : undefined,
+        total,
+        shippingAddress: {
+          address_line_1: formData.address,
+          address_line_2: formData.apartment || undefined,
+          city: formData.city,
+          state: formData.state,
+          postal_code: formData.zip,
+        },
+      };
+
+      fetch('/.netlify/functions/send-admin-order-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testOrderPayload),
+      }).catch(err => console.error('[Checkout] Admin notification failed:', err));
+
+      // Send customer confirmation email
+      fetch('/.netlify/functions/send-order-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...testOrderPayload, orderId: order.id }),
+      }).catch(err => console.error('[Checkout] Confirmation email failed:', err));
 
     } catch (err: any) {
       console.error('[Checkout] Test payment error:', err);
