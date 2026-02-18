@@ -226,8 +226,8 @@ export default function Checkout() {
         .select('*')
         .eq('code', promoCode.toUpperCase().trim())
         .eq('is_active', true)
-        .single()
-        .abortSignal(controller.signal);
+        .abortSignal(controller.signal)
+        .single();
 
       clearTimeout(timeoutId);
 
