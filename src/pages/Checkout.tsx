@@ -218,12 +218,18 @@ export default function Checkout() {
     setPromoError('');
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
       const { data, error } = await supabase
         .from('promo_codes')
         .select('*')
         .eq('code', promoCode.toUpperCase().trim())
         .eq('is_active', true)
-        .single();
+        .single()
+        .abortSignal(controller.signal);
+
+      clearTimeout(timeoutId);
 
       if (error || !data) {
         setPromoError('Invalid promo code');
@@ -232,6 +238,11 @@ export default function Checkout() {
 
       if (data.expires_at && new Date(data.expires_at) < new Date()) {
         setPromoError('This code has expired');
+        return;
+      }
+
+      if (data.starts_at && new Date(data.starts_at) > new Date()) {
+        setPromoError('This code is not yet active');
         return;
       }
 
@@ -247,8 +258,8 @@ export default function Checkout() {
 
       setAppliedPromo(data);
       setPromoCode('');
-    } catch (err) {
-      setPromoError('Failed to apply code');
+    } catch (err: any) {
+      setPromoError(err.name === 'AbortError' ? 'Request timed out, please try again' : 'Failed to apply code');
     } finally {
       setPromoLoading(false);
     }
