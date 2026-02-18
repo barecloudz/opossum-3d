@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Eye, Package } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Package, ChevronRight, MapPin, Mail, Phone } from 'lucide-react';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -10,8 +10,17 @@ import { ORDER_STATUSES } from '../../lib/constants';
 import Spinner from '../../components/ui/Spinner';
 import type { OrderStatus } from '../../types';
 
+const statusCounts = (orders: { status: string }[]) => {
+  const counts: Record<string, number> = {};
+  orders.forEach(o => {
+    counts[o.status] = (counts[o.status] || 0) + 1;
+  });
+  return counts;
+};
+
 export default function AdminOrders() {
   const { orders, isLoading } = useOrders();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
 
@@ -24,108 +33,163 @@ export default function AdminOrders() {
     return matchesSearch && matchesStatus;
   });
 
+  const counts = statusCounts(orders);
+
   return (
     <div>
-      <h1 className="text-3xl font-bold text-white mb-8">Orders</h1>
-
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <Input
-            type="text"
-            placeholder="Search by order # or customer..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Orders</h1>
+          <p className="text-gray-400 mt-1">{orders.length} total orders</p>
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as OrderStatus | 'all')}
-          className="px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-neon"
-        >
-          <option value="all">All Statuses</option>
-          {Object.entries(ORDER_STATUSES).map(([value, { label }]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
       </div>
 
-      {/* Orders Table */}
-      <Card padding="none">
-        {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Spinner size="lg" />
-          </div>
-        ) : filteredOrders.length === 0 ? (
+      {/* Status filter pills */}
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+            statusFilter === 'all'
+              ? 'bg-white text-black'
+              : 'bg-brand-gray text-gray-400 hover:text-white'
+          }`}
+        >
+          All ({orders.length})
+        </button>
+        {(Object.entries(ORDER_STATUSES) as [OrderStatus, { label: string }][]).map(([value, { label }]) => {
+          const count = counts[value] || 0;
+          if (count === 0) return null;
+          return (
+            <button
+              key={value}
+              onClick={() => setStatusFilter(value)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+                statusFilter === value
+                  ? 'bg-white text-black'
+                  : 'bg-brand-gray text-gray-400 hover:text-white'
+              }`}
+            >
+              {label} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <Input
+          type="text"
+          placeholder="Search by order #, name, or email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {/* Orders List */}
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Spinner size="lg" />
+        </div>
+      ) : filteredOrders.length === 0 ? (
+        <Card>
           <div className="text-center py-12">
             <Package className="h-12 w-12 text-gray-600 mx-auto mb-4" />
             <p className="text-gray-400">No orders found</p>
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="text-brand-neon text-sm mt-2 hover:underline"
+              >
+                Clear search
+              </button>
+            )}
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-brand-gray">
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Order</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Customer</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Total</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Date</th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.map((order) => (
-                  <tr key={order.id} className="border-b border-brand-gray/50 hover:bg-brand-gray/20">
-                    <td className="py-3 px-4">
-                      <span className="text-white font-medium">#{order.order_number}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div>
-                        <p className="text-white">{order.guest_name || 'Guest'}</p>
-                        <p className="text-gray-500 text-sm">{order.guest_email}</p>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge
-                        variant={
-                          order.status === 'delivered'
-                            ? 'success'
-                            : order.status === 'cancelled'
-                            ? 'danger'
-                            : order.status === 'shipped'
-                            ? 'info'
-                            : 'warning'
-                        }
-                      >
-                        {ORDER_STATUSES[order.status].label}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4 text-brand-neon font-medium">
-                      {formatPrice(order.total)}
-                    </td>
-                    <td className="py-3 px-4 text-gray-400">{formatDate(order.created_at)}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex justify-end">
-                        <Link
-                          to={`/admin/orders/${order.id}`}
-                          className="p-2 text-gray-400 hover:text-brand-neon transition-colors"
-                        >
-                          <Eye className="h-5 w-5" />
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {filteredOrders.map((order) => {
+            const shippingAddr = order.shipping_address;
+            const isLocalPickup = shippingAddr?.address_line_1 === 'Local Pickup';
+
+            return (
+              <div
+                key={order.id}
+                onClick={() => navigate(`/admin/orders/${order.id}`)}
+                className="group bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 sm:p-5 cursor-pointer hover:border-brand-neon/40 hover:bg-brand-gray/30 transition-all"
+              >
+                {/* Top row: Order number, status, total */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-white font-bold text-lg">#{order.order_number}</span>
+                    <Badge
+                      variant={
+                        order.status === 'delivered'
+                          ? 'success'
+                          : order.status === 'cancelled'
+                          ? 'danger'
+                          : order.status === 'shipped'
+                          ? 'info'
+                          : order.status === 'paid'
+                          ? 'success'
+                          : 'warning'
+                      }
+                    >
+                      {ORDER_STATUSES[order.status].label}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-brand-neon font-bold text-lg">{formatPrice(order.total)}</span>
+                    <ChevronRight className="h-5 w-5 text-gray-600 group-hover:text-brand-neon transition-colors" />
+                  </div>
+                </div>
+
+                {/* Customer info row */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  <span className="text-white font-medium">
+                    {order.guest_name || 'Guest'}
+                  </span>
+                  {order.guest_email && (
+                    <span className="text-gray-500 flex items-center gap-1">
+                      <Mail className="h-3.5 w-3.5" />
+                      {order.guest_email}
+                    </span>
+                  )}
+                  {(order as any).guest_phone && (
+                    <span className="text-gray-500 flex items-center gap-1">
+                      <Phone className="h-3.5 w-3.5" />
+                      {(order as any).guest_phone}
+                    </span>
+                  )}
+                </div>
+
+                {/* Bottom row: shipping address + date */}
+                <div className="flex items-center justify-between mt-2 text-sm">
+                  <span className="text-gray-500 flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                    {isLocalPickup
+                      ? 'Local Pickup'
+                      : shippingAddr
+                        ? `${shippingAddr.city}, ${shippingAddr.state} ${shippingAddr.postal_code}`
+                        : 'No address'}
+                  </span>
+                  <span className="text-gray-500">
+                    {formatDate(order.created_at)}
+                  </span>
+                </div>
+
+                {/* Tracking number if shipped */}
+                {order.tracking_number && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    Tracking: <span className="font-mono text-gray-400">{order.tracking_number}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

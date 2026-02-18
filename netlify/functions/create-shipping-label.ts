@@ -1,17 +1,6 @@
 import type { Handler } from '@netlify/functions';
-import { getUSPSAccessToken, getUSPSBaseUrl } from './usps-auth';
+import { getShippoClient, FROM_ADDRESS, DEFAULT_PARCEL } from './shippo-client';
 import { getCorsHeaders, getRequestOrigin } from './cors-helper';
-
-// Origin address (your business address)
-const FROM_ADDRESS = {
-  firstName: 'Opossum',
-  lastName: 'Works',
-  streetAddress: '32 HICKEY RD',
-  city: 'MARIETTA',
-  state: 'SC',
-  ZIPCode: '29661',
-  ZIPPlus4: '9340',
-};
 
 interface CreateLabelRequest {
   orderId: string;
@@ -26,11 +15,12 @@ interface CreateLabelRequest {
     zipCode: string;
   };
   totalWeightOz: number;
+  serviceToken?: string;
 }
 
 interface CreateLabelResponse {
   trackingNumber: string;
-  labelPdf: string; // Base64 encoded PDF
+  labelUrl: string;
   shippingCost: number;
 }
 
@@ -57,7 +47,7 @@ const handler: Handler = async (event) => {
   }
 
   try {
-    const { orderId, orderNumber, recipientAddress, totalWeightOz } = JSON.parse(event.body || '{}') as CreateLabelRequest;
+    const { orderId, orderNumber, recipientAddress, totalWeightOz, serviceToken } = JSON.parse(event.body || '{}') as CreateLabelRequest;
 
     // Validate required fields
     if (!orderId || !recipientAddress || !totalWeightOz) {
@@ -78,92 +68,87 @@ const handler: Handler = async (event) => {
       };
     }
 
-    // Get USPS access token
-    const accessToken = await getUSPSAccessToken();
+    const shippo = getShippoClient();
+    const recipientName = `${recipientAddress.firstName} ${recipientAddress.lastName}`;
+    const destZip = recipientAddress.zipCode.replace(/\D/g, '').slice(0, 5);
 
-    // Parse ZIP code
-    const zipParts = recipientAddress.zipCode.replace(/\D/g, '');
-    const destZip = zipParts.slice(0, 5);
-    const destZipPlus4 = zipParts.slice(5, 9) || undefined;
-
-    // Convert weight from oz to pounds
-    const weightLbs = Math.max(0.1, totalWeightOz / 16);
-
-    const baseUrl = getUSPSBaseUrl();
-    console.log(`Creating USPS label for order ${orderId} (${baseUrl}):`, {
-      to: `${recipientAddress.firstName} ${recipientAddress.lastName}`,
+    console.log(`Creating Shippo label for order ${orderId}:`, {
+      to: recipientName,
       destination: `${recipientAddress.city}, ${recipientAddress.state} ${destZip}`,
-      weight: weightLbs,
+      weight: totalWeightOz,
     });
 
-    // Call USPS Labels API
-    const labelResponse = await fetch(`${baseUrl}/labels/v3/label`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+    // Step 1: Create shipment to get rates
+    const shipment = await shippo.shipments.create({
+      addressFrom: FROM_ADDRESS,
+      addressTo: {
+        name: recipientName,
+        street1: recipientAddress.streetAddress,
+        street2: recipientAddress.secondaryAddress,
+        city: recipientAddress.city,
+        state: recipientAddress.state,
+        zip: destZip,
+        country: 'US',
       },
-      body: JSON.stringify({
-        imageInfo: {
-          imageType: 'PDF',
-          labelType: '4X6LABEL',
-        },
-        toAddress: {
-          firstName: recipientAddress.firstName.toUpperCase(),
-          lastName: recipientAddress.lastName.toUpperCase(),
-          streetAddress: recipientAddress.streetAddress.toUpperCase(),
-          secondaryAddress: recipientAddress.secondaryAddress?.toUpperCase(),
-          city: recipientAddress.city.toUpperCase(),
-          state: recipientAddress.state.toUpperCase(),
-          ZIPCode: destZip,
-          ZIPPlus4: destZipPlus4,
-        },
-        fromAddress: FROM_ADDRESS,
-        packageDescription: {
-          weight: weightLbs,
-          length: 12,
-          width: 8,
-          height: 6,
-          mailClass: 'PRIORITY_MAIL',
-          processingCategory: 'MACHINABLE',
-          rateIndicator: 'DR',
-          destinationEntryFacilityType: 'NONE',
-          priceType: 'RETAIL',
-        },
-        customsInfo: null, // Domestic only
-      }),
+      parcels: [{
+        ...DEFAULT_PARCEL,
+        weight: String(totalWeightOz),
+        massUnit: 'oz',
+      }],
+      async: false,
     });
 
-    if (!labelResponse.ok) {
-      const errorText = await labelResponse.text();
-      console.error('USPS Labels API error:', labelResponse.status, errorText);
+    // Match the service level the customer selected at checkout
+    let selectedRate = serviceToken
+      ? shipment.rates.find(r => r.servicelevel?.token === serviceToken)
+      : undefined;
+    // Fallback: USPS Priority Mail, then any USPS, then cheapest
+    if (!selectedRate) {
+      selectedRate = shipment.rates.find(r =>
+        r.provider === 'USPS' && r.servicelevel?.token?.includes('priority')
+      );
+    }
+    if (!selectedRate) {
+      selectedRate = shipment.rates.find(r => r.provider === 'USPS');
+    }
+    if (!selectedRate) {
+      selectedRate = shipment.rates[0];
+    }
 
-      // Try to parse error message
-      let errorMessage = 'Failed to create shipping label';
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.error?.message || errorData.message || errorMessage;
-      } catch {
-        // Use default error message
-      }
-
+    if (!selectedRate) {
       return {
         statusCode: 500,
         headers: corsHeaders,
-        body: JSON.stringify({ error: errorMessage }),
+        body: JSON.stringify({ error: 'No shipping rates available for this destination' }),
       };
     }
 
-    const labelData = await labelResponse.json();
-    console.log('USPS label created successfully:', {
-      trackingNumber: labelData.trackingNumber,
-      price: labelData.postage?.totalPrice,
+    // Step 2: Purchase label from selected rate
+    const transaction = await shippo.transactions.create({
+      rate: selectedRate.objectId,
+      labelFileType: 'PDF_4x6',
+      async: false,
+    });
+
+    if (transaction.status !== 'SUCCESS') {
+      const errorMessages = transaction.messages?.map(m => m.text).join('; ') || 'Label purchase failed';
+      console.error('Shippo transaction failed:', errorMessages);
+      return {
+        statusCode: 500,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: errorMessages }),
+      };
+    }
+
+    console.log('Shippo label created:', {
+      trackingNumber: transaction.trackingNumber,
+      price: selectedRate.amount,
     });
 
     const response: CreateLabelResponse = {
-      trackingNumber: labelData.trackingNumber,
-      labelPdf: labelData.labelImage, // Base64 encoded PDF
-      shippingCost: labelData.postage?.totalPrice || 0,
+      trackingNumber: transaction.trackingNumber || '',
+      labelUrl: transaction.labelUrl || '',
+      shippingCost: parseFloat(selectedRate.amount),
     };
 
     return {

@@ -70,6 +70,7 @@ export interface Address {
   state: string;
   postal_code: string;
   country: string;
+  shipping_service_token?: string;
 }
 
 export interface SavedAddress extends Address {
@@ -85,6 +86,7 @@ export interface Order {
   user_id: string | null;
   guest_email: string | null;
   guest_name: string | null;
+  guest_phone: string | null;
   status: OrderStatus;
   subtotal: number;
   shipping_cost: number;
@@ -98,6 +100,8 @@ export interface Order {
   stripe_charge_id: string | null;
   tracking_number: string | null;
   notes: string | null;
+  shipping_label_pdf?: string | null;
+  shipping_label_generated_at?: string | null;
   created_at: string;
   updated_at: string;
   items?: OrderItem[];

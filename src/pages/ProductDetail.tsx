@@ -82,8 +82,10 @@ export default function ProductDetail() {
     );
   }
 
-  const stockStatus = getStockStatus(product.stock_quantity, product.low_stock_threshold);
+  const effectiveStock = selectedVariant ? selectedVariant.stock_quantity : product.stock_quantity;
+  const stockStatus = getStockStatus(effectiveStock, product.low_stock_threshold);
   const currentPrice = product.price + (selectedVariant?.price_adjustment || 0);
+  const maxQuantity = product.track_inventory && !product.continue_selling_when_out_of_stock ? effectiveStock : 99;
   const images = product.images || [];
 
   // If variant has a specific image and user hasn't clicked a thumbnail, show variant image
@@ -325,6 +327,7 @@ export default function ProductDetail() {
                       onClick={() => {
                         const newVariant = selectedVariant?.id === variant.id ? undefined : variant;
                         setSelectedVariant(newVariant);
+                        setQuantity(1);
                         setUserSelectedImage(false); // Reset so variant image shows
                         if (newVariant?.image_url) {
                           setImageLoading(true);
@@ -367,7 +370,7 @@ export default function ProductDetail() {
               {stockStatus === 'in_stock'
                 ? 'In Stock'
                 : stockStatus === 'low_stock'
-                ? `Only ${product.stock_quantity} left`
+                ? `Only ${effectiveStock} left`
                 : 'Out of Stock'}
             </div>
 
@@ -426,8 +429,9 @@ export default function ProductDetail() {
                   {quantity}
                 </span>
                 <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="p-3 text-gray-400 hover:text-white transition-colors btn-press"
+                  onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+                  disabled={quantity >= maxQuantity}
+                  className="p-3 text-gray-400 hover:text-white transition-colors btn-press disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <Plus className="h-5 w-5" />
                 </button>

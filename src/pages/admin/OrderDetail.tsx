@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle, Printer } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -26,7 +26,7 @@ export default function AdminOrderDetail() {
   const [isGeneratingLabel, setIsGeneratingLabel] = useState(false);
   const [labelData, setLabelData] = useState<{
     trackingNumber: string;
-    labelPdf: string;
+    labelUrl: string;
   } | null>(null);
   const [labelError, setLabelError] = useState<string | null>(null);
 
@@ -56,6 +56,14 @@ export default function AdminOrderDetail() {
       setStatus(orderData.status);
       setTrackingNumber(orderData.tracking_number || '');
       setNotes(orderData.notes || '');
+
+      // Load stored label if available
+      if (orderData.shipping_label_pdf && orderData.tracking_number) {
+        setLabelData({
+          trackingNumber: orderData.tracking_number,
+          labelUrl: orderData.shipping_label_pdf,
+        });
+      }
     } catch (err) {
       console.error('Error fetching order:', err);
       navigate('/admin/orders');
@@ -110,7 +118,7 @@ export default function AdminOrderDetail() {
     }, 0);
   };
 
-  // Generate USPS shipping label
+  // Generate shipping label via Shippo
   const handleGenerateLabel = async () => {
     if (!order) return;
 
@@ -142,6 +150,7 @@ export default function AdminOrderDetail() {
             zipCode: order.shipping_address.postal_code,
           },
           totalWeightOz: totalWeight,
+          serviceToken: order.shipping_address.shipping_service_token,
         }),
       });
 
@@ -154,11 +163,13 @@ export default function AdminOrderDetail() {
       setLabelData(data);
       setTrackingNumber(data.trackingNumber);
 
-      // Auto-save tracking number and update status
+      // Auto-save tracking number, label URL, and update status
       await supabase
         .from('orders')
         .update({
           tracking_number: data.trackingNumber,
+          shipping_label_pdf: data.labelUrl,
+          shipping_label_generated_at: new Date().toISOString(),
           status: 'shipped',
         })
         .eq('id', order.id);
@@ -166,6 +177,8 @@ export default function AdminOrderDetail() {
       setOrder({
         ...order,
         tracking_number: data.trackingNumber,
+        shipping_label_pdf: data.labelUrl,
+        shipping_label_generated_at: new Date().toISOString(),
         status: 'shipped',
       });
       setStatus('shipped');
@@ -200,31 +213,22 @@ export default function AdminOrderDetail() {
 
   // Download label PDF
   const handleDownloadLabel = () => {
-    if (!labelData?.labelPdf || !order) return;
+    if (!labelData?.labelUrl || !order) return;
 
-    try {
-      // Convert base64 to blob
-      const byteCharacters = atob(labelData.labelPdf);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'application/pdf' });
+    // Shippo returns a direct URL to the label PDF
+    const a = document.createElement('a');
+    a.href = labelData.labelUrl;
+    a.download = `shipping-label-${order.order_number}.pdf`;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `shipping-label-${order.order_number}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Download error:', error);
-      setLabelError('Failed to download label');
-    }
+  // Open label PDF in new tab for printing
+  const handlePrintLabel = () => {
+    if (!labelData?.labelUrl) return;
+    window.open(labelData.labelUrl, '_blank');
   };
 
   if (isLoading) {
@@ -341,6 +345,7 @@ export default function AdminOrderDetail() {
               </p>
               <p>{order.shipping_address.country}</p>
               {order.guest_email && <p className="mt-2">{order.guest_email}</p>}
+              {order.guest_phone && <p>{order.guest_phone}</p>}
             </address>
           </Card>
         </div>
@@ -429,13 +434,31 @@ export default function AdminOrderDetail() {
                       </p>
                     </div>
                   </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handlePrintLabel}
+                      className="flex-1"
+                    >
+                      <Printer className="h-5 w-5 mr-2" />
+                      Print Label
+                    </Button>
+                    <Button
+                      onClick={handleDownloadLabel}
+                      className="flex-1"
+                      variant="outline"
+                    >
+                      <Download className="h-5 w-5 mr-2" />
+                      Download PDF
+                    </Button>
+                  </div>
                   <Button
-                    onClick={handleDownloadLabel}
+                    onClick={handleGenerateLabel}
                     className="w-full"
                     variant="outline"
+                    isLoading={isGeneratingLabel}
                   >
-                    <Download className="h-5 w-5 mr-2" />
-                    Download Label PDF
+                    <Truck className="h-5 w-5 mr-2" />
+                    Generate New Label
                   </Button>
                 </div>
               ) : order.tracking_number ? (
@@ -459,7 +482,7 @@ export default function AdminOrderDetail() {
               ) : (order.status === 'paid' || order.status === 'pending' || order.status === 'processing') ? (
                 <div className="space-y-3">
                   <p className="text-gray-400 text-sm">
-                    Generate a USPS Priority Mail shipping label for this order.
+                    Generate a shipping label for this order.
                   </p>
                   <Button
                     onClick={handleGenerateLabel}
@@ -467,7 +490,7 @@ export default function AdminOrderDetail() {
                     isLoading={isGeneratingLabel}
                   >
                     <Truck className="h-5 w-5 mr-2" />
-                    Generate USPS Label
+                    Generate Shipping Label
                   </Button>
                 </div>
               ) : (

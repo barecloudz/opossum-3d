@@ -95,16 +95,17 @@ export default function AdminDashboard() {
       const lowStockCount = lowStockRes.count || 0;
       const customerCount = customerRes.count || 0;
 
-      // Calculate stats
-      const todayOrders = orders.filter((o: Order) => o.created_at >= todayStart);
-      const weekOrders = orders.filter((o: Order) => o.created_at >= weekStart);
-      const monthOrders = orders.filter((o: Order) => o.created_at >= monthStart);
+      // Calculate stats - exclude cancelled orders from revenue
+      const paidOrders = orders.filter((o: Order) => o.status !== 'cancelled' && o.status !== 'pending');
+      const todayOrders = paidOrders.filter((o: Order) => o.created_at >= todayStart);
+      const weekOrders = paidOrders.filter((o: Order) => o.created_at >= weekStart);
+      const monthOrders = paidOrders.filter((o: Order) => o.created_at >= monthStart);
       const pendingOrders = orders.filter((o: Order) => o.status === 'pending' || o.status === 'processing');
 
       const todayRevenue = todayOrders.reduce((sum: number, o: Order) => sum + o.total, 0);
       const weekRevenue = weekOrders.reduce((sum: number, o: Order) => sum + o.total, 0);
       const monthRevenue = monthOrders.reduce((sum: number, o: Order) => sum + o.total, 0);
-      const avgOrderValue = orders.length > 0 ? orders.reduce((sum: number, o: Order) => sum + o.total, 0) / orders.length : 0;
+      const avgOrderValue = paidOrders.length > 0 ? paidOrders.reduce((sum: number, o: Order) => sum + o.total, 0) / paidOrders.length : 0;
 
       setStats({
         todayRevenue,
@@ -124,7 +125,7 @@ export default function AdminDashboard() {
       for (let i = 13; i >= 0; i--) {
         const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
         const dateStr = date.toISOString().split('T')[0];
-        const dayOrders = orders.filter((o: Order) => o.created_at.startsWith(dateStr));
+        const dayOrders = paidOrders.filter((o: Order) => o.created_at.startsWith(dateStr));
         chartData.push({
           date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
           revenue: dayOrders.reduce((sum: number, o: Order) => sum + o.total, 0),
