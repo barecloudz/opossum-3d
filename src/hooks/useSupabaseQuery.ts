@@ -18,23 +18,40 @@ export function useSupabaseQuery<T>(
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(fetchOnMount);
   const [error, setError] = useState<Error | null>(null);
-  const mountedRef = useRef(true);
 
-  const fetch = useCallback(async () => {
+  // Store queryFn in a ref so useCallback always has the latest version
+  const queryFnRef = useRef(queryFn);
+  queryFnRef.current = queryFn;
+
+  // Track the current active abort controller to cancel on unmount/re-fetch
+  const activeControllerRef = useRef<AbortController | null>(null);
+  // Incremented on each fetch call to ignore stale responses
+  const fetchIdRef = useRef(0);
+
+  const fetchData = useCallback(async () => {
+    // Cancel any in-flight request
+    if (activeControllerRef.current) {
+      activeControllerRef.current.abort();
+    }
+
+    const currentFetchId = ++fetchIdRef.current;
     setIsLoading(true);
     setError(null);
 
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      if (!mountedRef.current) return;
+      // Check if this fetch is still the latest one
+      if (currentFetchId !== fetchIdRef.current) return;
 
       const controller = new AbortController();
+      activeControllerRef.current = controller;
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
       try {
-        const { data: result, error: queryError } = await queryFn(controller.signal);
+        const { data: result, error: queryError } = await queryFnRef.current(controller.signal);
         clearTimeout(timeoutId);
 
-        if (!mountedRef.current) return;
+        // Stale check - a newer fetch may have started
+        if (currentFetchId !== fetchIdRef.current) return;
         if (queryError) throw queryError;
 
         setData(result);
@@ -43,7 +60,10 @@ export function useSupabaseQuery<T>(
         return;
       } catch (err: any) {
         clearTimeout(timeoutId);
-        if (!mountedRef.current) return;
+        if (currentFetchId !== fetchIdRef.current) return;
+
+        // Don't retry if this request was intentionally aborted (unmount/re-fetch)
+        if (err.name === 'AbortError' && currentFetchId !== fetchIdRef.current) return;
 
         const isRetryable = err.name === 'AbortError' ||
           err.message?.includes('network') ||
@@ -51,6 +71,8 @@ export function useSupabaseQuery<T>(
 
         if (isRetryable && attempt <= maxRetries) {
           await new Promise(r => setTimeout(r, attempt * 1000));
+          // Check again after delay
+          if (currentFetchId !== fetchIdRef.current) return;
           continue;
         }
 
@@ -67,11 +89,18 @@ export function useSupabaseQuery<T>(
   }, deps);
 
   useEffect(() => {
-    mountedRef.current = true;
-    if (fetchOnMount) fetch();
-    return () => { mountedRef.current = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetch]);
+    if (fetchOnMount) fetchData();
 
-  return { data, isLoading, error, refetch: fetch };
+    return () => {
+      // Cancel in-flight request on unmount
+      if (activeControllerRef.current) {
+        activeControllerRef.current.abort();
+      }
+      // Invalidate any pending fetch
+      fetchIdRef.current++;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchData]);
+
+  return { data, isLoading, error, refetch: fetchData };
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
 import { ChevronLeft, Tag, Check, X, Loader2 } from 'lucide-react';
@@ -55,6 +55,9 @@ export default function Checkout() {
 
   // Featured promo codes (shown on checkout)
   const [featuredPromos, setFeaturedPromos] = useState<PromoCode[]>([]);
+
+  // Ref for shipping section to scroll to
+  const shippingSectionRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
     email: user?.email || '',
@@ -294,6 +297,8 @@ export default function Checkout() {
   const isValidState = !formData.state || VALID_STATES.has(formData.state.toUpperCase());
 
   const createOrderAndPaymentIntent = async () => {
+    // Prevent double-submission
+    if (isLoading) return;
     setIsLoading(true);
 
     try {
@@ -510,6 +515,7 @@ export default function Checkout() {
       })),
       subtotal,
       shipping,
+      tax: 0,
       discount: discount > 0 ? discount : undefined,
       total,
       shippingAddress: {
@@ -519,6 +525,8 @@ export default function Checkout() {
         state: formData.state,
         postal_code: formData.zip,
       },
+      shippingMethod: selectedRate?.serviceName || undefined,
+      estimatedDays: estimatedDelivery || undefined,
     };
 
     fetch('/.netlify/functions/send-admin-order-notification', {
@@ -679,6 +687,7 @@ export default function Checkout() {
         })),
         subtotal,
         shipping,
+        tax: 0,
         discount: discount > 0 ? discount : undefined,
         total,
         shippingAddress: {
@@ -688,6 +697,8 @@ export default function Checkout() {
           state: formData.state,
           postal_code: formData.zip,
         },
+        shippingMethod: selectedRate?.serviceName || undefined,
+        estimatedDays: estimatedDelivery || undefined,
       };
 
       fetch('/.netlify/functions/send-admin-order-notification', {
@@ -870,7 +881,7 @@ export default function Checkout() {
 
               {/* Shipping Options */}
               {canCalculateShipping && isValidState && (
-                <div className="mt-4 p-4 bg-[var(--color-background)]/50 rounded-xl">
+                <div ref={shippingSectionRef} className="mt-4 p-4 bg-[var(--color-background)]/50 rounded-xl">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-white font-medium">Shipping Method</p>
                     <Button
@@ -1082,11 +1093,31 @@ export default function Checkout() {
 
             {/* Continue Button */}
             <Button
-              onClick={createOrderAndPaymentIntent}
+              onClick={() => {
+                if (!canCalculateShipping) {
+                  addToast('Please complete your shipping address first', 'error');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  return;
+                }
+                if (!hasValidShippingRate) {
+                  // No rates fetched yet - fetch them, auto-select cheapest, and scroll up
+                  if (!shippingLoading) {
+                    fetchShippingRate();
+                  }
+                  if (shippingSectionRef.current) {
+                    shippingSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                  addToast('We selected the cheapest shipping option for you. Change it above if you\'d like, then continue.', 'info');
+                  return;
+                }
+                createOrderAndPaymentIntent();
+              }}
               className="w-full"
               size="lg"
               isLoading={isLoading}
-              disabled={!isFormValid}
+              disabled={!(formData.email && formData.firstName && formData.lastName &&
+                formData.address && formData.city && formData.state && formData.zip &&
+                formData.zip.length >= 5 && isValidState && !shippingLoading)}
             >
               Continue to Payment
             </Button>
@@ -1146,6 +1177,7 @@ export default function Checkout() {
                     onError={handlePaymentError}
                     isProcessing={isLoading}
                     setIsProcessing={setIsLoading}
+                    orderId={orderId}
                   />
                 </Elements>
               )}

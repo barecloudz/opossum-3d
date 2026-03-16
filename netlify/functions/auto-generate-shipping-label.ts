@@ -177,6 +177,7 @@ const handler: Handler = async (event) => {
         tracking_number: trackingNumber,
         shipping_label_pdf: labelUrl, // Now storing URL instead of base64
         shipping_label_generated_at: new Date().toISOString(),
+        shippo_transaction_id: transaction.objectId || null,
         status: 'processing',
       })
       .eq('id', orderId);

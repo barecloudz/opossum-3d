@@ -1,4 +1,5 @@
 import type { Handler } from '@netlify/functions';
+import { createClient } from '@supabase/supabase-js';
 
 interface OrderItem {
   product_name: string;
@@ -140,7 +141,6 @@ const handler: Handler = async (event) => {
   }
 
   const resendApiKey = process.env.RESEND_API_KEY;
-  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'printsbythepossum@gmail.com';
   const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'Opossum Works <orders@resend.dev>';
 
   if (!resendApiKey) {
@@ -154,6 +154,31 @@ const handler: Handler = async (event) => {
     if (!order.orderNumber || !order.customerEmail) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Missing required fields' }) };
     }
+
+    // Fetch admin email from store_settings (contact_email set in backend Settings page)
+    let adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL || 'thomasbraswell4@gmail.com';
+
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (supabaseUrl && supabaseServiceKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const { data: settings } = await supabase
+          .from('store_settings')
+          .select('contact_email')
+          .eq('id', 1)
+          .single();
+
+        if (settings?.contact_email) {
+          adminEmail = settings.contact_email;
+        }
+      } catch (dbError) {
+        console.error('[admin-notify] Failed to fetch settings, using default email:', dbError);
+      }
+    }
+
+    console.log(`[admin-notify] Sending notification to: ${adminEmail}`);
 
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { CheckCircle, Package, ArrowRight, MapPin } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
@@ -9,14 +9,41 @@ import type { Order, OrderItem } from '../types';
 
 export default function OrderConfirmation() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const redirectHandled = useRef(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
       if (!id) return;
 
       try {
+        // Handle redirect-based payment returns (Cash App, bank transfers, etc.)
+        const redirectStatus = searchParams.get('redirect_status');
+        if (redirectStatus === 'succeeded' && !redirectHandled.current) {
+          redirectHandled.current = true;
+
+          // Update order status to 'paid' if it's still pending
+          const { error: updateError } = await supabase
+            .from('orders')
+            .update({ status: 'paid' })
+            .eq('id', id)
+            .in('status', ['pending']);
+
+          if (!updateError) {
+            console.log('[OrderConfirmation] Order status updated to paid (redirect return)');
+
+            // Trigger background tasks for redirect-based payments
+            // Auto-generate shipping label
+            fetch('/.netlify/functions/auto-generate-shipping-label', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId: id }),
+            }).catch(err => console.error('[OrderConfirmation] Auto label failed:', err));
+          }
+        }
+
         const { data, error } = await supabase
           .from('orders')
           .select(`
@@ -28,6 +55,42 @@ export default function OrderConfirmation() {
 
         if (error) throw error;
         setOrder(data);
+
+        // Send emails for redirect-based payments (only on first load with redirect_status)
+        if (redirectStatus === 'succeeded' && data) {
+          const orderPayload = {
+            orderId: id,
+            orderNumber: id.slice(0, 8).toUpperCase(),
+            customerEmail: data.guest_email,
+            customerName: data.guest_name || 'Customer',
+            items: (data.items || []).map((item: OrderItem) => ({
+              product_name: item.product_name,
+              variant_name: item.variant_name,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              total_price: item.total_price,
+            })),
+            subtotal: data.subtotal,
+            shipping: data.shipping_cost,
+            discount: data.discount_amount && data.discount_amount > 0 ? data.discount_amount : undefined,
+            total: data.total,
+            shippingAddress: data.shipping_address,
+          };
+
+          // Send admin notification
+          fetch('/.netlify/functions/send-admin-order-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderPayload),
+          }).catch(err => console.error('[OrderConfirmation] Admin notification failed:', err));
+
+          // Send customer confirmation
+          fetch('/.netlify/functions/send-order-confirmation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderPayload),
+          }).catch(err => console.error('[OrderConfirmation] Confirmation email failed:', err));
+        }
       } catch (err) {
         console.error('Error fetching order:', err);
       } finally {
@@ -36,7 +99,7 @@ export default function OrderConfirmation() {
     };
 
     fetchOrder();
-  }, [id]);
+  }, [id, searchParams]);
 
   if (isLoading) {
     return (

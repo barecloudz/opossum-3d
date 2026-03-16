@@ -26,9 +26,12 @@ interface OrderConfirmationRequest {
   items: OrderItem[];
   subtotal: number;
   shipping: number;
+  tax?: number;
   discount?: number;
   total: number;
   shippingAddress: ShippingAddress;
+  shippingMethod?: string;
+  estimatedDays?: number | null;
 }
 
 const formatPrice = (dollars: number) => {
@@ -38,16 +41,23 @@ const formatPrice = (dollars: number) => {
 const generateEmailHtml = (order: OrderConfirmationRequest) => {
   const itemsHtml = order.items.map(item => `
     <tr>
-      <td style="padding: 12px 0; border-bottom: 1px solid #2d2d2d;">
-        <div style="font-weight: 500; color: #f5f5f5;">${item.product_name}</div>
-        ${item.variant_name ? `<div style="font-size: 14px; color: #9ca3af;">${item.variant_name}</div>` : ''}
-        <div style="font-size: 14px; color: #9ca3af;">Qty: ${item.quantity}</div>
+      <td style="padding: 16px 20px; border-bottom: 1px solid #e5e7eb;">
+        <div style="font-weight: 600; color: #111827; font-size: 15px;">${item.product_name}</div>
+        ${item.variant_name ? `<div style="font-size: 13px; color: #6b7280; margin-top: 3px;">${item.variant_name}</div>` : ''}
+        <div style="font-size: 13px; color: #9ca3af; margin-top: 3px;">Qty: ${item.quantity} &times; ${formatPrice(item.unit_price)}</div>
       </td>
-      <td style="padding: 12px 0; border-bottom: 1px solid #2d2d2d; text-align: right; color: #f5f5f5;">
+      <td style="padding: 16px 20px; border-bottom: 1px solid #e5e7eb; text-align: right; vertical-align: top; color: #111827; font-weight: 600; font-size: 15px;">
         ${formatPrice(item.total_price)}
       </td>
     </tr>
   `).join('');
+
+  const orderDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
 
   return `
 <!DOCTYPE html>
@@ -55,85 +65,145 @@ const generateEmailHtml = (order: OrderConfirmationRequest) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Order Confirmation</title>
+  <title>Order Confirmation - Opossum Works</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <!-- Header -->
-    <div style="text-align: center; margin-bottom: 40px;">
-      <h1 style="color: #00ff66; font-size: 28px; margin: 0 0 8px 0;">Opossum Works</h1>
-      <p style="color: #9ca3af; margin: 0;">Custom 3D Printed Creations</p>
-    </div>
+<body style="margin: 0; padding: 0; background-color: #f0f0f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <div style="background-color: #f0f0f0; padding: 40px 16px;">
+    <div style="max-width: 560px; margin: 0 auto;">
 
-    <!-- Success Message -->
-    <div style="background-color: #1a1a1a; border-radius: 12px; padding: 32px; margin-bottom: 24px; border: 1px solid #2d2d2d;">
-      <div style="text-align: center; margin-bottom: 24px;">
-        <div style="width: 64px; height: 64px; background-color: rgba(34, 197, 94, 0.2); border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
-          <span style="color: #22c55e; font-size: 32px;">&#10003;</span>
-        </div>
-        <h2 style="color: #f5f5f5; font-size: 24px; margin: 0 0 8px 0;">Thank you for your order!</h2>
-        <p style="color: #9ca3af; margin: 0;">Hi ${order.customerName}, we've received your order and are getting it ready.</p>
+      <!-- Logo Header -->
+      <div style="text-align: center; margin-bottom: 32px;">
+        <h1 style="color: #111827; font-size: 28px; margin: 0; letter-spacing: 2px; font-weight: 800;">OPOSSUM WORKS</h1>
+        <div style="width: 60px; height: 2px; background-color: #a3a3a3; margin: 10px auto 0;"></div>
       </div>
 
-      <div style="background-color: #0a0a0a; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-          <span style="color: #9ca3af;">Order Number</span>
-          <span style="color: #00ff66; font-weight: 600;">#${order.orderNumber}</span>
+      <!-- Main Card -->
+      <div style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04);">
+
+        <!-- Success Banner -->
+        <div style="background: linear-gradient(135deg, #18181b 0%, #27272a 50%, #18181b 100%); padding: 36px 24px; text-align: center;">
+          <div style="width: 52px; height: 52px; background-color: rgba(255,255,255,0.12); border-radius: 50%; margin: 0 auto 16px; line-height: 52px;">
+            <span style="color: #ffffff; font-size: 26px;">&#10003;</span>
+          </div>
+          <h2 style="color: #ffffff; font-size: 22px; margin: 0 0 6px 0; font-weight: 700;">Order Confirmed</h2>
+          <p style="color: #a1a1aa; margin: 0; font-size: 15px;">Hi ${order.customerName}, thank you for your purchase.</p>
         </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: #9ca3af;">Order Date</span>
-          <span style="color: #f5f5f5;">${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+
+        <!-- Order Info Bar -->
+        <div style="padding: 18px 24px; background-color: #fafafa; border-bottom: 1px solid #e5e7eb;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 3px 0;">
+                <span style="color: #71717a; font-size: 13px;">Order Number</span>
+              </td>
+              <td style="padding: 3px 0; text-align: right;">
+                <span style="color: #18181b; font-weight: 700; font-size: 14px; letter-spacing: 0.5px;">#${order.orderNumber}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 3px 0;">
+                <span style="color: #71717a; font-size: 13px;">Order Date</span>
+              </td>
+              <td style="padding: 3px 0; text-align: right;">
+                <span style="color: #3f3f46; font-size: 13px;">${orderDate}</span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Items Section -->
+        <div style="padding: 24px 0 0;">
+          <h3 style="color: #71717a; font-size: 11px; margin: 0 0 0 24px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Items Ordered</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 12px;">
+            ${itemsHtml}
+          </table>
+
+          <!-- Price Breakdown -->
+          <div style="padding: 20px 20px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 5px 0; color: #71717a; font-size: 14px;">Subtotal</td>
+                <td style="padding: 5px 0; color: #3f3f46; font-size: 14px; text-align: right;">${formatPrice(order.subtotal)}</td>
+              </tr>
+              ${order.discount && order.discount > 0 ? `
+              <tr>
+                <td style="padding: 5px 0; color: #16a34a; font-size: 14px;">Discount</td>
+                <td style="padding: 5px 0; color: #16a34a; font-size: 14px; text-align: right;">-${formatPrice(order.discount)}</td>
+              </tr>
+              ` : ''}
+              <tr>
+                <td style="padding: 5px 0; color: #71717a; font-size: 14px;">
+                  Shipping${order.shippingMethod ? ` <span style="color: #a1a1aa;">&middot;</span> ${order.shippingMethod}` : ''}
+                </td>
+                <td style="padding: 5px 0; color: #3f3f46; font-size: 14px; text-align: right;">${formatPrice(order.shipping)}</td>
+              </tr>
+              ${order.tax && order.tax > 0 ? `
+              <tr>
+                <td style="padding: 5px 0; color: #71717a; font-size: 14px;">Tax</td>
+                <td style="padding: 5px 0; color: #3f3f46; font-size: 14px; text-align: right;">${formatPrice(order.tax)}</td>
+              </tr>
+              ` : ''}
+            </table>
+
+            <!-- Total -->
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #18181b;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 4px 0; color: #18181b; font-size: 18px; font-weight: 700;">Total Paid</td>
+                  <td style="padding: 4px 0; color: #18181b; font-size: 20px; font-weight: 800; text-align: right;">${formatPrice(order.total)}</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="padding: 24px 24px 0;">
+          <div style="height: 1px; background-color: #e5e7eb;"></div>
+        </div>
+
+        <!-- Shipping Address Section -->
+        <div style="padding: 20px 24px;">
+          <h3 style="color: #71717a; font-size: 11px; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Shipping To</h3>
+          <p style="color: #3f3f46; margin: 0; line-height: 1.7; font-size: 14px;">
+            <strong style="color: #18181b;">${order.customerName}</strong><br>
+            ${order.shippingAddress.address_line_1}<br>
+            ${order.shippingAddress.address_line_2 ? `${order.shippingAddress.address_line_2}<br>` : ''}
+            ${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.postal_code}
+          </p>
+        </div>
+
+        <!-- What Happens Next -->
+        <div style="padding: 0 24px 28px;">
+          <div style="background-color: #fafafa; border-radius: 10px; padding: 20px; border: 1px solid #e5e7eb;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="vertical-align: top; padding-right: 14px; width: 28px;">
+                  <span style="font-size: 20px;">&#128230;</span>
+                </td>
+                <td style="vertical-align: top;">
+                  <p style="color: #18181b; font-weight: 600; margin: 0 0 6px 0; font-size: 14px;">What happens next?</p>
+                  <p style="color: #71717a; margin: 0; font-size: 13px; line-height: 1.7;">
+                    We're preparing your order now. Once we ship it, you'll receive another email with your tracking number so you can follow your package every step of the way.
+                    ${order.estimatedDays ? `<br><br><strong style="color: #3f3f46;">Estimated delivery:</strong> ${order.estimatedDays} business day${order.estimatedDays !== 1 ? 's' : ''} after shipping.` : ''}
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </div>
         </div>
       </div>
 
-      <!-- Order Items -->
-      <h3 style="color: #f5f5f5; font-size: 16px; margin: 0 0 16px 0; padding-bottom: 12px; border-bottom: 1px solid #2d2d2d;">Order Details</h3>
-      <table style="width: 100%; border-collapse: collapse;">
-        ${itemsHtml}
-      </table>
-
-      <!-- Totals -->
-      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #2d2d2d;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-          <span style="color: #9ca3af;">Subtotal</span>
-          <span style="color: #f5f5f5;">${formatPrice(order.subtotal)}</span>
-        </div>
-        ${order.discount && order.discount > 0 ? `
-        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-          <span style="color: #22c55e;">Discount</span>
-          <span style="color: #22c55e;">-${formatPrice(order.discount)}</span>
-        </div>
-        ` : ''}
-        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-          <span style="color: #9ca3af;">Shipping</span>
-          <span style="color: #f5f5f5;">${formatPrice(order.shipping)}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #2d2d2d;">
-          <span style="color: #f5f5f5; font-weight: 600; font-size: 18px;">Total</span>
-          <span style="color: #00ff66; font-weight: 600; font-size: 18px;">${formatPrice(order.total)}</span>
-        </div>
+      <!-- Footer -->
+      <div style="text-align: center; padding-top: 28px;">
+        <p style="color: #a1a1aa; font-size: 13px; margin: 0 0 6px 0;">
+          Questions about your order? Just reply to this email.
+        </p>
+        <p style="color: #d4d4d8; font-size: 11px; margin: 0; letter-spacing: 0.5px;">
+          &copy; ${new Date().getFullYear()} OPOSSUM WORKS
+        </p>
       </div>
-    </div>
 
-    <!-- Shipping Address -->
-    <div style="background-color: #1a1a1a; border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid #2d2d2d;">
-      <h3 style="color: #f5f5f5; font-size: 16px; margin: 0 0 12px 0;">Shipping Address</h3>
-      <p style="color: #9ca3af; margin: 0; line-height: 1.6;">
-        ${order.customerName}<br>
-        ${order.shippingAddress.address_line_1}<br>
-        ${order.shippingAddress.address_line_2 ? `${order.shippingAddress.address_line_2}<br>` : ''}
-        ${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.postal_code}
-      </p>
-    </div>
-
-    <!-- Footer -->
-    <div style="text-align: center; padding-top: 24px; border-top: 1px solid #2d2d2d;">
-      <p style="color: #9ca3af; font-size: 14px; margin: 0 0 8px 0;">
-        Questions about your order? Reply to this email or contact us.
-      </p>
-      <p style="color: #6b7280; font-size: 12px; margin: 0;">
-        &copy; ${new Date().getFullYear()} Opossum Works. All rights reserved.
-      </p>
     </div>
   </div>
 </body>
