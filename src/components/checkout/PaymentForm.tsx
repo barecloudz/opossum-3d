@@ -12,6 +12,7 @@ interface PaymentFormProps {
   onError: (message: string) => void;
   isProcessing: boolean;
   setIsProcessing: (processing: boolean) => void;
+  orderId?: string | null;
 }
 
 export default function PaymentForm({
@@ -19,6 +20,7 @@ export default function PaymentForm({
   onError,
   isProcessing,
   setIsProcessing,
+  orderId,
 }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -59,7 +61,7 @@ export default function PaymentForm({
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/order-confirmation`,
+        return_url: `${window.location.origin}/order-confirmation/${orderId || ''}`,
       },
       redirect: 'if_required',
     });

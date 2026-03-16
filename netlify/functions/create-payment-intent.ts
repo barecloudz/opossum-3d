@@ -69,7 +69,7 @@ const handler: Handler = async (event) => {
       metadata: {
         orderId: orderId || 'unknown',
       },
-      receipt_email: customerEmail || undefined,
+      // Don't set receipt_email - we send our own branded confirmation via Resend
     });
 
     return {

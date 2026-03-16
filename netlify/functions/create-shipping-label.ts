@@ -22,6 +22,7 @@ interface CreateLabelResponse {
   trackingNumber: string;
   labelUrl: string;
   shippingCost: number;
+  shippoTransactionId: string;
 }
 
 const handler: Handler = async (event) => {
@@ -149,6 +150,7 @@ const handler: Handler = async (event) => {
       trackingNumber: transaction.trackingNumber || '',
       labelUrl: transaction.labelUrl || '',
       shippingCost: parseFloat(selectedRate.amount),
+      shippoTransactionId: transaction.objectId || '',
     };
 
     return {

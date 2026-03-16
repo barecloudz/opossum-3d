@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle, Printer } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle, Printer, RotateCcw, Tag } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -29,6 +29,9 @@ export default function AdminOrderDetail() {
     labelUrl: string;
   } | null>(null);
   const [labelError, setLabelError] = useState<string | null>(null);
+  const [isRefundingLabel, setIsRefundingLabel] = useState(false);
+  const [refundMessage, setRefundMessage] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) fetchOrder();
@@ -64,6 +67,16 @@ export default function AdminOrderDetail() {
           labelUrl: orderData.shipping_label_pdf,
         });
       }
+
+      // Fetch promo code if one was used
+      if (orderData.promo_code_id) {
+        const { data: promo } = await supabase
+          .from('promo_codes')
+          .select('code')
+          .eq('id', orderData.promo_code_id)
+          .single();
+        if (promo) setPromoCode(promo.code);
+      }
     } catch (err) {
       console.error('Error fetching order:', err);
       navigate('/admin/orders');
@@ -87,6 +100,28 @@ export default function AdminOrderDetail() {
         .eq('id', order.id);
 
       if (error) throw error;
+
+      // If a new tracking number was added, send shipping confirmation email
+      const hadNoTracking = !order.tracking_number;
+      const hasNewTracking = trackingNumber && trackingNumber.trim() !== '';
+      if (hadNoTracking && hasNewTracking && order.guest_email) {
+        try {
+          await fetch('/.netlify/functions/send-shipping-confirmation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderNumber: order.order_number.toString(),
+              customerEmail: order.guest_email,
+              customerName: order.guest_name || 'Customer',
+              trackingNumber: trackingNumber,
+              shippingAddress: order.shipping_address,
+            }),
+          });
+        } catch (emailError) {
+          console.error('Failed to send tracking email:', emailError);
+          // Don't throw - save was successful
+        }
+      }
 
       setOrder({ ...order, status, tracking_number: trackingNumber, notes });
     } catch (err) {
@@ -163,13 +198,15 @@ export default function AdminOrderDetail() {
       setLabelData(data);
       setTrackingNumber(data.trackingNumber);
 
-      // Auto-save tracking number, label URL, and update status
+      // Auto-save tracking number, label URL, transaction ID, and update status
       await supabase
         .from('orders')
         .update({
           tracking_number: data.trackingNumber,
           shipping_label_pdf: data.labelUrl,
           shipping_label_generated_at: new Date().toISOString(),
+          shippo_transaction_id: data.shippoTransactionId || null,
+          shipping_label_refunded_at: null,
           status: 'shipped',
         })
         .eq('id', order.id);
@@ -179,9 +216,12 @@ export default function AdminOrderDetail() {
         tracking_number: data.trackingNumber,
         shipping_label_pdf: data.labelUrl,
         shipping_label_generated_at: new Date().toISOString(),
+        shippo_transaction_id: data.shippoTransactionId || null,
+        shipping_label_refunded_at: null,
         status: 'shipped',
       });
       setStatus('shipped');
+      setRefundMessage(null);
 
       // Send shipping confirmation email
       if (order.guest_email) {
@@ -229,6 +269,48 @@ export default function AdminOrderDetail() {
   const handlePrintLabel = () => {
     if (!labelData?.labelUrl) return;
     window.open(labelData.labelUrl, '_blank');
+  };
+
+  // Refund shipping label via Shippo
+  const handleRefundLabel = async () => {
+    if (!order) return;
+    if (!confirm('Are you sure you want to refund this shipping label? This cannot be undone.')) return;
+
+    setIsRefundingLabel(true);
+    setLabelError(null);
+    setRefundMessage(null);
+
+    try {
+      const response = await fetch('/.netlify/functions/refund-shipping-label', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to refund label');
+      }
+
+      setRefundMessage(data.message);
+      setLabelData(null);
+      setTrackingNumber('');
+      setOrder({
+        ...order,
+        shipping_label_pdf: null,
+        shipping_label_generated_at: null,
+        shippo_transaction_id: null,
+        tracking_number: null,
+        shipping_label_refunded_at: new Date().toISOString(),
+        status: 'processing',
+      });
+      setStatus('processing');
+    } catch (error: any) {
+      setLabelError(error.message || 'Failed to refund shipping label');
+    } finally {
+      setIsRefundingLabel(false);
+    }
   };
 
   if (isLoading) {
@@ -318,6 +400,15 @@ export default function AdminOrderDetail() {
                 <div className="flex justify-between text-gray-400">
                   <span>Tax</span>
                   <span>{formatPrice(order.tax)}</span>
+                </div>
+              )}
+              {order.discount_amount && order.discount_amount > 0 && (
+                <div className="flex justify-between text-green-400">
+                  <span className="flex items-center gap-1.5">
+                    <Tag className="h-3.5 w-3.5" />
+                    Discount{promoCode && <span className="text-xs font-mono bg-green-500/10 px-1.5 py-0.5 rounded">{promoCode}</span>}
+                  </span>
+                  <span>-{formatPrice(order.discount_amount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-lg font-semibold pt-2 border-t border-brand-gray">
@@ -423,6 +514,13 @@ export default function AdminOrderDetail() {
                 </div>
               )}
 
+              {refundMessage && (
+                <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-blue-400 text-sm">{refundMessage}</p>
+                </div>
+              )}
+
               {labelData ? (
                 <div className="space-y-4">
                   <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg flex items-start gap-2">
@@ -460,6 +558,17 @@ export default function AdminOrderDetail() {
                     <Truck className="h-5 w-5 mr-2" />
                     Generate New Label
                   </Button>
+                  {order.shippo_transaction_id && (
+                    <Button
+                      onClick={handleRefundLabel}
+                      className="w-full text-red-400 border-red-500/30 hover:bg-red-500/10"
+                      variant="outline"
+                      isLoading={isRefundingLabel}
+                    >
+                      <RotateCcw className="h-5 w-5 mr-2" />
+                      Refund Label
+                    </Button>
+                  )}
                 </div>
               ) : order.tracking_number ? (
                 <div className="space-y-3">
@@ -479,24 +588,41 @@ export default function AdminOrderDetail() {
                     Generate New Label
                   </Button>
                 </div>
-              ) : (order.status === 'paid' || order.status === 'pending' || order.status === 'processing') ? (
-                <div className="space-y-3">
-                  <p className="text-gray-400 text-sm">
-                    Generate a shipping label for this order.
-                  </p>
-                  <Button
-                    onClick={handleGenerateLabel}
-                    className="w-full"
-                    isLoading={isGeneratingLabel}
-                  >
-                    <Truck className="h-5 w-5 mr-2" />
-                    Generate Shipping Label
-                  </Button>
-                </div>
               ) : (
-                <p className="text-gray-500 text-sm">
-                  No shipping label generated for this order.
-                </p>
+                <div className="space-y-3">
+                  {order.shipping_label_refunded_at && (
+                    <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg flex items-start gap-2">
+                      <RotateCcw className="h-5 w-5 text-orange-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-orange-400 font-medium">Label Refunded</p>
+                        <p className="text-gray-400 text-sm mt-0.5">
+                          Refunded on {formatDateTime(order.shipping_label_refunded_at)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {(order.status === 'paid' || order.status === 'pending' || order.status === 'processing') ? (
+                    <>
+                      <p className="text-gray-400 text-sm">
+                        {order.shipping_label_refunded_at
+                          ? 'Generate a new shipping label if needed.'
+                          : 'Generate a shipping label for this order.'}
+                      </p>
+                      <Button
+                        onClick={handleGenerateLabel}
+                        className="w-full"
+                        isLoading={isGeneratingLabel}
+                      >
+                        <Truck className="h-5 w-5 mr-2" />
+                        Generate Shipping Label
+                      </Button>
+                    </>
+                  ) : !order.shipping_label_refunded_at && (
+                    <p className="text-gray-500 text-sm">
+                      No shipping label generated for this order.
+                    </p>
+                  )}
+                </div>
               )}
             </Card>
           ) : (

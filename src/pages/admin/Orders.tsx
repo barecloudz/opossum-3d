@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Package, ChevronRight, MapPin, Mail, Phone } from 'lucide-react';
+import { Search, Package, ChevronRight, MapPin, Mail, Phone, RefreshCw } from 'lucide-react';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
+import Button from '../../components/ui/Button';
 import { useOrders } from '../../hooks/useOrders';
 import { formatPrice, formatDate } from '../../lib/utils';
 import { ORDER_STATUSES } from '../../lib/constants';
@@ -19,10 +20,15 @@ const statusCounts = (orders: { status: string }[]) => {
 };
 
 export default function AdminOrders() {
-  const { orders, isLoading } = useOrders();
+  const { orders, isLoading, error, refetch } = useOrders();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+
+  // Re-fetch when navigating back to this page
+  useEffect(() => {
+    refetch();
+  }, []);
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -42,6 +48,15 @@ export default function AdminOrders() {
           <h1 className="text-3xl font-bold text-white">Orders</h1>
           <p className="text-gray-400 mt-1">{orders.length} total orders</p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={refetch}
+          disabled={isLoading}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       {/* Status filter pills */}
@@ -87,12 +102,25 @@ export default function AdminOrders() {
         />
       </div>
 
+      {/* Error state */}
+      {error && !isLoading && (
+        <Card>
+          <div className="text-center py-8">
+            <p className="text-red-400 mb-4">{error.message}</p>
+            <Button variant="outline" onClick={refetch}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {/* Orders List */}
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Spinner size="lg" />
         </div>
-      ) : filteredOrders.length === 0 ? (
+      ) : !error && filteredOrders.length === 0 ? (
         <Card>
           <div className="text-center py-12">
             <Package className="h-12 w-12 text-gray-600 mx-auto mb-4" />
@@ -107,7 +135,7 @@ export default function AdminOrders() {
             )}
           </div>
         </Card>
-      ) : (
+      ) : !error && (
         <div className="space-y-3">
           {filteredOrders.map((order) => {
             const shippingAddr = order.shipping_address;
