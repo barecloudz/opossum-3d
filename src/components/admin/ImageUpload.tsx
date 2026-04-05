@@ -1,11 +1,11 @@
 import { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2, AlertCircle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { uploadToCloudinary } from '../../lib/cloudinary';
 
 interface ImageUploadProps {
   images: string[];
   onChange: (images: string[]) => void;
-  bucket?: string;
+  folder?: string;
   maxImages?: number;
 }
 
@@ -15,7 +15,7 @@ const UPLOAD_TIMEOUT = 30000;
 export default function ImageUpload({
   images,
   onChange,
-  bucket = 'product-images',
+  folder = 'products',
   maxImages = 20,
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
@@ -24,50 +24,13 @@ export default function ImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadSingleFile = async (file: File): Promise<string | null> => {
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       throw new Error('Only image files are allowed');
     }
-
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       throw new Error('Images must be under 5MB');
     }
-
-    // Generate unique filename
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-
-    // Create timeout promise
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Upload timed out after 30 seconds')), UPLOAD_TIMEOUT);
-    });
-
-    // Upload with timeout
-    const uploadPromise = supabase.storage
-      .from(bucket)
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    const { error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]);
-
-    if (uploadError) {
-      console.error('Upload error details:', uploadError);
-      throw new Error(uploadError.message || 'Failed to upload');
-    }
-
-    // Get and verify public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(fileName);
-
-    if (!publicUrl) {
-      throw new Error('Failed to get image URL');
-    }
-
-    return publicUrl;
+    return await uploadToCloudinary(file, folder);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,25 +88,8 @@ export default function ImageUpload({
     }
   };
 
-  const handleRemove = async (index: number) => {
-    const imageUrl = images[index];
-
-    // Update UI immediately for responsiveness
-    const newImages = images.filter((_, i) => i !== index);
-    onChange(newImages);
-
-    // Then try to delete from storage (non-blocking)
-    try {
-      const fileName = imageUrl.split('/').pop();
-      if (fileName) {
-        // Don't await - let it happen in background
-        supabase.storage.from(bucket).remove([fileName]).catch(err => {
-          console.error('Failed to delete from storage (non-critical):', err);
-        });
-      }
-    } catch (err) {
-      console.error('Failed to parse filename for deletion:', err);
-    }
+  const handleRemove = (index: number) => {
+    onChange(images.filter((_, i) => i !== index));
   };
 
   const handleDragOver = (e: React.DragEvent) => {

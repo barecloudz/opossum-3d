@@ -1,18 +1,18 @@
 import { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { uploadToCloudinary } from '../../lib/cloudinary';
 
 interface SingleImageUploadProps {
   image: string | null;
   onChange: (image: string | null) => void;
-  bucket?: string;
+  folder?: string;
   label?: string;
 }
 
 export default function SingleImageUpload({
   image,
   onChange,
-  bucket = 'category-images',
+  folder = 'categories',
   label = 'Image',
 }: SingleImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
@@ -39,29 +39,11 @@ export default function SingleImageUpload({
     setError(null);
 
     try {
-      // Generate unique filename
-      const ext = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(fileName);
-
-      onChange(publicUrl);
+      const url = await uploadToCloudinary(file, folder);
+      onChange(url);
     } catch (err) {
       console.error('Upload error:', err);
-      setError('Failed to upload image. Check bucket permissions.');
+      setError('Failed to upload image.');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -70,19 +52,7 @@ export default function SingleImageUpload({
     }
   };
 
-  const handleRemove = async () => {
-    if (!image) return;
-
-    // Extract filename from URL to delete from storage
-    try {
-      const fileName = image.split('/').pop();
-      if (fileName) {
-        await supabase.storage.from(bucket).remove([fileName]);
-      }
-    } catch (err) {
-      console.error('Failed to delete from storage:', err);
-    }
-
+  const handleRemove = () => {
     onChange(null);
   };
 

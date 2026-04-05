@@ -9,6 +9,7 @@ import Modal from '../../components/ui/Modal';
 import ImageUpload from '../../components/admin/ImageUpload';
 import SingleImageUpload from '../../components/admin/SingleImageUpload';
 import { supabase } from '../../lib/supabase';
+import { uploadToCloudinary } from '../../lib/cloudinary';
 import { slugify } from '../../lib/utils';
 import { useCategories } from '../../hooks/useCategories';
 import { useProductStore } from '../../store/productStore';
@@ -263,26 +264,7 @@ export default function AdminProductEdit() {
     updateVariant(index, 'image_url', 'uploading...');
 
     try {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `variant-${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-
-      // Add timeout
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Upload timed out')), 30000);
-      });
-
-      const uploadPromise = supabase.storage
-        .from('product-images')
-        .upload(fileName, file, { cacheControl: '3600', upsert: false });
-
-      const { error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(fileName);
-
+      const publicUrl = await uploadToCloudinary(file, 'products');
       updateVariant(index, 'image_url', publicUrl);
     } catch (err: any) {
       console.error('Failed to upload variant image:', err);
