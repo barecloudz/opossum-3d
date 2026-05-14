@@ -84,7 +84,7 @@ function App() {
         <div className="text-center">
           <img
             src="/images/logo.jpg"
-            alt="Opossum Works"
+            alt="Nexalon Creations"
             className="w-48 h-48 object-contain mx-auto mb-6"
           />
           <div className="w-10 h-10 border-4 border-brand-neon border-t-transparent rounded-full animate-spin mx-auto"></div>

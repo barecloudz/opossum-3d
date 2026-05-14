@@ -18,7 +18,7 @@ export default function ReturnPolicy() {
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-theme mb-4">Return Policy</h1>
           <p className="text-theme opacity-70">
-            At Opossum Works, we take pride in the quality of our 3D printed and laser-engraved products.
+            At Nexalon Creations, we take pride in the quality of our 3D printed and laser-engraved products.
             Please review our return policy carefully before completing your purchase.
           </p>
         </div>
@@ -88,7 +88,7 @@ export default function ReturnPolicy() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-[var(--color-primary)] mt-1">•</span>
-                    We recommend using a trackable shipping service, as Opossum Works is not responsible for items lost or damaged during return transit.
+                    We recommend using a trackable shipping service, as Nexalon Creations is not responsible for items lost or damaged during return transit.
                   </li>
                 </ul>
               </div>
@@ -143,7 +143,7 @@ export default function ReturnPolicy() {
               <div>
                 <h2 className="text-xl font-semibold text-theme mb-3">Contact</h2>
                 <p className="text-theme opacity-70">
-                  For return authorization or questions regarding this policy, please contact Opossum Works
+                  For return authorization or questions regarding this policy, please contact Nexalon Creations
                   prior to sending any items back.
                 </p>
                 <Link

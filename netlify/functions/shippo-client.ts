@@ -18,7 +18,7 @@ export function getShippoClient(): Shippo {
 
 // Origin address for all shipments
 export const FROM_ADDRESS = {
-  name: 'Opossum Works',
+  name: 'Nexalon Creations',
   street1: '32 Hickey Rd',
   city: 'Marietta',
   state: 'SC',

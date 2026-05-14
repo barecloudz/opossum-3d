@@ -65,7 +65,7 @@ const generateEmailHtml = (order: OrderConfirmationRequest) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Order Confirmation - Opossum Works</title>
+  <title>Order Confirmation - Nexalon Creations</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f0f0f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
   <div style="background-color: #f0f0f0; padding: 40px 16px;">
@@ -257,7 +257,7 @@ const handler: Handler = async (event) => {
     }
 
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'Opossum Works <orders@resend.dev>',
+      from: process.env.RESEND_FROM_EMAIL || 'Nexalon Creations <orders@resend.dev>',
       to: [orderData.customerEmail],
       subject: `Order Confirmed - #${orderData.orderNumber}`,
       html: generateEmailHtml(orderData),

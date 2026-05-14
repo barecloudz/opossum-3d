@@ -163,7 +163,7 @@ const handler: Handler = async (event) => {
     }
 
     const { data: emailData, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'Opossum Works <orders@resend.dev>',
+      from: process.env.RESEND_FROM_EMAIL || 'Nexalon Creations <orders@resend.dev>',
       to: [data.customerEmail],
       subject: `Your Order #${data.orderNumber} Has Shipped!`,
       html: generateEmailHtml(data),

@@ -192,7 +192,7 @@ const handler: Handler = async (event) => {
     // Send shipping confirmation email via Resend
     const customerEmail = order.guest_email;
     const resendApiKey = process.env.RESEND_API_KEY;
-    const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'Opossum Works <orders@resend.dev>';
+    const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'Nexalon Creations <orders@resend.dev>';
 
     if (customerEmail && resendApiKey) {
       try {
@@ -210,7 +210,7 @@ const handler: Handler = async (event) => {
 <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <div style="text-align: center; margin-bottom: 40px;">
-      <h1 style="color: #00ff66; font-size: 28px; margin: 0 0 8px 0;">Opossum Works</h1>
+      <h1 style="color: #00ff66; font-size: 28px; margin: 0 0 8px 0;">Nexalon Creations</h1>
       <p style="color: #9ca3af; margin: 0;">Custom 3D Printed Creations</p>
     </div>
     <div style="background-color: #1a1a1a; border-radius: 12px; padding: 32px; margin-bottom: 24px; border: 1px solid #2d2d2d;">
@@ -254,7 +254,7 @@ const handler: Handler = async (event) => {
         Questions about your shipment? Reply to this email or contact us.
       </p>
       <p style="color: #6b7280; font-size: 12px; margin: 0;">
-        &copy; ${new Date().getFullYear()} Opossum Works. All rights reserved.
+        &copy; ${new Date().getFullYear()} Nexalon Creations. All rights reserved.
       </p>
     </div>
   </div>

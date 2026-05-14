@@ -128,7 +128,7 @@ const generateAdminEmailHtml = (order: AdminNotificationRequest) => {
     </div>
 
     <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">
-      This is an automated notification from Opossum Works.
+      This is an automated notification from Nexalon Creations.
     </p>
   </div>
 </body>
@@ -141,7 +141,7 @@ const handler: Handler = async (event) => {
   }
 
   const resendApiKey = process.env.RESEND_API_KEY;
-  const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'Opossum Works <orders@resend.dev>';
+  const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'Nexalon Creations <orders@resend.dev>';
 
   if (!resendApiKey) {
     console.error('[admin-notify] RESEND_API_KEY not configured');

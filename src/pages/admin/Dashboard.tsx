@@ -155,7 +155,7 @@ export default function AdminDashboard() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-brand-neon/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="relative">
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-            Welcome to Opossum Works
+            Welcome to Nexalon Creations
           </h1>
           <p className="text-gray-400 mb-4">
             Here's what's happening with your store today.

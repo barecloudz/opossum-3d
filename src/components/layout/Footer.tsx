@@ -63,8 +63,8 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <Link to="/" className="flex items-center space-x-2 mb-4">
-              <span className="text-xl font-bold text-[var(--color-primary)]">OPOSSUM</span>
-              <span className="text-sm text-theme opacity-60">3D</span>
+              <span className="text-xl font-bold text-[var(--color-primary)]">NEXALON</span>
+              <span className="text-sm text-theme opacity-60">CREATIONS</span>
             </Link>
             <p className="text-theme opacity-60 text-sm">
               Custom 3D printing and laser engraving. Bringing your ideas to life.
@@ -156,7 +156,7 @@ export default function Footer() {
 
         <div className="border-t border-[var(--color-border)] mt-8 pt-8 text-center">
           <p className="text-theme opacity-50 text-sm">
-            &copy; {new Date().getFullYear()} Opossum 3D. All rights reserved.
+            &copy; {new Date().getFullYear()} Nexalon Creations. All rights reserved.
           </p>
         </div>
       </div>

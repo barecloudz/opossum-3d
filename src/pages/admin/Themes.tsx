@@ -91,7 +91,7 @@ const presetThemes: PresetTheme[] = [
   },
   {
     name: 'Rustic Wood',
-    description: 'Light wood tones matching the Opossum Works logo',
+    description: 'Light wood tones matching the Nexalon Creations brand',
     colors: {
       primary_color: '#7a3a10',
       secondary_color: '#5a2a08',

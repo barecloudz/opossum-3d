@@ -1,6 +1,6 @@
 {
-  "name": "Opossum Works",
-  "short_name": "Opossum",
+  "name": "Nexalon Creations",
+  "short_name": "Nexalon",
   "icons": [
     {
       "src": "/images/favicon/android-chrome-192x192.png",
@@ -13,7 +13,7 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#0a0a0a",
-  "background_color": "#0a0a0a",
+  "theme_color": "#1677FF",
+  "background_color": "#F2F4F7",
   "display": "standalone"
 }

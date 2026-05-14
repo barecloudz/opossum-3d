@@ -1,4 +1,4 @@
-export const APP_NAME = 'Opossum 3D';
+export const APP_NAME = 'Nexalon Creations';
 
 export const ORDER_STATUSES = {
   pending: { label: 'Pending', color: 'bg-yellow-500/20 text-yellow-400' },

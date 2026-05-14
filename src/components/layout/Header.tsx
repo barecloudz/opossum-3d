@@ -52,7 +52,7 @@ export default function Header() {
           <Link to="/" className="hidden md:flex items-center">
             <img
               src="/images/logo.jpg"
-              alt="Opossum Works"
+              alt="Nexalon Creations"
               className="h-12 w-auto object-contain"
             />
           </Link>
@@ -61,7 +61,7 @@ export default function Header() {
           <Link to="/" className="md:hidden absolute left-1/2 transform -translate-x-1/2">
             <img
               src="/images/logo.jpg"
-              alt="Opossum Works"
+              alt="Nexalon Creations"
               className="h-10 w-auto object-contain"
             />
           </Link>

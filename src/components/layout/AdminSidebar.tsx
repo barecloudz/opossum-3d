@@ -125,7 +125,7 @@ export default function AdminSidebar() {
         <Link to="/admin" className="flex items-center space-x-2" onClick={() => setMobileOpen(false)}>
           <img
             src="/images/logo.jpg"
-            alt="Opossum Works"
+            alt="Nexalon Creations"
             className="h-8 w-auto object-contain"
           />
           <span className="text-xs text-gray-400 bg-brand-gray px-2 py-0.5 rounded">Admin</span>
