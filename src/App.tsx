@@ -82,10 +82,7 @@ function App() {
     return (
       <div className="min-h-screen bg-[#F2F4F7] flex items-center justify-center">
         <div className="text-center">
-          <svg width="80" height="80" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto mb-4">
-            <path d="M38 5 C34 14, 27 22, 12 45" stroke="#0D1B2A" strokeWidth="9" strokeLinecap="round"/>
-            <path d="M12 5 C16 14, 23 22, 38 45" stroke="#1677FF" strokeWidth="9" strokeLinecap="round"/>
-          </svg>
+          <img src="/images/favicon/android-chrome-512x512.png" alt="Nexalon" className="w-24 h-24 object-contain mx-auto mb-2" />
           <p className="text-[#0D1B2A] font-bold tracking-widest text-xl mb-6">NEXALON</p>
           <div className="w-8 h-8 border-4 border-[#1677FF] border-t-transparent rounded-full animate-spin mx-auto"></div>
         </div>
