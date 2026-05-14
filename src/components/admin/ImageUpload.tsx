@@ -9,8 +9,6 @@ interface ImageUploadProps {
   maxImages?: number;
 }
 
-// Timeout for uploads (30 seconds)
-const UPLOAD_TIMEOUT = 30000;
 
 export default function ImageUpload({
   images,

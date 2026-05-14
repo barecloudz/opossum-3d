@@ -854,7 +854,6 @@ export default function AdminProductEdit() {
               <ImageUpload
                 images={images}
                 onChange={setImages}
-                bucket="product-images"
                 maxImages={20}
               />
             </Card>

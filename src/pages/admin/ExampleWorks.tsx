@@ -348,7 +348,6 @@ export default function AdminExampleWorks() {
             label="Image"
             image={formData.image_url || null}
             onChange={(url) => setFormData((prev) => ({ ...prev, image_url: url || '' }))}
-            bucket="product-images"
           />
 
           <div className="flex items-center gap-2">
