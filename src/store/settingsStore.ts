@@ -30,17 +30,17 @@ interface SettingsState {
 }
 
 const defaultTheme: ThemeSettings = {
-  primary_color: '#00ff66',
-  secondary_color: '#00cc52',
-  accent_color: '#00ff66',
-  background_color: '#0a0a0a',
-  surface_color: '#1a1a1a',
-  text_color: '#f5f5f5',
-  border_color: '#2d2d2d',
+  primary_color: '#1677FF',
+  secondary_color: '#0a5fd9',
+  accent_color: '#1677FF',
+  background_color: '#F2F4F7',
+  surface_color: '#FFFFFF',
+  text_color: '#0D1B2A',
+  border_color: '#C9C9C9',
 };
 
 const defaultSettings: SiteSettings = {
-  store_name: 'OPOSSUM',
+  store_name: 'Nexalon Creations',
   logo_url: null,
   hero_image_url: null,
   contact_email: '',
@@ -83,22 +83,20 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       if (error) throw error;
 
       if (data) {
-        const themeSettings = data.theme_settings || defaultTheme;
-
         set({
           settings: {
-            store_name: data.store_name || 'OPOSSUM',
+            store_name: data.store_name || 'Nexalon Creations',
             logo_url: data.logo_url || null,
             hero_image_url: data.hero_image_url || null,
             contact_email: data.contact_email || '',
             default_shipping_cost: data.default_shipping_cost || 5,
             low_stock_threshold: data.low_stock_threshold || 5,
-            theme_settings: themeSettings,
+            theme_settings: defaultTheme,
           },
         });
 
-        // Apply the theme to the DOM
-        applyThemeToDOM(themeSettings);
+        // Always apply the Nexalon brand theme
+        applyThemeToDOM(defaultTheme);
       }
     } catch (err) {
       console.error('Error fetching settings:', err);
