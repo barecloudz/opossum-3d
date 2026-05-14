@@ -213,14 +213,14 @@ export default function Home() {
           {/* Greeting & Icons Row */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <p className="text-gray-400 text-sm">Hello,</p>
-              <h1 className="text-xl font-bold text-white">{firstName}</h1>
+              <p className="text-[#6B7280] text-sm">Hello,</p>
+              <h1 className="text-xl font-bold text-[#0D1B2A]">{firstName}</h1>
             </div>
             <div className="flex items-center gap-4">
-              <button className="relative p-2 text-gray-400 hover:text-white transition-colors">
+              <button className="relative p-2 text-[#6B7280] hover:text-[#0D1B2A] transition-colors">
                 <Bell className="h-6 w-6" />
               </button>
-              <Link to="/cart" className="relative p-2 text-gray-400 hover:text-white transition-colors">
+              <Link to="/cart" className="relative p-2 text-[#6B7280] hover:text-[#0D1B2A] transition-colors">
                 <ShoppingCart className="h-6 w-6" />
                 {itemCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-[var(--color-primary)] text-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
@@ -239,7 +239,7 @@ export default function Home() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search products..."
-              className="w-full pl-12 pr-4 py-3 bg-[var(--color-surface)]/90 border border-[var(--color-border)] rounded-2xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent backdrop-blur-sm"
+              className="w-full pl-12 pr-4 py-3 bg-white border border-[var(--color-border)] rounded-2xl text-[#0D1B2A] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent shadow-sm"
             />
           </form>
         </div>
@@ -340,7 +340,7 @@ export default function Home() {
       {/* Categories */}
       <div className="px-4 mb-8">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-lg font-bold text-white mb-4">Categories</h2>
+          <h2 className="text-lg font-bold text-[#0D1B2A] mb-4">Categories</h2>
           <div className="relative">
             {/* Scroll container */}
             <div
@@ -414,7 +414,7 @@ export default function Home() {
       <div className="px-4 pb-24 md:pb-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-white">Hot Products</h2>
+            <h2 className="text-lg font-bold text-[#0D1B2A]">Hot Products</h2>
             <Link
               to="/products"
               className="text-[var(--color-primary)] hover:opacity-80 transition-colors flex items-center text-sm font-medium"
@@ -440,7 +440,7 @@ export default function Home() {
                 <p className="text-gray-500 text-sm mb-4">{error.message}</p>
                 <button
                   onClick={() => fetchProducts(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-white hover:border-[var(--color-primary)] transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[var(--color-border)] rounded-xl text-[#0D1B2A] hover:border-[var(--color-primary)] transition-colors"
                 >
                   <RefreshCw className="h-4 w-4" />
                   Try Again
@@ -490,7 +490,7 @@ export default function Home() {
                       )}
                     </div>
 
-                    <h3 className="font-medium text-white text-sm mb-1 line-clamp-2 group-hover:text-[var(--color-primary)] transition-colors">
+                    <h3 className="font-medium text-[#0D1B2A] text-sm mb-1 line-clamp-2 group-hover:text-[var(--color-primary)] transition-colors">
                       {product.name}
                     </h3>
 
@@ -513,7 +513,7 @@ export default function Home() {
                         className={`p-2 rounded-xl transition-all btn-press ${
                           isAdding
                             ? 'bg-[var(--color-primary)] text-black animate-cart-bounce'
-                            : 'bg-[var(--color-surface)] text-white hover:bg-[var(--color-primary)] hover:text-black'
+                            : 'bg-[var(--color-border)] text-[#0D1B2A] hover:bg-[var(--color-primary)] hover:text-white'
                         }`}
                       >
                         <Plus className="h-4 w-4" />

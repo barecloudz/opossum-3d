@@ -49,21 +49,21 @@ export default function Header() {
           </button>
 
           {/* Desktop Left - Logo */}
-          <Link to="/" className="hidden md:flex items-center">
-            <img
-              src="/images/logo.jpg"
-              alt="Nexalon Creations"
-              className="h-12 w-auto object-contain"
-            />
+          <Link to="/" className="hidden md:flex items-center gap-2.5">
+            <svg width="36" height="36" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M38 5 C34 14, 27 22, 12 45" stroke="#0D1B2A" strokeWidth="9" strokeLinecap="round"/>
+              <path d="M12 5 C16 14, 23 22, 38 45" stroke="#1677FF" strokeWidth="9" strokeLinecap="round"/>
+            </svg>
+            <span className="text-xl font-bold tracking-widest text-[#0D1B2A]">NEXALON</span>
           </Link>
 
           {/* Mobile Center - Logo */}
-          <Link to="/" className="md:hidden absolute left-1/2 transform -translate-x-1/2">
-            <img
-              src="/images/logo.jpg"
-              alt="Nexalon Creations"
-              className="h-10 w-auto object-contain"
-            />
+          <Link to="/" className="md:hidden absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
+            <svg width="28" height="28" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M38 5 C34 14, 27 22, 12 45" stroke="#0D1B2A" strokeWidth="9" strokeLinecap="round"/>
+              <path d="M12 5 C16 14, 23 22, 38 45" stroke="#1677FF" strokeWidth="9" strokeLinecap="round"/>
+            </svg>
+            <span className="text-base font-bold tracking-widest text-[#0D1B2A]">NEXALON</span>
           </Link>
 
           {/* Desktop Navigation */}

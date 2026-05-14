@@ -122,12 +122,12 @@ export default function AdminSidebar() {
     <>
       {/* Logo */}
       <div className={`p-5 border-b ${isMobile ? 'border-brand-neon/20 bg-brand-charcoal' : 'border-brand-gray'}`}>
-        <Link to="/admin" className="flex items-center space-x-2" onClick={() => setMobileOpen(false)}>
-          <img
-            src="/images/logo.jpg"
-            alt="Nexalon Creations"
-            className="h-8 w-auto object-contain"
-          />
+        <Link to="/admin" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
+          <svg width="28" height="28" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M38 5 C34 14, 27 22, 12 45" stroke="#0D1B2A" strokeWidth="9" strokeLinecap="round"/>
+            <path d="M12 5 C16 14, 23 22, 38 45" stroke="#1677FF" strokeWidth="9" strokeLinecap="round"/>
+          </svg>
+          <span className="font-bold tracking-widest text-[#0D1B2A] text-sm">NEXALON</span>
           <span className="text-xs text-gray-400 bg-brand-gray px-2 py-0.5 rounded">Admin</span>
         </Link>
       </div>
