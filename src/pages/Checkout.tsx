@@ -11,7 +11,8 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import PaymentForm from '../components/checkout/PaymentForm';
 import { useToast } from '../components/ui/Toast';
-import type { PromoCode } from '../types';
+import type { PromoCode, Affiliate } from '../types';
+import { getAffiliateCookie, clearAffiliateCookie } from '../components/AffiliateTracker';
 
 interface RateOption {
   serviceToken: string;
@@ -44,6 +45,8 @@ export default function Checkout() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
+  const [appliedAffiliate, setAppliedAffiliate] = useState<Affiliate | null>(null);
+  const [affiliateDiscountRate, setAffiliateDiscountRate] = useState(0);
   const [paymentComplete, setPaymentComplete] = useState(false);
 
   // Shipping rate state
@@ -55,6 +58,29 @@ export default function Checkout() {
 
   // Featured promo codes (shown on checkout)
   const [featuredPromos, setFeaturedPromos] = useState<PromoCode[]>([]);
+
+  // Auto-apply affiliate from cookie on mount
+  useEffect(() => {
+    const cookieCode = getAffiliateCookie();
+    if (!cookieCode || appliedAffiliate || appliedPromo) return;
+    supabase
+      .from('affiliates')
+      .select('*')
+      .eq('code', cookieCode)
+      .eq('status', 'approved')
+      .single()
+      .then(async ({ data }) => {
+        if (!data) return;
+        const { data: settings } = await supabase
+          .from('affiliate_settings')
+          .select('customer_discount_rate')
+          .eq('id', 1)
+          .single();
+        setAffiliateDiscountRate(settings?.customer_discount_rate ?? 10);
+        setAppliedAffiliate(data as unknown as Affiliate);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Ref for shipping section to scroll to
   const shippingSectionRef = useRef<HTMLDivElement>(null);
@@ -165,6 +191,8 @@ export default function Checkout() {
     } else {
       discount = Math.min(appliedPromo.discount_value, subtotal);
     }
+  } else if (appliedAffiliate) {
+    discount = subtotal * (affiliateDiscountRate / 100);
   }
 
   const total = subtotal + shipping - discount;
@@ -235,7 +263,27 @@ export default function Checkout() {
       clearTimeout(timeoutId);
 
       if (error || !data) {
-        setPromoError('Invalid promo code');
+        // Not a promo code — check if it's an affiliate code
+        const { data: affiliateData } = await supabase
+          .from('affiliates')
+          .select('*')
+          .eq('code', promoCode.toUpperCase().trim())
+          .eq('status', 'approved')
+          .single();
+
+        if (affiliateData) {
+          // Fetch customer discount rate from settings
+          const { data: settings } = await supabase
+            .from('affiliate_settings')
+            .select('customer_discount_rate')
+            .eq('id', 1)
+            .single();
+          setAffiliateDiscountRate(settings?.customer_discount_rate ?? 10);
+          setAppliedAffiliate(affiliateData as Affiliate);
+          setPromoCode('');
+        } else {
+          setPromoError('Invalid code');
+        }
         return;
       }
 
@@ -270,6 +318,8 @@ export default function Checkout() {
 
   const removePromoCode = () => {
     setAppliedPromo(null);
+    setAppliedAffiliate(null);
+    setAffiliateDiscountRate(0);
     setPromoError('');
   };
 
@@ -330,11 +380,33 @@ export default function Checkout() {
           billing_address: shippingAddress,
           promo_code_id: appliedPromo?.id || null,
           discount_amount: discount,
+          affiliate_id: appliedAffiliate?.id || null,
+          affiliate_discount_amount: appliedAffiliate ? discount : 0,
         })
         .select()
         .single();
 
       if (orderError) throw orderError;
+
+      // Create pending affiliate conversion if affiliate code was used
+      if (appliedAffiliate && order) {
+        const affiliateSettings = await supabase
+          .from('affiliate_settings')
+          .select('commission_rate')
+          .eq('id', 1)
+          .single();
+        const globalRate = affiliateSettings.data?.commission_rate ?? 10;
+        const commissionRate = appliedAffiliate.commission_rate ?? globalRate;
+        const commissionAmount = total * (commissionRate / 100);
+        await supabase.from('affiliate_conversions').insert({
+          affiliate_id: appliedAffiliate.id,
+          order_id: order.id,
+          order_total: total,
+          commission_amount: commissionAmount,
+          status: 'pending',
+        });
+        clearAffiliateCookie();
+      }
 
       // Validate variant IDs still exist in database before inserting
       const variantIds = items.map(i => i.variant?.id).filter(Boolean) as string[];
@@ -585,6 +657,8 @@ export default function Checkout() {
           billing_address: shippingAddress,
           promo_code_id: appliedPromo?.id || null,
           discount_amount: discount,
+          affiliate_id: appliedAffiliate?.id || null,
+          affiliate_discount_amount: appliedAffiliate ? discount : 0,
           notes: 'TEST ORDER - Admin test payment',
         })
         .select()

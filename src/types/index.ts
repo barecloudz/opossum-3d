@@ -242,3 +242,61 @@ export interface BannerSlide {
   is_active: boolean;
   created_at: string;
 }
+
+export interface AffiliateSettings {
+  id: 1;
+  commission_rate: number;
+  customer_discount_rate: number;
+  min_payout_threshold: number;
+  cookie_duration_days: number;
+  updated_at: string;
+}
+
+export type AffiliateStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
+export type AffiliateConversionStatus = 'pending' | 'approved' | 'paid';
+
+export interface Affiliate {
+  id: string;
+  user_id: string | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  business_name: string | null;
+  promo_plan: string | null;
+  code: string;
+  status: AffiliateStatus;
+  commission_rate: number | null;
+  payout_method: string | null;
+  payout_details: string | null;
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AffiliateClick {
+  id: string;
+  affiliate_id: string;
+  created_at: string;
+}
+
+export interface AffiliateConversion {
+  id: string;
+  affiliate_id: string;
+  order_id: string;
+  order_total: number;
+  commission_amount: number;
+  status: AffiliateConversionStatus;
+  payout_id: string | null;
+  created_at: string;
+  order?: Pick<Order, 'order_number' | 'created_at' | 'total'>;
+}
+
+export interface AffiliatePayout {
+  id: string;
+  affiliate_id: string;
+  amount: number;
+  method: string;
+  reference: string | null;
+  notes: string | null;
+  created_at: string;
+}

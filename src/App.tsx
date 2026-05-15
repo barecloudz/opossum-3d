@@ -24,7 +24,13 @@ import Register from './pages/Register';
 import Account from './pages/Account';
 import NotFound from './pages/NotFound';
 
+// Affiliate Pages
+import AffiliateApply from './pages/affiliate/Apply';
+import AffiliateDashboard from './pages/affiliate/Dashboard';
+
 // Admin Pages
+import AdminAffiliates from './pages/admin/Affiliates';
+import AdminAffiliateDetail from './pages/admin/AffiliateDetail';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
 import AdminProductEdit from './pages/admin/ProductEdit';
@@ -45,6 +51,7 @@ import AdminExampleWorks from './pages/admin/ExampleWorks';
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
 import CartDrawer from './components/cart/CartDrawer';
+import AffiliateTracker from './components/AffiliateTracker';
 import UpdateBanner from './components/UpdateBanner';
 import ScrollToTop from './components/ScrollToTop';
 import { ToastContainer } from './components/ui/Toast';
@@ -116,6 +123,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Affiliate Routes */}
+          <Route path="affiliate/apply" element={<AffiliateApply />} />
+          <Route
+            path="affiliate/dashboard"
+            element={
+              <ProtectedRoute>
+                <AffiliateDashboard />
+              </ProtectedRoute>
+            }
+          />
           {/* 404 inside MainLayout for proper styling */}
           <Route path="*" element={<NotFound />} />
         </Route>
@@ -146,8 +163,13 @@ function App() {
           <Route path="banners" element={<AdminBanners />} />
           <Route path="example-works" element={<AdminExampleWorks />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="affiliates" element={<AdminAffiliates />} />
+          <Route path="affiliates/:id" element={<AdminAffiliateDetail />} />
         </Route>
       </Routes>
+
+      {/* Affiliate ref cookie tracker */}
+      <AffiliateTracker />
 
       {/* Global Cart Drawer */}
       <CartDrawer />

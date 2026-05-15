@@ -22,6 +22,8 @@ import {
   Lightbulb,
   Store,
   Layout,
+  Handshake,
+  BarChart2,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -57,6 +59,11 @@ export const marketingSubItems = [
   { href: '/admin/subscribers', icon: Mail, label: 'Email Subscribers' },
 ];
 
+// Affiliates section
+export const affiliatesSubItems = [
+  { href: '/admin/affiliates', icon: BarChart2, label: 'Affiliates' },
+];
+
 // Bottom items (always visible)
 export const bottomNavItems = [
   { href: '/admin/team', icon: Shield, label: 'Team' },
@@ -70,6 +77,7 @@ export const navItems = [
   ...customersSubItems,
   ...storefrontSubItems,
   ...marketingSubItems,
+  ...affiliatesSubItems,
   ...bottomNavItems,
 ];
 
@@ -111,6 +119,9 @@ export default function AdminSidebar() {
   );
   const [marketingOpen, setMarketingOpen] = useState(
     marketingSubItems.some(item => location.pathname.startsWith(item.href))
+  );
+  const [affiliatesOpen, setAffiliatesOpen] = useState(
+    location.pathname.startsWith('/admin/affiliates')
   );
 
   const isActive = (path: string) => {
@@ -292,6 +303,40 @@ export default function AdminSidebar() {
                   <span className="text-sm">{item.label}</span>
                 </Link>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Affiliates collapsible */}
+        <div>
+          <button
+            onClick={() => setAffiliatesOpen(!affiliatesOpen)}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
+              location.pathname.startsWith('/admin/affiliates')
+                ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
+                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <Handshake className={`h-5 w-5 ${location.pathname.startsWith('/admin/affiliates') ? 'text-brand-neon' : ''}`} />
+              <span className="font-medium">Affiliates</span>
+            </div>
+            {affiliatesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {affiliatesOpen && (
+            <div className="ml-4 mt-1 space-y-1">
+              <Link
+                to="/admin/affiliates"
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all ${
+                  isActive('/admin/affiliates')
+                    ? 'bg-brand-neon/10 text-brand-neon'
+                    : 'text-gray-400 hover:bg-brand-gray/50 hover:text-white'
+                }`}
+              >
+                <BarChart2 className={`h-4 w-4 ${isActive('/admin/affiliates') ? 'text-brand-neon' : ''}`} />
+                <span className="text-sm">Manage Affiliates</span>
+              </Link>
             </div>
           )}
         </div>
