@@ -206,6 +206,7 @@ export default function AffiliateDashboard() {
   >('loading');
 
   const [affiliate, setAffiliate] = useState<Affiliate | null>(null);
+  const [globalCommissionRate, setGlobalCommissionRate] = useState<number>(10);
   const [stats, setStats] = useState<DashboardStats>({
     totalClicks: 0,
     totalConversions: 0,
@@ -221,6 +222,14 @@ export default function AffiliateDashboard() {
 
   const loadDashboard = useCallback(async (affiliateRecord: Affiliate) => {
     const affiliateId = affiliateRecord.id;
+
+    // Fetch global commission rate
+    const { data: settingsData } = await supabase
+      .from('affiliate_settings')
+      .select('commission_rate')
+      .eq('id', 1)
+      .single();
+    if (settingsData) setGlobalCommissionRate(settingsData.commission_rate);
 
     const [clicksRes, conversionsRes, payoutsRes] = await Promise.all([
       supabase
@@ -339,11 +348,19 @@ export default function AffiliateDashboard() {
       <div className="max-w-5xl mx-auto space-y-8">
 
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-[#0D1B2A]">Affiliate Dashboard</h1>
-          <p className="text-[#6B7280] mt-1">
-            Welcome back, <span className="font-medium text-[#0D1B2A]">{affiliate.name}</span>
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold text-[#0D1B2A]">Affiliate Dashboard</h1>
+            <p className="text-[#6B7280] mt-1">
+              Welcome back, <span className="font-medium text-[#0D1B2A]">{affiliate.name}</span>
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 rounded-xl">
+            <DollarSign className="h-4 w-4 text-[var(--color-primary)]" />
+            <span className="text-sm font-semibold text-[#0D1B2A]">
+              {affiliate.commission_rate ?? globalCommissionRate}% commission rate
+            </span>
+          </div>
         </div>
 
         {/* ── Stats row ─────────────────────────────────────────────── */}

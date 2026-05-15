@@ -190,8 +190,8 @@ export default function AdminAffiliateDetail() {
     setIsSavingRate(true);
     try {
       const parsed = commissionRate.trim() !== '' ? parseFloat(commissionRate) : null;
-      if (parsed !== null && (isNaN(parsed) || parsed < 0 || parsed > 1)) {
-        alert('Commission rate must be a decimal between 0 and 1 (e.g. 0.10 for 10%)');
+      if (parsed !== null && (isNaN(parsed) || parsed < 0 || parsed > 100)) {
+        alert('Commission rate must be a number between 0 and 100 (e.g. 10 for 10%)');
         return;
       }
 
@@ -449,21 +449,21 @@ export default function AdminAffiliateDetail() {
         <Card>
           <h2 className="text-lg font-semibold text-white mb-4">Commission Rate</h2>
           <p className="text-gray-400 text-sm mb-3">
-            Leave blank to use the global rate. Enter a decimal value, e.g.{' '}
-            <span className="font-mono text-gray-300">0.10</span> for 10%.
+            Leave blank to use the global rate. Enter a whole number, e.g.{' '}
+            <span className="font-mono text-gray-300">10</span> for 10%.
           </p>
           <Input
             type="number"
-            step="0.01"
+            step="0.5"
             min="0"
-            max="1"
+            max="100"
             placeholder="Using global rate"
             value={commissionRate}
             onChange={(e) => setCommissionRate(e.target.value)}
           />
           {affiliate.commission_rate != null && (
             <p className="text-xs text-gray-500 mt-1">
-              Currently: {(affiliate.commission_rate * 100).toFixed(1)}%
+              Currently: {affiliate.commission_rate.toFixed(1)}%
             </p>
           )}
           <div className="flex justify-end mt-3">
@@ -645,11 +645,11 @@ export default function AdminAffiliateDetail() {
               className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             >
               <option value="">Select method...</option>
-              <option value="paypal">PayPal</option>
+              <option value="cash">Cash</option>
+              <option value="cash_app">Cash App</option>
               <option value="venmo">Venmo</option>
-              <option value="bank_transfer">Bank Transfer</option>
               <option value="check">Check</option>
-              <option value="store_credit">Store Credit</option>
+              <option value="bank_transfer">Bank Transfer</option>
               <option value="other">Other</option>
             </select>
           </div>

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, ChevronRight, RefreshCw } from 'lucide-react';
+import { Users, ChevronRight, RefreshCw, Settings, Save } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
+import Input from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
 import { formatDate, formatPrice } from '../../lib/utils';
-import type { Affiliate, AffiliateStatus, AffiliateConversion } from '../../types';
+import type { Affiliate, AffiliateStatus, AffiliateConversion, AffiliateSettings } from '../../types';
 
 type StatusFilter = 'all' | AffiliateStatus;
 
@@ -46,6 +47,50 @@ export default function AdminAffiliates() {
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Program settings state
+  const [settings, setSettings] = useState<AffiliateSettings | null>(null);
+  const [commissionRate, setCommissionRate] = useState('');
+  const [discountRate, setDiscountRate] = useState('');
+  const [minPayout, setMinPayout] = useState('');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const fetchSettings = async () => {
+    const { data } = await supabase
+      .from('affiliate_settings')
+      .select('*')
+      .eq('id', 1)
+      .single();
+    if (data) {
+      setSettings(data as AffiliateSettings);
+      setCommissionRate(String(data.commission_rate));
+      setDiscountRate(String(data.customer_discount_rate));
+      setMinPayout(String(data.min_payout_threshold));
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      const { error } = await supabase
+        .from('affiliate_settings')
+        .update({
+          commission_rate: parseFloat(commissionRate) || 10,
+          customer_discount_rate: parseFloat(discountRate) || 10,
+          min_payout_threshold: parseFloat(minPayout) || 0,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', 1);
+      if (error) throw error;
+      await fetchSettings();
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      alert('Failed to save settings');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -106,6 +151,7 @@ export default function AdminAffiliates() {
 
   useEffect(() => {
     fetchData();
+    fetchSettings();
   }, []);
 
   const handleApprove = async (affiliate: Affiliate) => {
@@ -190,6 +236,80 @@ export default function AdminAffiliates() {
           Refresh
         </Button>
       </div>
+
+      {/* Program Settings Panel */}
+      <Card className="mb-6">
+        <button
+          onClick={() => setSettingsOpen(!settingsOpen)}
+          className="w-full flex items-center justify-between text-left"
+        >
+          <div className="flex items-center gap-2">
+            <Settings className="h-5 w-5 text-brand-neon" />
+            <span className="text-white font-semibold">Program Settings</span>
+            {settings && (
+              <span className="text-xs text-gray-500 ml-2">
+                Commission: {settings.commission_rate}% · Customer discount: {settings.customer_discount_rate}% · Min payout: ${settings.min_payout_threshold}
+              </span>
+            )}
+          </div>
+          <ChevronRight className={`h-4 w-4 text-gray-400 transition-transform ${settingsOpen ? 'rotate-90' : ''}`} />
+        </button>
+
+        {settingsOpen && (
+          <div className="mt-5 pt-5 border-t border-brand-gray grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Commission Rate (%)
+              </label>
+              <p className="text-xs text-gray-500 mb-2">% affiliates earn on each sale</p>
+              <Input
+                type="number"
+                step="0.5"
+                min="0"
+                max="100"
+                placeholder="10"
+                value={commissionRate}
+                onChange={(e) => setCommissionRate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Customer Discount Rate (%)
+              </label>
+              <p className="text-xs text-gray-500 mb-2">% discount customers get with affiliate code</p>
+              <Input
+                type="number"
+                step="0.5"
+                min="0"
+                max="100"
+                placeholder="10"
+                value={discountRate}
+                onChange={(e) => setDiscountRate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Minimum Payout ($)
+              </label>
+              <p className="text-xs text-gray-500 mb-2">Minimum balance before payout (0 = no minimum)</p>
+              <Input
+                type="number"
+                step="1"
+                min="0"
+                placeholder="0"
+                value={minPayout}
+                onChange={(e) => setMinPayout(e.target.value)}
+              />
+            </div>
+            <div className="sm:col-span-3 flex justify-end">
+              <Button onClick={handleSaveSettings} isLoading={isSavingSettings} size="sm">
+                <Save className="h-4 w-4 mr-1.5" />
+                Save Settings
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
 
       {/* Status filter tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
