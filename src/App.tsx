@@ -23,6 +23,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Account from './pages/Account';
 import NotFound from './pages/NotFound';
+import FAQ from './pages/FAQ';
 
 // Affiliate Pages
 import AffiliateApply from './pages/affiliate/Apply';
@@ -112,6 +113,7 @@ function App() {
           <Route path="custom-quote" element={<CustomQuote />} />
           <Route path="return-policy" element={<ReturnPolicy />} />
           <Route path="privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="faq" element={<FAQ />} />
           <Route path="wishlist" element={<Wishlist />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />

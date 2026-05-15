@@ -93,7 +93,7 @@ export default function Home() {
             Nexalon Creations
           </h1>
           <p className="text-lg text-[#6B7280] mb-8 max-w-2xl mx-auto leading-relaxed">
-            Custom laser engraved products, branded kits, and professional tools for nutrition clubs and Herbalife distributors.
+            Custom 3D printed and laser engraved products built to your exact specifications. Professional quality, personal touch.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -205,12 +205,12 @@ export default function Home() {
           <h2 className="text-2xl font-bold text-[#0D1B2A] text-center mb-8">What We Create</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {[
-              { title: 'Measuring Spoon Sets', desc: 'Custom laser engraved measuring spoons for nutrition clubs' },
-              { title: 'Branded Spoon Kits', desc: 'Professional kits with your club or brand name' },
-              { title: 'Nutrition Club Accessories', desc: 'Functional accessories designed for Herbalife distributors' },
-              { title: 'Laser Engraved Products', desc: 'High-quality engravings on a variety of materials' },
-              { title: 'Custom Bulk Orders', desc: 'Large volume orders for teams and events' },
-              { title: 'Custom Projects', desc: 'Have an idea? We can make it happen' },
+              { title: 'Measuring Spoon Sets', desc: 'Custom printed and engraved measuring spoon sets built to order' },
+              { title: 'Branded Kits', desc: 'Professional kits printed with your name, logo, or brand' },
+              { title: 'Custom Accessories', desc: 'Specialty accessories designed and produced to your specs' },
+              { title: 'Laser Engraved Products', desc: 'Precise, high-quality engravings on a wide range of materials' },
+              { title: 'Bulk Orders', desc: 'Volume orders for teams, events, or organizations' },
+              { title: 'Custom Projects', desc: 'Have an idea? We can design and build it' },
             ].map((item) => (
               <div
                 key={item.title}
@@ -224,25 +224,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Affiliate CTA */}
-      <div className="px-4 mb-12">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-gradient-to-r from-[var(--color-primary)]/10 to-[var(--color-primary)]/5 border border-[var(--color-primary)]/20 rounded-3xl p-8 text-center">
-            <h2 className="text-2xl font-bold text-[#0D1B2A] mb-3">Affiliate Partner Program</h2>
-            <p className="text-[#6B7280] mb-6">
-              Earn <span className="font-bold text-[var(--color-primary)]">10% commission</span> on every qualifying sale you refer. Perfect for Herbalife distributors and nutrition club owners.
-            </p>
-            <Link
-              to="/affiliate/apply"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[var(--color-primary)] text-white font-semibold rounded-2xl hover:opacity-90 transition-opacity btn-press"
-            >
-              Become an Affiliate <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Contact */}
+      {/* Contact + Footer */}
       <div className="px-4 pb-24 md:pb-12">
         <div className="max-w-md mx-auto text-center">
           <h2 className="text-xl font-bold text-[#0D1B2A] mb-4">Get In Touch</h2>
@@ -262,6 +244,12 @@ export default function Home() {
               828-388-2151
             </a>
           </div>
+          <p className="mt-8 text-sm text-[#9CA3AF]">
+            Interested in earning commissions?{' '}
+            <Link to="/affiliate/apply" className="text-[var(--color-primary)] hover:underline">
+              Join our affiliate program
+            </Link>
+          </p>
         </div>
       </div>
     </div>

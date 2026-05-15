@@ -24,8 +24,13 @@ export default function Header() {
     <header className="sticky top-0 z-40 bg-[var(--color-surface)]/90 backdrop-blur-sm border-b border-[var(--color-border)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative flex items-center justify-between h-16">
-          {/* Mobile Left - placeholder for spacing */}
-          <div className="md:hidden w-10" />
+          {/* Mobile Left - Hamburger menu */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden text-theme hover:text-brand-neon transition-colors p-1"
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
 
           {/* Desktop Left - Logo */}
           <Link to="/" className="hidden md:flex items-center gap-2.5">
@@ -41,6 +46,12 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
+            <Link
+              to="/faq"
+              className="text-theme hover:text-[var(--color-primary)] transition-colors text-sm font-medium"
+            >
+              FAQ
+            </Link>
             <Link
               to="/affiliate/apply"
               className="flex items-center gap-1.5 text-theme hover:text-[var(--color-primary)] transition-colors text-sm font-medium"
@@ -81,23 +92,13 @@ export default function Header() {
               </button>
             )}
 
-            {/* Mobile Right - Login/Menu */}
-            <div className="flex items-center space-x-2 md:hidden">
-              {!user && (
-                <Link
-                  to="/login"
-                  className="text-theme hover:text-[var(--color-primary)] transition-colors p-1"
-                >
-                  <User className="h-6 w-6" />
-                </Link>
-              )}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="text-theme hover:text-brand-neon transition-colors p-1"
-              >
-                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-              </button>
-            </div>
+            {/* Mobile Right - Account icon */}
+            <Link
+              to={user ? '/account' : '/login'}
+              className="md:hidden text-theme hover:text-[var(--color-primary)] transition-colors p-1"
+            >
+              <User className="h-6 w-6" />
+            </Link>
           </div>
         </div>
 
@@ -105,6 +106,13 @@ export default function Header() {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-[var(--color-border)]">
             <nav className="flex flex-col gap-3 px-2">
+              <Link
+                to="/faq"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center py-3 px-4 bg-[var(--color-surface)] hover:bg-[var(--color-primary)]/10 border border-[var(--color-border)] hover:border-[var(--color-primary)]/50 rounded-xl text-theme font-medium transition-all"
+              >
+                FAQ
+              </Link>
               <Link
                 to="/affiliate/apply"
                 onClick={() => setMobileMenuOpen(false)}
