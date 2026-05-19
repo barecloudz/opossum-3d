@@ -13,6 +13,42 @@ import { supabase } from '../../lib/supabase';
 import Spinner from '../../components/ui/Spinner';
 import { useToast } from '../../components/ui/Toast';
 
+const CLOUDINARY_DELETE_URL = '/.netlify/functions/delete-cloudinary-images';
+
+async function deleteProductImages(productIds: string[]) {
+  if (productIds.length === 0) return;
+
+  // Collect all image URLs for the given product IDs
+  const { data: imgRows } = await supabase
+    .from('product_images')
+    .select('image_url')
+    .in('product_id', productIds);
+
+  // Also collect variant image URLs
+  const { data: variantRows } = await supabase
+    .from('product_variants')
+    .select('image_url')
+    .in('product_id', productIds)
+    .not('image_url', 'is', null);
+
+  const urls: string[] = [
+    ...((imgRows || []).map((r: { image_url: string }) => r.image_url).filter(Boolean)),
+    ...((variantRows || []).map((r: { image_url: string | null }) => r.image_url).filter((u): u is string => Boolean(u))),
+  ];
+
+  if (urls.length === 0) return;
+
+  try {
+    await fetch(CLOUDINARY_DELETE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls }),
+    });
+  } catch (err) {
+    console.warn('Cloudinary cleanup failed (images may need manual removal):', err);
+  }
+}
+
 export default function AdminProducts() {
   const { products, isLoading, refetch } = useProducts(true);
   const { categories } = useCategories();
@@ -25,6 +61,8 @@ export default function AdminProducts() {
   const [bulkCategoryModalOpen, setBulkCategoryModalOpen] = useState(false);
   const [bulkCategory, setBulkCategory] = useState<string>('');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [deleteAllModalOpen, setDeleteAllModalOpen] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   // Filter products
   const filteredProducts = products.filter((product) => {
@@ -44,6 +82,7 @@ export default function AdminProducts() {
     setIsDeleting(true);
 
     try {
+      await deleteProductImages([deleteId]);
       const { error } = await supabase.from('products').delete().eq('id', deleteId);
       if (error) throw error;
       refetch();
@@ -54,6 +93,25 @@ export default function AdminProducts() {
     } finally {
       setIsDeleting(false);
       setDeleteId(null);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    setIsDeletingAll(true);
+    try {
+      const allIds = products.map(p => p.id);
+      await deleteProductImages(allIds);
+      const { error } = await supabase.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (error) throw error;
+      refetch();
+      setSelectedProducts(new Set());
+      addToast(`Deleted all ${allIds.length} products and their images`, 'success');
+    } catch (err) {
+      console.error('Error deleting all products:', err);
+      addToast('Failed to delete all products', 'error');
+    } finally {
+      setIsDeletingAll(false);
+      setDeleteAllModalOpen(false);
     }
   };
 
@@ -240,10 +298,18 @@ export default function AdminProducts() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-white">Products</h1>
-        <Button as={Link} to="/admin/products/new">
-          <Plus className="h-5 w-5 mr-2" />
-          Add Product
-        </Button>
+        <div className="flex items-center gap-3">
+          {products.length > 0 && (
+            <Button variant="danger" size="sm" onClick={() => setDeleteAllModalOpen(true)}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete All
+            </Button>
+          )}
+          <Button as={Link} to="/admin/products/new">
+            <Plus className="h-5 w-5 mr-2" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -537,6 +603,26 @@ export default function AdminProducts() {
             disabled={!bulkCategory}
           >
             Assign Category
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Delete All Confirmation Modal */}
+      <Modal
+        isOpen={deleteAllModalOpen}
+        onClose={() => setDeleteAllModalOpen(false)}
+        title="Delete All Products"
+      >
+        <p className="text-gray-400 mb-2">
+          This will permanently delete <span className="text-white font-semibold">all {products.length} products</span> and remove their images from Cloudinary.
+        </p>
+        <p className="text-red-400 text-sm mb-6">This action cannot be undone.</p>
+        <div className="flex justify-end gap-4">
+          <Button variant="ghost" onClick={() => setDeleteAllModalOpen(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleDeleteAll} isLoading={isDeletingAll}>
+            Delete All {products.length} Products
           </Button>
         </div>
       </Modal>
