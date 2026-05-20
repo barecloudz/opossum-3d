@@ -45,7 +45,7 @@ export default function Login() {
     setResetError('');
 
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: 'https://nexaloncreations.com/reset-password',
     });
 
     setResetLoading(false);

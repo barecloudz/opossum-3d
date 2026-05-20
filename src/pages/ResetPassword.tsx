@@ -15,20 +15,22 @@ export default function ResetPassword() {
   const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
-    // Check URL hash first — Supabase appends #access_token=...&type=recovery
-    // This fires before the component mounts so we can't rely solely on onAuthStateChange
+    // Supabase JS v2 with PKCE (default) redirects with ?code= in the query string.
+    // Calling getSession() triggers the automatic code exchange.
+    // Older implicit flow uses #access_token= in the hash — handle both.
+    const params = new URLSearchParams(window.location.search);
     const hash = window.location.hash;
-    if (hash.includes('type=recovery') || hash.includes('access_token')) {
-      setSessionReady(true);
-      return;
+    const hasPkceCode = params.has('code');
+    const hasImplicitToken = hash.includes('access_token') || hash.includes('type=recovery');
+
+    if (hasPkceCode || hasImplicitToken) {
+      // getSession() triggers PKCE code exchange automatically
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) setSessionReady(true);
+      });
     }
 
-    // Fallback: check existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setSessionReady(true);
-    });
-
-    // Also listen for the event in case we get here before Supabase processes the hash
+    // Listen for PASSWORD_RECOVERY in case the exchange fires after mount
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         setSessionReady(true);
