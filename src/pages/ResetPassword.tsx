@@ -15,29 +15,24 @@ export default function ResetPassword() {
   const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
-    // Supabase JS v2 with PKCE (default) redirects with ?code= in the query string.
-    // Calling getSession() triggers the automatic code exchange.
-    // Older implicit flow uses #access_token= in the hash — handle both.
     const params = new URLSearchParams(window.location.search);
-    const hash = window.location.hash;
-    const hasPkceCode = params.has('code');
-    const hasImplicitToken = hash.includes('access_token') || hash.includes('type=recovery');
+    const code = params.get('code');
 
-    if (hasPkceCode || hasImplicitToken) {
-      // getSession() triggers PKCE code exchange automatically
+    if (code) {
+      // Explicitly exchange the PKCE code — this is the only call that should
+      // consume it. App.tsx skips initialize() on this page to avoid consuming
+      // the code first.
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (!error && data.session) {
+          setSessionReady(true);
+        }
+      });
+    } else {
+      // No code — check if there's already a valid session (e.g. navigated here directly)
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) setSessionReady(true);
       });
     }
-
-    // Listen for PASSWORD_RECOVERY in case the exchange fires after mount
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-        setSessionReady(true);
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

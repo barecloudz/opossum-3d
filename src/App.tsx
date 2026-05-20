@@ -65,7 +65,13 @@ function App() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    initialize();
+    // Skip auth initialization on reset-password — the PKCE code in the URL
+    // is single-use and will be consumed by the ResetPassword page itself.
+    if (!window.location.pathname.startsWith('/reset-password')) {
+      initialize();
+    } else {
+      setLoading(false);
+    }
     fetchSettings();
     // Pre-fetch products so they're ready when user navigates
     fetchProducts();
