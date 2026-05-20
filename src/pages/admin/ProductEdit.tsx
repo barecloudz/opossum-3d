@@ -24,6 +24,13 @@ interface Variant {
   image_url: string;
 }
 
+interface PriceTier {
+  id?: string;
+  min_qty: string;
+  max_qty: string;
+  price_per_unit: string;
+}
+
 export default function AdminProductEdit() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -36,6 +43,7 @@ export default function AdminProductEdit() {
   const [isSaving, setIsSaving] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [variants, setVariants] = useState<Variant[]>([]);
+  const [priceTiers, setPriceTiers] = useState<PriceTier[]>([]);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
 
   // Category modal state
@@ -136,6 +144,22 @@ export default function AdminProductEdit() {
             price_adjustment: v.price_adjustment.toString(),
             stock_quantity: v.stock_quantity.toString(),
             image_url: v.image_url || '',
+          })));
+        }
+
+        // Fetch price tiers
+        const { data: tiersData } = await supabase
+          .from('product_price_tiers')
+          .select('*')
+          .eq('product_id', id)
+          .order('display_order');
+
+        if (tiersData) {
+          setPriceTiers(tiersData.map(t => ({
+            id: t.id,
+            min_qty: t.min_qty.toString(),
+            max_qty: t.max_qty?.toString() || '',
+            price_per_unit: t.price_per_unit.toString(),
           })));
         }
       }
@@ -442,6 +466,34 @@ export default function AdminProductEdit() {
         }
       }
 
+        // Save price tiers
+        if (!isNew) {
+          await supabase
+            .from('product_price_tiers')
+            .delete()
+            .eq('product_id', productId);
+        }
+
+        if (priceTiers.length > 0) {
+          const tierRecords = priceTiers
+            .filter(t => t.min_qty && t.price_per_unit)
+            .map((t, index) => ({
+              product_id: productId,
+              min_qty: parseInt(t.min_qty) || 1,
+              max_qty: t.max_qty ? parseInt(t.max_qty) : null,
+              price_per_unit: parseFloat(t.price_per_unit),
+              display_order: index,
+            }));
+
+          if (tierRecords.length > 0) {
+            const { error: tierError } = await supabase
+              .from('product_price_tiers')
+              .insert(tierRecords);
+            if (tierError) throw new Error(`Failed to save price tiers: ${tierError.message}`);
+          }
+        }
+      }
+
       console.log('Product saved successfully!');
       // Invalidate cache so product list refreshes
       invalidateCache();
@@ -580,6 +632,92 @@ export default function AdminProductEdit() {
                   helperText="For profit tracking"
                 />
               </div>
+            </Card>
+
+            {/* Volume / Affiliate Pricing Tiers */}
+            <Card>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h2 className="text-xl font-semibold text-[#0D1B2A]">Volume Pricing Tiers</h2>
+                  <p className="text-gray-400 text-sm mt-1">
+                    Unlocked for customers who use an affiliate code. Leave empty to use base price.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setPriceTiers(prev => [...prev, { min_qty: '', max_qty: '', price_per_unit: '' }])
+                  }
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Tier
+                </Button>
+              </div>
+
+              {priceTiers.length === 0 ? (
+                <div className="text-center py-6 border border-dashed border-gray-300 rounded-lg">
+                  <p className="text-gray-400 text-sm">No tiers configured — affiliate customers pay base price</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-4 gap-2 px-1">
+                    <span className="text-xs text-gray-500 font-medium">Min Qty</span>
+                    <span className="text-xs text-gray-500 font-medium">Max Qty</span>
+                    <span className="text-xs text-gray-500 font-medium">Price / Unit ($)</span>
+                    <span />
+                  </div>
+                  {priceTiers.map((tier, index) => (
+                    <div key={index} className="grid grid-cols-4 gap-2 items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <Input
+                        type="number"
+                        min="1"
+                        placeholder="1"
+                        value={tier.min_qty}
+                        onChange={e => {
+                          const updated = [...priceTiers];
+                          updated[index] = { ...updated[index], min_qty: e.target.value };
+                          setPriceTiers(updated);
+                        }}
+                      />
+                      <Input
+                        type="number"
+                        min="1"
+                        placeholder="No limit"
+                        value={tier.max_qty}
+                        onChange={e => {
+                          const updated = [...priceTiers];
+                          updated[index] = { ...updated[index], max_qty: e.target.value };
+                          setPriceTiers(updated);
+                        }}
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={tier.price_per_unit}
+                        onChange={e => {
+                          const updated = [...priceTiers];
+                          updated[index] = { ...updated[index], price_per_unit: e.target.value };
+                          setPriceTiers(updated);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPriceTiers(priceTiers.filter((_, i) => i !== index))}
+                        className="flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Example: min=1, max=11, price=5.99 → buying 1–11 units costs $5.99/ea
+                  </p>
+                </div>
+              )}
             </Card>
 
             <Card>

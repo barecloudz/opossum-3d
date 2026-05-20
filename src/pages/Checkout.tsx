@@ -11,7 +11,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import PaymentForm from '../components/checkout/PaymentForm';
 import { useToast } from '../components/ui/Toast';
-import type { PromoCode, Affiliate } from '../types';
+import type { PromoCode, Affiliate, ProductPriceTier } from '../types';
 import { getAffiliateCookie, clearAffiliateCookie } from '../components/AffiliateTracker';
 
 interface RateOption {
@@ -47,6 +47,7 @@ export default function Checkout() {
   const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
   const [appliedAffiliate, setAppliedAffiliate] = useState<Affiliate | null>(null);
   const [affiliateDiscountRate, setAffiliateDiscountRate] = useState(0);
+  const [priceTiers, setPriceTiers] = useState<Record<string, ProductPriceTier[]>>({});
   const [paymentComplete, setPaymentComplete] = useState(false);
 
   // Shipping rate state
@@ -81,6 +82,42 @@ export default function Checkout() {
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Resolve the tier price for a given product quantity
+  const getTierPrice = (tiers: ProductPriceTier[], quantity: number, basePrice: number): number => {
+    if (!tiers || tiers.length === 0) return basePrice;
+    const sorted = [...tiers].sort((a, b) => a.min_qty - b.min_qty);
+    let price = basePrice;
+    for (const tier of sorted) {
+      if (quantity >= tier.min_qty) {
+        price = tier.price_per_unit;
+      }
+    }
+    return price;
+  };
+
+  // Fetch price tiers for all cart products when an affiliate code is applied
+  useEffect(() => {
+    if (!appliedAffiliate || items.length === 0) {
+      setPriceTiers({});
+      return;
+    }
+    const productIds = [...new Set(items.map(i => i.product.id))];
+    supabase
+      .from('product_price_tiers')
+      .select('*')
+      .in('product_id', productIds)
+      .order('display_order')
+      .then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, ProductPriceTier[]> = {};
+        for (const tier of data) {
+          if (!map[tier.product_id]) map[tier.product_id] = [];
+          map[tier.product_id].push(tier);
+        }
+        setPriceTiers(map);
+      });
+  }, [appliedAffiliate]);
 
   // Ref for shipping section to scroll to
   const shippingSectionRef = useRef<HTMLDivElement>(null);
@@ -183,6 +220,18 @@ export default function Checkout() {
     setShippingError(null);
   }, [formData.zip, formData.city, formData.state]);
 
+  // When an affiliate code is active, compute tier-based subtotal per item
+  const getItemUnitPrice = (item: typeof items[0]): number => {
+    const base = item.product.price + (item.variant?.price_adjustment || 0);
+    if (!appliedAffiliate) return base;
+    const tiers = priceTiers[item.product.id] || [];
+    return getTierPrice(tiers, item.quantity, base);
+  };
+
+  const tierSubtotal = appliedAffiliate
+    ? items.reduce((sum, item) => sum + getItemUnitPrice(item) * item.quantity, 0)
+    : subtotal;
+
   // Calculate discount
   let discount = 0;
   if (appliedPromo) {
@@ -192,7 +241,14 @@ export default function Checkout() {
       discount = Math.min(appliedPromo.discount_value, subtotal);
     }
   } else if (appliedAffiliate) {
-    discount = subtotal * (affiliateDiscountRate / 100);
+    const hasTiers = Object.keys(priceTiers).length > 0;
+    if (hasTiers && tierSubtotal < subtotal) {
+      // Tier pricing active — discount is the savings vs base price
+      discount = subtotal - tierSubtotal;
+    } else {
+      // No tiers configured — fall back to flat % discount
+      discount = subtotal * (affiliateDiscountRate / 100);
+    }
   }
 
   const total = subtotal + shipping - discount;
@@ -422,6 +478,7 @@ export default function Checkout() {
       // Create order items (set variant_id to null if variant no longer exists)
       const orderItems = items.map((item) => {
         const variantExists = item.variant?.id ? validVariantIds.has(item.variant.id) : false;
+        const unitPrice = getItemUnitPrice(item);
         return {
           order_id: order.id,
           product_id: item.product.id,
@@ -429,8 +486,8 @@ export default function Checkout() {
           product_name: item.product.name,
           variant_name: item.variant?.name || null,
           quantity: item.quantity,
-          unit_price: item.product.price + (item.variant?.price_adjustment || 0),
-          total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
+          unit_price: unitPrice,
+          total_price: unitPrice * item.quantity,
         };
       });
 
@@ -578,13 +635,16 @@ export default function Checkout() {
       customerEmail: formData.email,
       customerName: `${formData.firstName} ${formData.lastName}`,
       customerPhone: formData.phone || undefined,
-      items: orderItems.map(item => ({
-        product_name: item.product.name,
-        variant_name: item.variant?.name,
-        quantity: item.quantity,
-        unit_price: item.product.price + (item.variant?.price_adjustment || 0),
-        total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
-      })),
+      items: orderItems.map(item => {
+        const unitPrice = getItemUnitPrice(item);
+        return {
+          product_name: item.product.name,
+          variant_name: item.variant?.name,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+          total_price: unitPrice * item.quantity,
+        };
+      }),
       subtotal,
       shipping,
       tax: 0,
@@ -680,6 +740,7 @@ export default function Checkout() {
       // Create order items
       const orderItems = items.map((item) => {
         const variantExists = item.variant?.id ? validVariantIds.has(item.variant.id) : false;
+        const unitPrice = getItemUnitPrice(item);
         return {
           order_id: order.id,
           product_id: item.product.id,
@@ -687,8 +748,8 @@ export default function Checkout() {
           product_name: item.product.name,
           variant_name: item.variant?.name || null,
           quantity: item.quantity,
-          unit_price: item.product.price + (item.variant?.price_adjustment || 0),
-          total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
+          unit_price: unitPrice,
+          total_price: unitPrice * item.quantity,
         };
       });
 
@@ -752,13 +813,16 @@ export default function Checkout() {
         customerEmail: formData.email,
         customerName: `${formData.firstName} ${formData.lastName}`,
         customerPhone: formData.phone || undefined,
-        items: items.map(item => ({
-          product_name: item.product.name,
-          variant_name: item.variant?.name,
-          quantity: item.quantity,
-          unit_price: item.product.price + (item.variant?.price_adjustment || 0),
-          total_price: (item.product.price + (item.variant?.price_adjustment || 0)) * item.quantity,
-        })),
+        items: items.map(item => {
+          const unitPrice = getItemUnitPrice(item);
+          return {
+            product_name: item.product.name,
+            variant_name: item.variant?.name,
+            quantity: item.quantity,
+            unit_price: unitPrice,
+            total_price: unitPrice * item.quantity,
+          };
+        }),
         subtotal,
         shipping,
         tax: 0,
@@ -828,7 +892,9 @@ export default function Checkout() {
         <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4">
           <div className="space-y-3">
             {items.map((item) => {
-              const itemPrice = item.product.price + (item.variant?.price_adjustment || 0);
+              const basePrice = item.product.price + (item.variant?.price_adjustment || 0);
+              const unitPrice = getItemUnitPrice(item);
+              const hasTierDiscount = unitPrice < basePrice;
               const primaryImage = item.product.images?.find(img => img.is_primary) || item.product.images?.[0];
               return (
                 <div
@@ -854,9 +920,15 @@ export default function Checkout() {
                       Qty: {item.quantity}
                       {item.variant && ` • ${item.variant.name}`}
                     </p>
+                    {hasTierDiscount && (
+                      <p className="text-green-400 text-xs">{formatPrice(unitPrice)}/ea (tier price)</p>
+                    )}
                   </div>
                   <div className="text-right">
-                    <p className="text-[var(--color-primary)] font-bold">{formatPrice(itemPrice * item.quantity)}</p>
+                    {hasTierDiscount && (
+                      <p className="text-gray-500 text-xs line-through">{formatPrice(basePrice * item.quantity)}</p>
+                    )}
+                    <p className="text-[var(--color-primary)] font-bold">{formatPrice(unitPrice * item.quantity)}</p>
                     <p className="text-gray-500 text-xs">incl. taxes</p>
                   </div>
                 </div>
@@ -1054,6 +1126,23 @@ export default function Checkout() {
                       ({appliedPromo.discount_type === 'percentage'
                         ? `${appliedPromo.discount_value}% off`
                         : `${formatPrice(appliedPromo.discount_value)} off`})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removePromoCode}
+                    className="text-gray-400 hover:text-red-400 transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              ) : appliedAffiliate ? (
+                <div className="flex items-center justify-between bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-400" />
+                    <span className="font-mono text-green-400 font-medium">{appliedAffiliate.code}</span>
+                    <span className="text-gray-400 text-sm">
+                      {Object.keys(priceTiers).length > 0 ? 'Volume pricing unlocked' : `${affiliateDiscountRate}% off`}
                     </span>
                   </div>
                   <button

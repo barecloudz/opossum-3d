@@ -33,6 +33,7 @@ export interface Product {
   updated_at: string;
   images?: ProductImage[];
   variants?: ProductVariant[];
+  price_tiers?: ProductPriceTier[];
 }
 
 export interface ProductImage {
@@ -43,6 +44,15 @@ export interface ProductImage {
   display_order: number;
   is_primary: boolean;
   created_at: string;
+}
+
+export interface ProductPriceTier {
+  id?: string;
+  product_id?: string;
+  min_qty: number;
+  max_qty: number | null;
+  price_per_unit: number;
+  display_order: number;
 }
 
 export interface ProductVariant {
