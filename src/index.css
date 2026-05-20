@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Admin forced light theme — overrides storefront theme variables */
+.admin-theme {
+  --color-background: #F4F6F9;
+  --color-surface: #FFFFFF;
+  --color-text: #0D1B2A;
+  --color-border: #E5E7EB;
+  --color-primary: #1677FF;
+  --color-secondary: #0a5fd9;
+  --color-accent: #1677FF;
+}
+
 /* Theme CSS variables - these are overridden by JS when theme loads */
 :root {
   --color-primary: #1677FF;

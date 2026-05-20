@@ -129,10 +129,10 @@ export default function AdminSidebar() {
     return location.pathname.startsWith(path);
   };
 
-  const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
+  const SidebarContent = () => (
     <>
       {/* Logo */}
-      <div className={`p-5 border-b ${isMobile ? 'border-brand-neon/20 bg-brand-charcoal' : 'border-brand-gray'}`}>
+      <div className="p-5 border-b border-gray-200">
         <Link to="/admin" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
           <img src="/images/favicon/android-chrome-192x192.png" alt="Nexalon" className="h-8 w-8 object-contain" />
           <span className="font-bold tracking-widest text-[#0D1B2A] text-sm">NEXALON</span>
@@ -141,7 +141,7 @@ export default function AdminSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className={`flex-1 p-4 space-y-1 overflow-y-auto ${isMobile ? 'bg-brand-charcoal' : ''}`}>
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {/* Dashboard */}
         {topNavItems.map((item) => (
           <Link
@@ -151,7 +151,7 @@ export default function AdminSidebar() {
             className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
               isActive(item.href)
                 ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
-                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-[#0D1B2A] border border-transparent'
             }`}
           >
             <item.icon className={`h-5 w-5 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
@@ -166,7 +166,7 @@ export default function AdminSidebar() {
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
               storeSubItems.some(item => isActive(item.href))
                 ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
-                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-[#0D1B2A] border border-transparent'
             }`}
           >
             <div className="flex items-center space-x-3">
@@ -185,7 +185,7 @@ export default function AdminSidebar() {
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all ${
                     isActive(item.href)
                       ? 'bg-brand-neon/10 text-brand-neon'
-                      : 'text-gray-400 hover:bg-brand-gray/50 hover:text-white'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-[#0D1B2A]'
                   }`}
                 >
                   <item.icon className={`h-4 w-4 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
@@ -203,7 +203,7 @@ export default function AdminSidebar() {
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
               customersSubItems.some(item => isActive(item.href))
                 ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
-                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-[#0D1B2A] border border-transparent'
             }`}
           >
             <div className="flex items-center space-x-3">
@@ -222,7 +222,7 @@ export default function AdminSidebar() {
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all ${
                     isActive(item.href)
                       ? 'bg-brand-neon/10 text-brand-neon'
-                      : 'text-gray-400 hover:bg-brand-gray/50 hover:text-white'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-[#0D1B2A]'
                   }`}
                 >
                   <item.icon className={`h-4 w-4 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
@@ -240,7 +240,7 @@ export default function AdminSidebar() {
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
               storefrontSubItems.some(item => isActive(item.href))
                 ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
-                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-[#0D1B2A] border border-transparent'
             }`}
           >
             <div className="flex items-center space-x-3">
@@ -259,7 +259,7 @@ export default function AdminSidebar() {
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all ${
                     isActive(item.href)
                       ? 'bg-brand-neon/10 text-brand-neon'
-                      : 'text-gray-400 hover:bg-brand-gray/50 hover:text-white'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-[#0D1B2A]'
                   }`}
                 >
                   <item.icon className={`h-4 w-4 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
@@ -277,7 +277,7 @@ export default function AdminSidebar() {
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
               marketingSubItems.some(item => isActive(item.href))
                 ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
-                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-[#0D1B2A] border border-transparent'
             }`}
           >
             <div className="flex items-center space-x-3">
@@ -296,7 +296,7 @@ export default function AdminSidebar() {
                   className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all ${
                     isActive(item.href)
                       ? 'bg-brand-neon/10 text-brand-neon'
-                      : 'text-gray-400 hover:bg-brand-gray/50 hover:text-white'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-[#0D1B2A]'
                   }`}
                 >
                   <item.icon className={`h-4 w-4 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
@@ -314,7 +314,7 @@ export default function AdminSidebar() {
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
               location.pathname.startsWith('/admin/affiliates')
                 ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
-                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-[#0D1B2A] border border-transparent'
             }`}
           >
             <div className="flex items-center space-x-3">
@@ -331,7 +331,7 @@ export default function AdminSidebar() {
                 className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all ${
                   isActive('/admin/affiliates')
                     ? 'bg-brand-neon/10 text-brand-neon'
-                    : 'text-gray-400 hover:bg-brand-gray/50 hover:text-white'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-[#0D1B2A]'
                 }`}
               >
                 <BarChart2 className={`h-4 w-4 ${isActive('/admin/affiliates') ? 'text-brand-neon' : ''}`} />
@@ -350,7 +350,7 @@ export default function AdminSidebar() {
             className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
               isActive(item.href)
                 ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
-                : 'text-gray-300 hover:bg-brand-gray/50 hover:text-white border border-transparent'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-[#0D1B2A] border border-transparent'
             }`}
           >
             <item.icon className={`h-5 w-5 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
@@ -360,11 +360,11 @@ export default function AdminSidebar() {
       </nav>
 
       {/* Back to store */}
-      <div className={`p-4 border-t ${isMobile ? 'border-brand-neon/20 bg-brand-charcoal' : 'border-brand-gray'}`}>
+      <div className="p-4 border-t border-gray-200">
         <Link
           to="/"
           onClick={() => setMobileOpen(false)}
-          className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:text-brand-neon transition-colors rounded-lg hover:bg-brand-gray/50"
+          className="flex items-center space-x-3 px-4 py-3 text-gray-500 hover:text-[#1677FF] transition-colors rounded-lg hover:bg-gray-100"
         >
           <ArrowLeft className="h-5 w-5" />
           <span className="font-medium">Back to Store</span>
@@ -378,14 +378,14 @@ export default function AdminSidebar() {
   return (
     <>
       {/* Mobile header bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-brand-charcoal border-b border-brand-gray h-14 flex items-center px-4">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 h-14 flex items-center px-4">
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="p-2 rounded-lg text-brand-neon hover:bg-brand-gray transition-colors"
+          className="p-2 rounded-lg text-[#1677FF] hover:bg-gray-100 transition-colors"
         >
           {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
-        <h1 className="absolute left-1/2 transform -translate-x-1/2 text-white font-semibold">
+        <h1 className="absolute left-1/2 transform -translate-x-1/2 text-[#0D1B2A] font-semibold">
           {pageTitle}
         </h1>
       </div>
@@ -400,16 +400,16 @@ export default function AdminSidebar() {
 
       {/* Mobile sidebar */}
       <aside
-        className={`md:hidden fixed top-14 bottom-0 left-0 z-50 w-72 bg-gradient-to-b from-brand-charcoal to-brand-black border-r border-brand-neon/20 flex flex-col transform transition-transform shadow-2xl shadow-brand-neon/10 ${
+        className={`md:hidden fixed top-14 bottom-0 left-0 z-50 w-72 bg-white border-r border-gray-200 flex flex-col transform transition-transform shadow-xl ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <SidebarContent isMobile={true} />
+        <SidebarContent />
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-64 bg-brand-charcoal border-r border-brand-gray flex-col">
-        <SidebarContent isMobile={false} />
+      <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col">
+        <SidebarContent />
       </aside>
     </>
   );

@@ -151,31 +151,31 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-brand-charcoal via-brand-emerald-dark/20 to-brand-charcoal border border-brand-gray p-6 sm:p-8">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-brand-neon/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#1677FF] to-[#0D3B8C] p-6 sm:p-8">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="relative">
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
             Welcome to Nexalon Creations
           </h1>
-          <p className="text-gray-400 mb-4">
+          <p className="text-blue-100 mb-4">
             Here's what's happening with your store today.
           </p>
           <div className="flex flex-wrap gap-3">
             <Link
               to="/admin/products/new"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-neon text-brand-black rounded-lg font-semibold text-sm hover:bg-brand-emerald transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#1677FF] rounded-lg font-semibold text-sm hover:bg-blue-50 transition-colors"
             >
               <Package className="h-4 w-4" />
               Add Product
             </Link>
             <Link
               to="/admin/orders"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-gray text-white rounded-lg font-semibold text-sm hover:bg-brand-gray/80 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 text-white border border-white/30 rounded-lg font-semibold text-sm hover:bg-white/30 transition-colors"
             >
               <ShoppingBag className="h-4 w-4" />
               View Orders
               {stats.pendingOrders > 0 && (
-                <span className="bg-yellow-500 text-black text-xs px-1.5 py-0.5 rounded-full">
+                <span className="bg-yellow-400 text-black text-xs px-1.5 py-0.5 rounded-full">
                   {stats.pendingOrders}
                 </span>
               )}
@@ -198,7 +198,7 @@ export default function AdminDashboard() {
           </div>
           <div className="mt-3 sm:mt-4">
             <p className="text-gray-400 text-xs sm:text-sm">Today's Revenue</p>
-            <p className="text-xl sm:text-2xl font-bold text-white">{formatPrice(stats.todayRevenue)}</p>
+            <p className="text-xl sm:text-2xl font-bold text-[#0D1B2A]">{formatPrice(stats.todayRevenue)}</p>
           </div>
         </Card>
 
@@ -214,7 +214,7 @@ export default function AdminDashboard() {
           </div>
           <div className="mt-3 sm:mt-4">
             <p className="text-gray-400 text-xs sm:text-sm">This Month</p>
-            <p className="text-xl sm:text-2xl font-bold text-white">{formatPrice(stats.monthRevenue)}</p>
+            <p className="text-xl sm:text-2xl font-bold text-[#0D1B2A]">{formatPrice(stats.monthRevenue)}</p>
           </div>
         </Card>
 
@@ -235,7 +235,7 @@ export default function AdminDashboard() {
           </div>
           <div className="mt-3 sm:mt-4">
             <p className="text-gray-400 text-xs sm:text-sm">Total Orders</p>
-            <p className="text-xl sm:text-2xl font-bold text-white">{stats.orderCount}</p>
+            <p className="text-xl sm:text-2xl font-bold text-[#0D1B2A]">{stats.orderCount}</p>
           </div>
         </Card>
 
@@ -257,7 +257,7 @@ export default function AdminDashboard() {
           </div>
           <div className="mt-3 sm:mt-4">
             <p className="text-gray-400 text-xs sm:text-sm">Low Stock Items</p>
-            <p className="text-xl sm:text-2xl font-bold text-white">{stats.lowStockCount}</p>
+            <p className="text-xl sm:text-2xl font-bold text-[#0D1B2A]">{stats.lowStockCount}</p>
           </div>
         </Card>
       </div>
@@ -271,7 +271,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <p className="text-gray-400 text-xs sm:text-sm">Avg. Order Value</p>
-              <p className="text-lg sm:text-xl font-bold text-white">{formatPrice(stats.avgOrderValue)}</p>
+              <p className="text-lg sm:text-xl font-bold text-[#0D1B2A]">{formatPrice(stats.avgOrderValue)}</p>
             </div>
           </div>
         </Card>
@@ -283,7 +283,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <p className="text-gray-400 text-xs sm:text-sm">Customers</p>
-              <p className="text-lg sm:text-xl font-bold text-white">{stats.customerCount}</p>
+              <p className="text-lg sm:text-xl font-bold text-[#0D1B2A]">{stats.customerCount}</p>
             </div>
           </div>
         </Card>
@@ -295,7 +295,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <p className="text-gray-400 text-xs sm:text-sm">Week Revenue</p>
-              <p className="text-lg sm:text-xl font-bold text-white">{formatPrice(stats.weekRevenue)}</p>
+              <p className="text-lg sm:text-xl font-bold text-[#0D1B2A]">{formatPrice(stats.weekRevenue)}</p>
             </div>
           </div>
         </Card>
@@ -306,28 +306,28 @@ export default function AdminDashboard() {
         {/* Revenue Chart */}
         <Card className="p-4 sm:p-6 hover:border-brand-neon/30 transition-all">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg sm:text-xl font-semibold text-white">Revenue</h2>
-            <span className="text-xs text-gray-400 bg-brand-gray px-2 py-1 rounded">Last 14 days</span>
+            <h2 className="text-lg sm:text-xl font-semibold text-[#0D1B2A]">Revenue</h2>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Last 14 days</span>
           </div>
           <div className="h-64 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={salesData}>
                 <defs>
                   <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00ff66" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#00ff66" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#1677FF" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#1677FF" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2d2d2d" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis
                   dataKey="date"
-                  stroke="#6b7280"
+                  stroke="#9ca3af"
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
-                  stroke="#6b7280"
+                  stroke="#9ca3af"
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
@@ -335,17 +335,18 @@ export default function AdminDashboard() {
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#1a1a1a',
-                    border: '1px solid #2d2d2d',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
                     borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                   }}
-                  labelStyle={{ color: '#f5f5f5' }}
+                  labelStyle={{ color: '#0D1B2A', fontWeight: 600 }}
                   formatter={(value: number) => [formatPrice(value), 'Revenue']}
                 />
                 <Area
                   type="monotone"
                   dataKey="revenue"
-                  stroke="#00ff66"
+                  stroke="#1677FF"
                   strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#revenueGradient)"
@@ -358,33 +359,34 @@ export default function AdminDashboard() {
         {/* Orders Chart */}
         <Card className="p-4 sm:p-6 hover:border-purple-500/30 transition-all">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg sm:text-xl font-semibold text-white">Orders</h2>
-            <span className="text-xs text-gray-400 bg-brand-gray px-2 py-1 rounded">Last 14 days</span>
+            <h2 className="text-lg sm:text-xl font-semibold text-[#0D1B2A]">Orders</h2>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Last 14 days</span>
           </div>
           <div className="h-64 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={salesData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2d2d2d" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis
                   dataKey="date"
-                  stroke="#6b7280"
+                  stroke="#9ca3af"
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
-                  stroke="#6b7280"
+                  stroke="#9ca3af"
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#1a1a1a',
-                    border: '1px solid #2d2d2d',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
                     borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                   }}
-                  labelStyle={{ color: '#f5f5f5' }}
+                  labelStyle={{ color: '#0D1B2A', fontWeight: 600 }}
                   formatter={(value: number) => [value, 'Orders']}
                 />
                 <Bar dataKey="orders" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
@@ -397,7 +399,7 @@ export default function AdminDashboard() {
       {/* Recent Orders */}
       <Card className="p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg sm:text-xl font-semibold text-white">Recent Orders</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-[#0D1B2A]">Recent Orders</h2>
           <Link
             to="/admin/orders"
             className="text-brand-neon text-sm hover:underline"
@@ -427,7 +429,7 @@ export default function AdminDashboard() {
                 {recentOrders.map((order) => (
                   <tr key={order.id} className="border-b border-brand-gray/50 hover:bg-brand-gray/20">
                     <td className="py-3 px-4">
-                      <Link to={`/admin/orders/${order.id}`} className="text-white hover:text-brand-neon">
+                      <Link to={`/admin/orders/${order.id}`} className="text-[#0D1B2A] font-medium hover:text-[#1677FF]">
                         #{order.order_number}
                       </Link>
                     </td>
