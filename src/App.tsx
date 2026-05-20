@@ -21,6 +21,7 @@ import ReturnPolicy from './pages/ReturnPolicy';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ResetPassword from './pages/ResetPassword';
 import Account from './pages/Account';
 import NotFound from './pages/NotFound';
 import FAQ from './pages/FAQ';
@@ -117,6 +118,7 @@ function App() {
           <Route path="wishlist" element={<Wishlist />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
+          <Route path="reset-password" element={<ResetPassword />} />
           <Route
             path="account"
             element={
