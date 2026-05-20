@@ -52,10 +52,10 @@ export default function AdminCustomers() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Customer</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Email</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Marketing</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Joined</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Customer</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Email</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Marketing</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Joined</th>
                 </tr>
               </thead>
               <tbody>

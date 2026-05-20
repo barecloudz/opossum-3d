@@ -129,7 +129,7 @@ export default function AdminEmailSubscribers() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Email Subscribers</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#0D1B2A]">Email Subscribers</h1>
           <p className="text-gray-400 mt-1">Manage your marketing email list</p>
         </div>
         <Button onClick={exportToCSV} variant="outline">
@@ -146,7 +146,7 @@ export default function AdminEmailSubscribers() {
               <Users className="h-6 w-6 text-brand-neon" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.total}</p>
+              <p className="text-2xl font-bold text-[#0D1B2A]">{stats.total}</p>
               <p className="text-gray-400 text-sm">Total Subscribers</p>
             </div>
           </div>
@@ -157,7 +157,7 @@ export default function AdminEmailSubscribers() {
               <UserCheck className="h-6 w-6 text-green-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.subscribed}</p>
+              <p className="text-2xl font-bold text-[#0D1B2A]">{stats.subscribed}</p>
               <p className="text-gray-400 text-sm">Active</p>
             </div>
           </div>
@@ -168,7 +168,7 @@ export default function AdminEmailSubscribers() {
               <UserX className="h-6 w-6 text-red-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.unsubscribed}</p>
+              <p className="text-2xl font-bold text-[#0D1B2A]">{stats.unsubscribed}</p>
               <p className="text-gray-400 text-sm">Unsubscribed</p>
             </div>
           </div>
@@ -190,7 +190,7 @@ export default function AdminEmailSubscribers() {
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value as typeof filter)}
-          className="px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-neon"
+          className="px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-brand-neon"
         >
           <option value="all">All Subscribers</option>
           <option value="subscribed">Active Only</option>
@@ -203,7 +203,7 @@ export default function AdminEmailSubscribers() {
         <Card>
           <div className="text-center py-12">
             <Mail className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">No subscribers yet</h3>
+            <h3 className="text-lg font-medium text-[#0D1B2A] mb-2">No subscribers yet</h3>
             <p className="text-gray-400">
               Subscribers will appear here when customers sign up for marketing emails
             </p>
@@ -214,31 +214,31 @@ export default function AdminEmailSubscribers() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-brand-gray">
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">
+                <tr className="border-b border-gray-200">
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
                     Email
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
                     Name
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
                     Source
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">
                     Date
                   </th>
-                  <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">
+                  <th className="px-6 py-4 text-right text-sm font-medium text-gray-500">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brand-gray">
+              <tbody className="divide-y divide-gray-200">
                 {filteredSubscribers.map((subscriber) => (
-                  <tr key={subscriber.id} className="hover:bg-brand-gray/30">
-                    <td className="px-6 py-4 text-white">{subscriber.email}</td>
+                  <tr key={subscriber.id} className="hover:bg-blue-50">
+                    <td className="px-6 py-4 text-[#0D1B2A]">{subscriber.email}</td>
                     <td className="px-6 py-4 text-gray-400">
                       {subscriber.first_name || subscriber.last_name
                         ? `${subscriber.first_name || ''} ${subscriber.last_name || ''}`.trim()

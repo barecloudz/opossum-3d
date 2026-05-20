@@ -418,14 +418,14 @@ export default function AdminProducts() {
                       className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)]"
                     />
                   </th>
-                  <th className="text-left py-3 px-2 text-gray-400 font-medium text-sm">Order</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Product</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Category</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Price</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Stock</th>
-                  <th className="text-center py-3 px-2 text-gray-400 font-medium">Featured</th>
-                  <th className="text-center py-3 px-2 text-gray-400 font-medium">Visible</th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">Actions</th>
+                  <th className="text-left py-3 px-2 text-gray-500 font-medium text-sm">Order</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Product</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Category</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Price</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Stock</th>
+                  <th className="text-center py-3 px-2 text-gray-500 font-medium">Featured</th>
+                  <th className="text-center py-3 px-2 text-gray-500 font-medium">Visible</th>
+                  <th className="text-right py-3 px-4 text-gray-500 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -614,7 +614,7 @@ export default function AdminProducts() {
         title="Delete All Products"
       >
         <p className="text-gray-400 mb-2">
-          This will permanently delete <span className="text-white font-semibold">all {products.length} products</span> and remove their images from Cloudinary.
+          This will permanently delete <span className="text-[#0D1B2A] font-semibold">all {products.length} products</span> and remove their images from Cloudinary.
         </p>
         <p className="text-red-400 text-sm mb-6">This action cannot be undone.</p>
         <div className="flex justify-end gap-4">

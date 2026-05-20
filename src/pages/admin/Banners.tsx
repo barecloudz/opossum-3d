@@ -242,7 +242,7 @@ export default function AdminBanners() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Homepage Banners</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#0D1B2A]">Homepage Banners</h1>
           <p className="text-gray-400 mt-1">Manage the sliding banners on the homepage</p>
         </div>
         <Button onClick={openCreateModal}>
@@ -255,7 +255,7 @@ export default function AdminBanners() {
         <Card>
           <div className="text-center py-12">
             <ImageIcon className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">No banners yet</h3>
+            <h3 className="text-lg font-medium text-[#0D1B2A] mb-2">No banners yet</h3>
             <p className="text-gray-400 mb-6">
               Create your first banner to display on the homepage
             </p>
@@ -304,21 +304,21 @@ export default function AdminBanners() {
                       <button
                         onClick={() => handleReorder(banner.id, 'up')}
                         disabled={index === 0}
-                        className="p-1 text-gray-400 hover:text-white disabled:opacity-30"
+                        className="p-1 text-gray-400 hover:text-[#0D1B2A] disabled:opacity-30"
                       >
                         <GripVertical className="h-4 w-4 rotate-90" />
                       </button>
                       <button
                         onClick={() => handleReorder(banner.id, 'down')}
                         disabled={index === banners.length - 1}
-                        className="p-1 text-gray-400 hover:text-white disabled:opacity-30 rotate-180"
+                        className="p-1 text-gray-400 hover:text-[#0D1B2A] disabled:opacity-30 rotate-180"
                       >
                         <GripVertical className="h-4 w-4 rotate-90" />
                       </button>
                     </div>
 
                     <div>
-                      <p className="text-white font-medium">{banner.title}</p>
+                      <p className="text-[#0D1B2A] font-medium">{banner.title}</p>
                       <p className="text-gray-400 text-sm">
                         {banner.cta_text} &rarr; {banner.cta_link}
                       </p>
@@ -339,7 +339,7 @@ export default function AdminBanners() {
                     </button>
                     <button
                       onClick={() => openEditModal(banner)}
-                      className="p-2 text-gray-400 hover:text-white transition-colors"
+                      className="p-2 text-gray-400 hover:text-[#0D1B2A] transition-colors"
                     >
                       <Pencil className="h-5 w-5" />
                     </button>
@@ -425,7 +425,7 @@ export default function AdminBanners() {
               <select
                 value={formData.gradient}
                 onChange={(e) => setFormData((prev) => ({ ...prev, gradient: e.target.value }))}
-                className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-neon"
+                className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-brand-neon"
               >
                 {gradientOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -442,7 +442,7 @@ export default function AdminBanners() {
               <select
                 value={formData.text_color}
                 onChange={(e) => setFormData((prev) => ({ ...prev, text_color: e.target.value as 'light' | 'dark' }))}
-                className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-neon"
+                className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-brand-neon"
               >
                 <option value="dark">Dark (for light backgrounds)</option>
                 <option value="light">Light (for dark backgrounds)</option>

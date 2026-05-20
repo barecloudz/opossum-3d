@@ -341,7 +341,7 @@ export default function AdminAffiliateDetail() {
       <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-bold text-white">{affiliate.name}</h1>
+            <h1 className="text-3xl font-bold text-[#0D1B2A]">{affiliate.name}</h1>
             <Badge variant={statusBadgeVariant(affiliate.status)}>
               {affiliate.status.charAt(0).toUpperCase() + affiliate.status.slice(1)}
             </Badge>
@@ -399,14 +399,14 @@ export default function AdminAffiliateDetail() {
         <Card className="text-center">
           <div className="flex flex-col items-center gap-2">
             <MousePointerClick className="h-5 w-5 text-blue-400" />
-            <p className="text-2xl font-bold text-white">{clickCount}</p>
+            <p className="text-2xl font-bold text-[#0D1B2A]">{clickCount}</p>
             <p className="text-gray-400 text-sm">Clicks</p>
           </div>
         </Card>
         <Card className="text-center">
           <div className="flex flex-col items-center gap-2">
             <TrendingUp className="h-5 w-5 text-brand-neon" />
-            <p className="text-2xl font-bold text-white">{conversions.length}</p>
+            <p className="text-2xl font-bold text-[#0D1B2A]">{conversions.length}</p>
             <p className="text-gray-400 text-sm">Conversions</p>
           </div>
         </Card>
@@ -429,13 +429,13 @@ export default function AdminAffiliateDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Admin notes */}
         <Card className="lg:col-span-2">
-          <h2 className="text-lg font-semibold text-white mb-4">Admin Notes</h2>
+          <h2 className="text-lg font-semibold text-[#0D1B2A] mb-4">Admin Notes</h2>
           <textarea
             value={adminNotes}
             onChange={(e) => setAdminNotes(e.target.value)}
             rows={4}
             placeholder="Internal notes about this affiliate..."
-            className="w-full px-4 py-2 rounded-lg bg-brand-black border border-brand-gray text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-none mb-3"
+            className="w-full px-4 py-2 rounded-lg bg-brand-black border border-brand-gray text-[#0D1B2A] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-none mb-3"
           />
           <div className="flex justify-end">
             <Button size="sm" onClick={handleSaveNotes} isLoading={isSavingNotes}>
@@ -447,7 +447,7 @@ export default function AdminAffiliateDetail() {
 
         {/* Commission rate override */}
         <Card>
-          <h2 className="text-lg font-semibold text-white mb-4">Commission Rate</h2>
+          <h2 className="text-lg font-semibold text-[#0D1B2A] mb-4">Commission Rate</h2>
           <p className="text-gray-400 text-sm mb-3">
             Leave blank to use the global rate. Enter a whole number, e.g.{' '}
             <span className="font-mono text-gray-300">10</span> for 10%.
@@ -477,8 +477,8 @@ export default function AdminAffiliateDetail() {
 
       {/* Conversions table */}
       <Card padding="none" className="mb-6">
-        <div className="px-4 py-3 border-b border-brand-gray flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Conversions</h2>
+        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-[#0D1B2A]">Conversions</h2>
           {pendingBalance > 0 && (
             <Button size="sm" onClick={handleOpenPayoutModal}>
               <DollarSign className="h-4 w-4 mr-1.5" />
@@ -495,22 +495,22 @@ export default function AdminAffiliateDetail() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-brand-gray">
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Order #</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Date</th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">Order Total</th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">Commission</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">Action</th>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Order #</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Date</th>
+                  <th className="text-right py-3 px-4 text-gray-500 font-medium">Order Total</th>
+                  <th className="text-right py-3 px-4 text-gray-500 font-medium">Commission</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Status</th>
+                  <th className="text-right py-3 px-4 text-gray-500 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {conversions.map((conv) => (
                   <tr
                     key={conv.id}
-                    className="border-b border-brand-gray/50 hover:bg-brand-gray/20"
+                    className="border-b border-gray-200 hover:bg-blue-50"
                   >
-                    <td className="py-3 px-4 text-white font-medium">
+                    <td className="py-3 px-4 text-[#0D1B2A] font-medium">
                       {conv.order?.order_number ? `#${conv.order.order_number}` : '—'}
                     </td>
                     <td className="py-3 px-4 text-gray-400 text-sm">
@@ -562,8 +562,8 @@ export default function AdminAffiliateDetail() {
 
       {/* Payout history */}
       <Card padding="none">
-        <div className="px-4 py-3 border-b border-brand-gray flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Payout History</h2>
+        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-[#0D1B2A]">Payout History</h2>
           {pendingBalance === 0 && conversions.some((c) => c.status === 'approved') === false && (
             <Button size="sm" variant="outline" onClick={handleOpenPayoutModal}>
               <DollarSign className="h-4 w-4 mr-1.5" />
@@ -580,18 +580,18 @@ export default function AdminAffiliateDetail() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-brand-gray">
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Date</th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">Amount</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Method</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Reference</th>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Date</th>
+                  <th className="text-right py-3 px-4 text-gray-500 font-medium">Amount</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Method</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Reference</th>
                 </tr>
               </thead>
               <tbody>
                 {payouts.map((payout) => (
                   <tr
                     key={payout.id}
-                    className="border-b border-brand-gray/50 hover:bg-brand-gray/20"
+                    className="border-b border-gray-200 hover:bg-blue-50"
                   >
                     <td className="py-3 px-4 text-gray-400 text-sm">
                       {formatDateTime(payout.created_at)}
@@ -642,7 +642,7 @@ export default function AdminAffiliateDetail() {
             <select
               value={payoutMethod}
               onChange={(e) => setPayoutMethod(e.target.value)}
-              className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             >
               <option value="">Select method...</option>
               <option value="cash">Cash</option>

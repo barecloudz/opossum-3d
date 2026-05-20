@@ -67,7 +67,7 @@ export default function AdminQuoteRequests() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-white mb-8">Quote Requests</h1>
+      <h1 className="text-3xl font-bold text-[#0D1B2A] mb-8">Quote Requests</h1>
 
       {/* Search */}
       <div className="mb-6">
@@ -98,24 +98,24 @@ export default function AdminQuoteRequests() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-brand-gray">
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Customer</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Description</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Quote</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Date</th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">Actions</th>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Customer</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Description</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Status</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Quote</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Date</th>
+                  <th className="text-right py-3 px-4 text-gray-500 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredQuotes.map((quote) => (
                   <tr
                     key={quote.id}
-                    className="border-b border-brand-gray/50 hover:bg-brand-gray/20"
+                    className="border-b border-gray-200 hover:bg-blue-50"
                   >
                     <td className="py-3 px-4">
                       <div>
-                        <p className="text-white font-medium">{quote.name}</p>
+                        <p className="text-[#0D1B2A] font-medium">{quote.name}</p>
                         <p className="text-gray-500 text-sm">{quote.email}</p>
                       </div>
                     </td>
@@ -171,7 +171,7 @@ export default function AdminQuoteRequests() {
             {/* Customer Info */}
             <div>
               <h3 className="text-sm font-medium text-gray-400 mb-2">Customer</h3>
-              <p className="text-white">{selectedQuote.name}</p>
+              <p className="text-[#0D1B2A]">{selectedQuote.name}</p>
               <p className="text-gray-400">{selectedQuote.email}</p>
               {selectedQuote.phone && <p className="text-gray-400">{selectedQuote.phone}</p>}
             </div>
@@ -189,7 +189,7 @@ export default function AdminQuoteRequests() {
                 <select
                   value={editData.status}
                   onChange={(e) => setEditData({ ...editData, status: e.target.value as QuoteStatus })}
-                  className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-neon"
+                  className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-brand-neon"
                 >
                   {Object.entries(QUOTE_STATUSES).map(([value, { label }]) => (
                     <option key={value} value={value}>
@@ -216,7 +216,7 @@ export default function AdminQuoteRequests() {
                 onChange={(e) => setEditData({ ...editData, admin_notes: e.target.value })}
                 rows={3}
                 placeholder="Internal notes..."
-                className="w-full px-4 py-2 rounded-lg bg-brand-black border border-brand-gray text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-neon focus:border-transparent resize-none"
+                className="w-full px-4 py-2 rounded-lg bg-brand-black border border-brand-gray text-[#0D1B2A] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-neon focus:border-transparent resize-none"
               />
             </div>
 

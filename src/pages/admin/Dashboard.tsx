@@ -419,9 +419,9 @@ export default function AdminDashboard() {
             <table className="w-full min-w-[500px]">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium text-sm">Order</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium text-sm">Status</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium text-sm">Total</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium text-sm">Order</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium text-sm">Status</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium text-sm">Total</th>
                   <th className="text-left py-3 px-4 text-gray-400 font-medium text-sm hidden sm:table-cell">Date</th>
                 </tr>
               </thead>

@@ -369,11 +369,11 @@ export default function AdminAffiliates() {
                   return (
                     <tr
                       key={affiliate.id}
-                      className="border-b border-brand-gray/50 hover:bg-brand-gray/20 cursor-pointer"
+                      className="border-b border-gray-200 hover:bg-blue-50 cursor-pointer"
                       onClick={() => navigate(`/admin/affiliates/${affiliate.id}`)}
                     >
                       <td className="py-3 px-4">
-                        <span className="text-white font-medium">{affiliate.name}</span>
+                        <span className="text-[#0D1B2A] font-medium">{affiliate.name}</span>
                       </td>
                       <td className="py-3 px-4 text-gray-400 text-sm">{affiliate.email}</td>
                       <td className="py-3 px-4">

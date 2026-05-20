@@ -188,7 +188,7 @@ export default function AdminPromoCodes() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Promo Codes</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#0D1B2A]">Promo Codes</h1>
           <p className="text-gray-400 mt-1">Create and manage discount codes</p>
         </div>
         <Button onClick={() => { resetForm(); setShowModal(true); }}>
@@ -200,7 +200,7 @@ export default function AdminPromoCodes() {
       {promoCodes.length === 0 ? (
         <Card className="text-center py-12">
           <Tag className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No promo codes yet</h3>
+          <h3 className="text-lg font-medium text-[#0D1B2A] mb-2">No promo codes yet</h3>
           <p className="text-gray-400 mb-4">Create your first promo code to offer discounts.</p>
           <Button onClick={() => setShowModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
@@ -236,7 +236,7 @@ export default function AdminPromoCodes() {
                     {code.description || 'No description'}
                   </p>
                   <div className="flex flex-wrap gap-4 text-sm">
-                    <span className="text-white">
+                    <span className="text-[#0D1B2A]">
                       {code.discount_type === 'percentage'
                         ? `${code.discount_value}% off`
                         : `${formatPrice(code.discount_value)} off`}
@@ -288,7 +288,7 @@ export default function AdminPromoCodes() {
           />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <Card className="w-full max-w-lg max-h-[90vh] overflow-auto">
-              <h2 className="text-xl font-semibold text-white mb-6">
+              <h2 className="text-xl font-semibold text-[#0D1B2A] mb-6">
                 {editingCode ? 'Edit Promo Code' : 'Create Promo Code'}
               </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -328,7 +328,7 @@ export default function AdminPromoCodes() {
                     <select
                       value={formData.discount_type}
                       onChange={(e) => setFormData({ ...formData, discount_type: e.target.value as 'percentage' | 'fixed' })}
-                      className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-neon"
+                      className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-brand-neon"
                     >
                       <option value="percentage">Percentage (%)</option>
                       <option value="fixed">Fixed Amount ($)</option>

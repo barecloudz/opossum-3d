@@ -73,7 +73,7 @@ export default function AdminTeam() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Team</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#0D1B2A]">Team</h1>
           <p className="text-gray-400 mt-1">Manage admin access for your team</p>
         </div>
         <Button onClick={() => setShowAddModal(true)}>
@@ -86,7 +86,7 @@ export default function AdminTeam() {
       {teamMembers.length === 0 ? (
         <Card className="text-center py-12">
           <Users className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No team members yet</h3>
+          <h3 className="text-lg font-medium text-[#0D1B2A] mb-2">No team members yet</h3>
           <p className="text-gray-400 mb-4">Add your first team member to give them admin access.</p>
           <Button onClick={() => setShowAddModal(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
@@ -106,7 +106,7 @@ export default function AdminTeam() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-white font-semibold truncate">
+                      <h3 className="text-[#0D1B2A] font-semibold truncate">
                         {member.first_name
                           ? `${member.first_name} ${member.last_name || ''}`
                           : member.email}
@@ -152,14 +152,14 @@ export default function AdminTeam() {
           />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <Card className="w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
-              <div className="p-6 border-b border-brand-gray">
-                <h2 className="text-xl font-semibold text-white">Add Team Member</h2>
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-[#0D1B2A]">Add Team Member</h2>
                 <p className="text-gray-400 text-sm mt-1">
                   Search for an existing customer to promote to admin
                 </p>
               </div>
 
-              <div className="p-4 border-b border-brand-gray">
+              <div className="p-4 border-b border-gray-200">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
@@ -191,16 +191,16 @@ export default function AdminTeam() {
                     {promotableUsers.slice(0, 20).map((user) => (
                       <div
                         key={user.id}
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-brand-gray/30 transition-colors"
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 bg-brand-gray rounded-full flex items-center justify-center flex-shrink-0">
-                            <span className="text-gray-300 font-medium">
+                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span className="text-gray-500 font-medium">
                               {user.first_name?.[0] || user.email[0].toUpperCase()}
                             </span>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-white font-medium truncate">
+                            <p className="text-[#0D1B2A] font-medium truncate">
                               {user.first_name
                                 ? `${user.first_name} ${user.last_name || ''}`
                                 : 'No name'}
@@ -227,7 +227,7 @@ export default function AdminTeam() {
                 )}
               </div>
 
-              <div className="p-4 border-t border-brand-gray">
+              <div className="p-4 border-t border-gray-200">
                 <Button
                   variant="outline"
                   className="w-full"

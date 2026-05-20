@@ -150,7 +150,7 @@ export default function AdminReviews() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Product Reviews</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#0D1B2A]">Product Reviews</h1>
           <p className="text-gray-400 mt-1">Manage customer reviews and ratings</p>
         </div>
       </div>
@@ -163,7 +163,7 @@ export default function AdminReviews() {
               <MessageSquare className="h-6 w-6 text-brand-neon" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.total}</p>
+              <p className="text-2xl font-bold text-[#0D1B2A]">{stats.total}</p>
               <p className="text-gray-400 text-sm">Total Reviews</p>
             </div>
           </div>
@@ -174,7 +174,7 @@ export default function AdminReviews() {
               <Star className="h-6 w-6 text-yellow-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.averageRating}</p>
+              <p className="text-2xl font-bold text-[#0D1B2A]">{stats.averageRating}</p>
               <p className="text-gray-400 text-sm">Avg Rating</p>
             </div>
           </div>
@@ -185,7 +185,7 @@ export default function AdminReviews() {
               <MessageSquare className="h-6 w-6 text-orange-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.pending}</p>
+              <p className="text-2xl font-bold text-[#0D1B2A]">{stats.pending}</p>
               <p className="text-gray-400 text-sm">Pending</p>
             </div>
           </div>
@@ -196,7 +196,7 @@ export default function AdminReviews() {
               <Check className="h-6 w-6 text-green-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats.approved}</p>
+              <p className="text-2xl font-bold text-[#0D1B2A]">{stats.approved}</p>
               <p className="text-gray-400 text-sm">Approved</p>
             </div>
           </div>
@@ -218,7 +218,7 @@ export default function AdminReviews() {
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value as typeof filter)}
-          className="px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-neon"
+          className="px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-brand-neon"
         >
           <option value="pending">Pending Approval</option>
           <option value="approved">Approved</option>
@@ -231,7 +231,7 @@ export default function AdminReviews() {
         <Card>
           <div className="text-center py-12">
             <Star className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">No reviews found</h3>
+            <h3 className="text-lg font-medium text-[#0D1B2A] mb-2">No reviews found</h3>
             <p className="text-gray-400">
               {filter === 'pending' ? 'No reviews awaiting approval' : 'No reviews match your search'}
             </p>
@@ -244,7 +244,7 @@ export default function AdminReviews() {
               <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className="font-medium text-white">{review.reviewer_name}</span>
+                    <span className="font-medium text-[#0D1B2A]">{review.reviewer_name}</span>
                     <span className="text-gray-500">•</span>
                     <span className="text-gray-400 text-sm">{review.reviewer_email}</span>
                     {review.is_verified_purchase && (
@@ -264,7 +264,7 @@ export default function AdminReviews() {
                   </div>
 
                   {review.title && (
-                    <h4 className="font-medium text-white mb-1">{review.title}</h4>
+                    <h4 className="font-medium text-[#0D1B2A] mb-1">{review.title}</h4>
                   )}
                   {review.content && (
                     <p className="text-gray-300">{review.content}</p>

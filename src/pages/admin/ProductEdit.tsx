@@ -475,7 +475,7 @@ export default function AdminProductEdit() {
         Back to Products
       </button>
 
-      <h1 className="text-3xl font-bold text-white mb-8">
+      <h1 className="text-3xl font-bold text-[#0D1B2A] mb-8">
         {isNew ? 'Add Product' : 'Edit Product'}
       </h1>
 
@@ -488,7 +488,7 @@ export default function AdminProductEdit() {
                 <AlertCircle className="h-6 w-6 text-red-400" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white mb-2">Error Saving Product</h3>
+                <h3 className="text-lg font-semibold text-[#0D1B2A] mb-2">Error Saving Product</h3>
                 <p className="text-red-400 mb-2">{error.message}</p>
                 {error.details && (
                   <p className="text-gray-400 text-sm bg-brand-black/50 p-2 rounded font-mono">{error.details}</p>
@@ -496,7 +496,7 @@ export default function AdminProductEdit() {
               </div>
               <button
                 onClick={() => setError(null)}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="text-gray-400 hover:text-[#0D1B2A] transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -515,7 +515,7 @@ export default function AdminProductEdit() {
           {/* Main info */}
           <div className="lg:col-span-2 space-y-6">
             <Card>
-              <h2 className="text-xl font-semibold text-white mb-4">Product Information</h2>
+              <h2 className="text-xl font-semibold text-[#0D1B2A] mb-4">Product Information</h2>
               <div className="space-y-4">
                 <Input
                   label="Product Name"
@@ -540,14 +540,14 @@ export default function AdminProductEdit() {
                     value={formData.description}
                     onChange={handleInputChange}
                     rows={4}
-                    className="w-full px-4 py-2 rounded-lg bg-brand-black border border-brand-gray text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-neon focus:border-transparent resize-none"
+                    className="w-full px-4 py-2 rounded-lg bg-brand-black border border-brand-gray text-[#0D1B2A] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-neon focus:border-transparent resize-none"
                   />
                 </div>
               </div>
             </Card>
 
             <Card>
-              <h2 className="text-xl font-semibold text-white mb-4">Pricing</h2>
+              <h2 className="text-xl font-semibold text-[#0D1B2A] mb-4">Pricing</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Input
                   label="Price"
@@ -583,7 +583,7 @@ export default function AdminProductEdit() {
             </Card>
 
             <Card>
-              <h2 className="text-xl font-semibold text-white mb-4">Inventory</h2>
+              <h2 className="text-xl font-semibold text-[#0D1B2A] mb-4">Inventory</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Input
                   label="SKU"
@@ -633,7 +633,7 @@ export default function AdminProductEdit() {
             </Card>
 
             <Card>
-              <h2 className="text-xl font-semibold text-white mb-4">Additional Info</h2>
+              <h2 className="text-xl font-semibold text-[#0D1B2A] mb-4">Additional Info</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="Print Time (hours)"
@@ -659,7 +659,7 @@ export default function AdminProductEdit() {
             <Card>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-white">Options / Variants</h2>
+                  <h2 className="text-xl font-semibold text-[#0D1B2A]">Options / Variants</h2>
                   <p className="text-gray-400 text-sm mt-1">Add different colors, sizes, or options</p>
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={addVariant}>
@@ -669,7 +669,7 @@ export default function AdminProductEdit() {
               </div>
 
               {variants.length === 0 ? (
-                <div className="text-center py-8 border border-dashed border-brand-gray rounded-lg">
+                <div className="text-center py-8 border border-dashed border-gray-300 rounded-lg">
                   <p className="text-gray-400">No variants added yet</p>
                   <p className="text-gray-500 text-sm mt-1">Click "Add Option" to create variants like colors or sizes</p>
                 </div>
@@ -678,7 +678,7 @@ export default function AdminProductEdit() {
                   {variants.map((variant, index) => (
                     <div
                       key={index}
-                      className="p-4 bg-brand-black rounded-lg border border-brand-gray"
+                      className="p-4 bg-gray-50 rounded-lg border border-gray-200"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <span className="text-gray-400 text-sm">Option {index + 1}</span>
@@ -722,7 +722,7 @@ export default function AdminProductEdit() {
                       </div>
 
                       {/* Variant Image */}
-                      <div className="mt-4 pt-4 border-t border-brand-gray">
+                      <div className="mt-4 pt-4 border-t border-gray-200">
                         <label className="block text-sm font-medium text-gray-300 mb-2">
                           Variant Image
                         </label>
@@ -747,7 +747,7 @@ export default function AdminProductEdit() {
                               </button>
                             </div>
                           ) : (
-                            <div className="w-16 h-16 rounded-lg border-2 border-dashed border-brand-gray flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
                               <ImageIcon className="h-6 w-6 text-gray-500" />
                             </div>
                           )}
@@ -758,7 +758,7 @@ export default function AdminProductEdit() {
                               <select
                                 value={variant.image_url}
                                 onChange={(e) => updateVariant(index, 'image_url', e.target.value)}
-                                className="px-3 py-1.5 bg-brand-charcoal border border-brand-gray rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-neon"
+                                className="px-3 py-1.5 bg-brand-charcoal border border-brand-gray rounded-lg text-[#0D1B2A] text-sm focus:outline-none focus:ring-2 focus:ring-brand-neon"
                               >
                                 <option value="">Select from product images</option>
                                 {images.map((img, imgIndex) => (
@@ -770,7 +770,7 @@ export default function AdminProductEdit() {
                             )}
 
                             {/* Upload new image */}
-                            <label className="inline-flex items-center gap-1 px-3 py-1.5 bg-brand-charcoal border border-brand-gray rounded-lg text-gray-300 text-sm cursor-pointer hover:border-brand-neon/50 transition-colors">
+                            <label className="inline-flex items-center gap-1 px-3 py-1.5 bg-brand-charcoal border border-brand-gray rounded-lg text-gray-600 text-sm cursor-pointer hover:border-brand-neon/50 transition-colors">
                               <Upload className="h-4 w-4" />
                               Upload
                               <input
@@ -800,7 +800,7 @@ export default function AdminProductEdit() {
           {/* Sidebar */}
           <div className="space-y-6">
             <Card>
-              <h2 className="text-xl font-semibold text-white mb-4">Status</h2>
+              <h2 className="text-xl font-semibold text-[#0D1B2A] mb-4">Status</h2>
               <div className="space-y-4">
                 <label className="flex items-center gap-2">
                   <input
@@ -826,7 +826,7 @@ export default function AdminProductEdit() {
             </Card>
 
             <Card>
-              <h2 className="text-xl font-semibold text-white mb-4">Category</h2>
+              <h2 className="text-xl font-semibold text-[#0D1B2A] mb-4">Category</h2>
               <select
                 name="category_id"
                 value={formData.category_id}
@@ -837,7 +837,7 @@ export default function AdminProductEdit() {
                     handleInputChange(e);
                   }
                 }}
-                className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-neon"
+                className="w-full px-4 py-2 bg-brand-black border border-brand-gray rounded-lg text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-brand-neon"
               >
                 <option value="">No Category</option>
                 {categories.map((category) => (
@@ -850,7 +850,7 @@ export default function AdminProductEdit() {
             </Card>
 
             <Card>
-              <h2 className="text-xl font-semibold text-white mb-4">Images</h2>
+              <h2 className="text-xl font-semibold text-[#0D1B2A] mb-4">Images</h2>
               <ImageUpload
                 images={images}
                 onChange={setImages}
