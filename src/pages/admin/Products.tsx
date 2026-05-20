@@ -297,7 +297,7 @@ export default function AdminProducts() {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white">Products</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#0D1B2A]">Products</h1>
         <div className="flex items-center gap-3">
           {products.length > 0 && (
             <Button variant="danger" size="sm" onClick={() => setDeleteAllModalOpen(true)}>
@@ -446,14 +446,14 @@ export default function AdminProducts() {
                           <button
                             onClick={() => reorderProduct(product.id, 'up')}
                             disabled={index === 0}
-                            className="p-0.5 text-gray-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                            className="p-0.5 text-gray-500 hover:text-[#0D1B2A] disabled:opacity-30 disabled:cursor-not-allowed"
                           >
                             <ChevronUp className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => reorderProduct(product.id, 'down')}
                             disabled={index === sortedProducts.length - 1}
-                            className="p-0.5 text-gray-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                            className="p-0.5 text-gray-500 hover:text-[#0D1B2A] disabled:opacity-30 disabled:cursor-not-allowed"
                           >
                             <ChevronDown className="h-4 w-4" />
                           </button>
@@ -473,7 +473,7 @@ export default function AdminProducts() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-white font-medium truncate">{product.name}</p>
+                            <p className="text-[#0D1B2A] font-medium truncate">{product.name}</p>
                             <p className="text-gray-500 text-sm truncate">{product.sku || 'No SKU'}</p>
                           </div>
                         </div>

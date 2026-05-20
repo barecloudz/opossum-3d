@@ -418,7 +418,7 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto -mx-4 sm:mx-0">
             <table className="w-full min-w-[500px]">
               <thead>
-                <tr className="border-b border-brand-gray">
+                <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4 text-gray-400 font-medium text-sm">Order</th>
                   <th className="text-left py-3 px-4 text-gray-400 font-medium text-sm">Status</th>
                   <th className="text-left py-3 px-4 text-gray-400 font-medium text-sm">Total</th>
@@ -427,7 +427,7 @@ export default function AdminDashboard() {
               </thead>
               <tbody>
                 {recentOrders.map((order) => (
-                  <tr key={order.id} className="border-b border-brand-gray/50 hover:bg-brand-gray/20">
+                  <tr key={order.id} className="border-b border-gray-200 hover:bg-blue-50">
                     <td className="py-3 px-4">
                       <Link to={`/admin/orders/${order.id}`} className="text-[#0D1B2A] font-medium hover:text-[#1677FF]">
                         #{order.order_number}

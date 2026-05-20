@@ -20,7 +20,7 @@ export default function AdminCustomers() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-white mb-8">Customers</h1>
+      <h1 className="text-3xl font-bold text-[#0D1B2A] mb-8">Customers</h1>
 
       {/* Search */}
       <div className="mb-6">
@@ -51,7 +51,7 @@ export default function AdminCustomers() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-brand-gray">
+                <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4 text-gray-400 font-medium">Customer</th>
                   <th className="text-left py-3 px-4 text-gray-400 font-medium">Email</th>
                   <th className="text-left py-3 px-4 text-gray-400 font-medium">Marketing</th>
@@ -62,7 +62,7 @@ export default function AdminCustomers() {
                 {filteredCustomers.map((customer) => (
                   <tr
                     key={customer.id}
-                    className="border-b border-brand-gray/50 hover:bg-brand-gray/20"
+                    className="border-b border-gray-200 hover:bg-blue-50"
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
@@ -71,7 +71,7 @@ export default function AdminCustomers() {
                             {customer.first_name?.[0] || customer.email[0].toUpperCase()}
                           </span>
                         </div>
-                        <span className="text-white font-medium">
+                        <span className="text-[#0D1B2A] font-medium">
                           {customer.first_name
                             ? `${customer.first_name} ${customer.last_name || ''}`
                             : 'Unknown'}

@@ -228,7 +228,7 @@ export default function AdminAffiliates() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-white">Affiliates</h1>
+          <h1 className="text-3xl font-bold text-[#0D1B2A]">Affiliates</h1>
           <p className="text-gray-400 mt-1">{affiliates.length} total affiliates</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading}>
@@ -245,7 +245,7 @@ export default function AdminAffiliates() {
         >
           <div className="flex items-center gap-2">
             <Settings className="h-5 w-5 text-brand-neon" />
-            <span className="text-white font-semibold">Program Settings</span>
+            <span className="text-[#0D1B2A] font-semibold">Program Settings</span>
             {settings && (
               <span className="text-xs text-gray-500 ml-2">
                 Commission: {settings.commission_rate}% · Customer discount: {settings.customer_discount_rate}% · Min payout: ${settings.min_payout_threshold}
@@ -256,7 +256,7 @@ export default function AdminAffiliates() {
         </button>
 
         {settingsOpen && (
-          <div className="mt-5 pt-5 border-t border-brand-gray grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="mt-5 pt-5 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 Commission Rate (%)
@@ -321,8 +321,8 @@ export default function AdminAffiliates() {
               onClick={() => setStatusFilter(tab.value)}
               className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                 statusFilter === tab.value
-                  ? 'bg-white text-black'
-                  : 'bg-brand-gray text-gray-400 hover:text-white'
+                  ? 'bg-[#1677FF] text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-[#0D1B2A]'
               }`}
             >
               {tab.label} ({count})
@@ -346,17 +346,17 @@ export default function AdminAffiliates() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-brand-gray">
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Name</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Email</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Code</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Business</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Applied</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">Clicks</th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">Conv.</th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">Earnings</th>
-                  <th className="text-right py-3 px-4 text-gray-400 font-medium">Actions</th>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Name</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Email</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Code</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Business</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Applied</th>
+                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Status</th>
+                  <th className="text-right py-3 px-4 text-gray-500 font-medium">Clicks</th>
+                  <th className="text-right py-3 px-4 text-gray-500 font-medium">Conv.</th>
+                  <th className="text-right py-3 px-4 text-gray-500 font-medium">Earnings</th>
+                  <th className="text-right py-3 px-4 text-gray-500 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
