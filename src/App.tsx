@@ -49,6 +49,7 @@ import AdminReviews from './pages/admin/Reviews';
 import AdminTeam from './pages/admin/Team';
 import AdminBanners from './pages/admin/Banners';
 import AdminExampleWorks from './pages/admin/ExampleWorks';
+import AdminShippingLabel from './pages/admin/ShippingLabel';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -175,6 +176,7 @@ function App() {
           <Route path="settings" element={<AdminSettings />} />
           <Route path="affiliates" element={<AdminAffiliates />} />
           <Route path="affiliates/:id" element={<AdminAffiliateDetail />} />
+          <Route path="shipping-label" element={<AdminShippingLabel />} />
         </Route>
       </Routes>
 
