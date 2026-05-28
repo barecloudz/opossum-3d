@@ -465,7 +465,6 @@ export default function AdminProductEdit() {
             console.log('Variants inserted successfully');
           }
         }
-      }
 
         // Save price tiers
         if (!isNew) {
