@@ -41,6 +41,7 @@ export default function AdminProductEdit() {
 
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
+  const [isImageUploading, setIsImageUploading] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [priceTiers, setPriceTiers] = useState<PriceTier[]>([]);
@@ -970,7 +971,9 @@ export default function AdminProductEdit() {
                 value={formData.category_id}
                 onChange={(e) => {
                   if (e.target.value === '__add_new__') {
-                    openCategoryModal();
+                    // Reset select value first, then open modal after browser repaint
+                    setFormData(prev => ({ ...prev, category_id: '' }));
+                    setTimeout(openCategoryModal, 0);
                   } else {
                     handleInputChange(e);
                   }
@@ -992,13 +995,17 @@ export default function AdminProductEdit() {
               <ImageUpload
                 images={images}
                 onChange={setImages}
+                onUploadingChange={setIsImageUploading}
                 maxImages={20}
               />
+              {isImageUploading && (
+                <p className="text-amber-500 text-xs mt-2">Images are still uploading — save will be available when complete.</p>
+              )}
             </Card>
 
-            <Button type="submit" className="w-full" size="lg" isLoading={isSaving}>
+            <Button type="submit" className="w-full" size="lg" isLoading={isSaving} disabled={isSaving || isImageUploading}>
               <Save className="h-5 w-5 mr-2" />
-              {isNew ? 'Create Product' : 'Save Changes'}
+              {isImageUploading ? 'Waiting for uploads...' : isNew ? 'Create Product' : 'Save Changes'}
             </Button>
           </div>
         </div>

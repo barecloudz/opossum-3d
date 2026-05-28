@@ -5,6 +5,7 @@ import { uploadToCloudinary } from '../../lib/cloudinary';
 interface ImageUploadProps {
   images: string[];
   onChange: (images: string[]) => void;
+  onUploadingChange?: (isUploading: boolean) => void;
   folder?: string;
   maxImages?: number;
 }
@@ -13,10 +14,16 @@ interface ImageUploadProps {
 export default function ImageUpload({
   images,
   onChange,
+  onUploadingChange,
   folder = 'products',
   maxImages = 20,
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
+
+  const setUploadingState = (val: boolean) => {
+    setIsUploading(val);
+    onUploadingChange?.(val);
+  };
   const [uploadProgress, setUploadProgress] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -43,7 +50,7 @@ export default function ImageUpload({
       return;
     }
 
-    setIsUploading(true);
+    setUploadingState(true);
     setError(null);
     setUploadProgress(`Uploading 0/${fileArray.length}...`);
 
@@ -79,7 +86,7 @@ export default function ImageUpload({
       }
     }
 
-    setIsUploading(false);
+    setUploadingState(false);
     setUploadProgress('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
