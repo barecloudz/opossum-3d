@@ -81,6 +81,21 @@ export default function AffiliateApply() {
         });
 
       if (insertError) throw insertError;
+
+      // Notify admin — fire and forget, don't block the success screen
+      fetch('/.netlify/functions/send-affiliate-application-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email.toLowerCase().trim(),
+          phone: form.phone.trim() || undefined,
+          business_name: form.business_name.trim() || undefined,
+          promo_plan: form.promo_plan.trim() || undefined,
+          code,
+        }),
+      }).catch(err => console.error('[AffiliateApply] Notification failed:', err));
+
       setSubmitted(true);
     } catch (err: any) {
       setError(err.message || 'Failed to submit application. Please try again.');
