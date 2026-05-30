@@ -865,10 +865,6 @@ export default function Checkout() {
   // For delivery orders: require a selected rate to prevent losing money
   const hasValidShippingRate = shippingRates.length > 0 && shippingRate !== null && !isRateFallback;
 
-  const isFormValid = formData.email && formData.firstName && formData.lastName &&
-    formData.address && formData.city && formData.state && formData.zip &&
-    formData.zip.length >= 5 && isValidState &&
-    hasValidShippingRate && !shippingLoading;
 
   if (items.length === 0) {
     return null;
