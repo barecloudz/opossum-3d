@@ -621,13 +621,14 @@ export default function Checkout() {
     navigate(`/order-confirmation/${confirmedOrderId}`);
 
     // Auto-generate shipping label in background (non-blocking)
-    if (formData.address !== 'Local Pickup') {
-      fetch('/.netlify/functions/auto-generate-shipping-label', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: confirmedOrderId }),
-      }).catch(err => console.error('[Checkout] Auto label generation failed:', err));
-    }
+    // DISABLED for code-testing branch
+    // if (formData.address !== 'Local Pickup') {
+    //   fetch('/.netlify/functions/auto-generate-shipping-label', {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify({ orderId: confirmedOrderId }),
+    //   }).catch(err => console.error('[Checkout] Auto label generation failed:', err));
+    // }
 
     // Send admin notification email in background (non-blocking)
     const orderPayload = {
@@ -799,13 +800,14 @@ export default function Checkout() {
       navigate(`/order-confirmation/${order.id}`);
 
       // Auto-generate shipping label in background
-      if (formData.address !== 'Local Pickup') {
-        fetch('/.netlify/functions/auto-generate-shipping-label', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId: order.id }),
-        }).catch(err => console.error('[Checkout] Auto label generation failed:', err));
-      }
+      // DISABLED for code-testing branch
+      // if (formData.address !== 'Local Pickup') {
+      //   fetch('/.netlify/functions/auto-generate-shipping-label', {
+      //     method: 'POST',
+      //     headers: { 'Content-Type': 'application/json' },
+      //     body: JSON.stringify({ orderId: order.id }),
+      //   }).catch(err => console.error('[Checkout] Auto label generation failed:', err));
+      // }
 
       // Send admin notification email
       const testOrderPayload = {
@@ -1286,16 +1288,20 @@ export default function Checkout() {
             </Button>
 
             {isAdmin && (
-              <Button
+              <button
+                type="button"
                 onClick={handleTestPayment}
-                className="w-full border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
-                size="lg"
-                variant="outline"
-                isLoading={isLoading}
-                disabled={!isFormValid}
+                disabled={isLoading || !(formData.email && formData.firstName && formData.lastName &&
+                  formData.address && formData.city && formData.state && formData.zip &&
+                  formData.zip.length >= 5 && isValidState)}
+                className="w-full py-4 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-lg rounded-2xl transition-colors flex items-center justify-center gap-2"
               >
-                Test Payment (Admin Only)
-              </Button>
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  '⚡ Skip Payment (Testing)'
+                )}
+              </button>
             )}
           </>
         ) : (
