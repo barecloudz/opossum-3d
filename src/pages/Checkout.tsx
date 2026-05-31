@@ -958,7 +958,7 @@ export default function Checkout() {
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
-          <h1 className="text-xl font-bold text-white">Checkout</h1>
+          <h1 className="text-xl font-bold text-[#0D1B2A]">Checkout</h1>
         </div>
       </div>
 
@@ -990,7 +990,7 @@ export default function Checkout() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-medium truncate">{item.product.name}</h3>
+                    <h3 className="text-[#0D1B2A] font-medium truncate">{item.product.name}</h3>
                     <p className="text-gray-400 text-sm">
                       Qty: {item.quantity}
                       {item.variant && ` • ${item.variant.name}`}
@@ -1016,7 +1016,7 @@ export default function Checkout() {
           <>
             {/* Contact & Address */}
             <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4 space-y-4">
-              <h2 className="text-white font-semibold">Contact information</h2>
+              <h2 className="text-[#0D1B2A] font-semibold">Contact information</h2>
 
               <Input
                 label="Email"
@@ -1053,7 +1053,7 @@ export default function Checkout() {
               />
 
               <div className="border-t border-[var(--color-border)] pt-4 mt-4">
-                <h2 className="text-white font-semibold mb-4">Shipping address</h2>
+                <h2 className="text-[#0D1B2A] font-semibold mb-4">Shipping address</h2>
               </div>
 
               <Input
@@ -1104,7 +1104,7 @@ export default function Checkout() {
               {canCalculateShipping && isValidState && (
                 <div ref={shippingSectionRef} className="mt-4 p-4 bg-[var(--color-background)]/50 rounded-xl">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-white font-medium">Shipping Method</p>
+                    <p className="text-[#0D1B2A] font-medium">Shipping Method</p>
                     <Button
                       type="button"
                       variant="outline"
@@ -1144,7 +1144,7 @@ export default function Checkout() {
                             className="w-4 h-4 border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
                           />
                           <div className="flex-1">
-                            <span className="text-white text-sm font-medium">{rate.serviceName}</span>
+                            <span className="text-[#0D1B2A] text-sm font-medium">{rate.serviceName}</span>
                             {rate.estimatedDays && (
                               <span className="text-gray-400 text-xs ml-2">
                                 ({rate.estimatedDays} day{rate.estimatedDays !== 1 ? 's' : ''})
@@ -1191,7 +1191,7 @@ export default function Checkout() {
 
             {/* Promo Code */}
             <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4">
-              <h2 className="text-white font-semibold mb-4">Promo code</h2>
+              <h2 className="text-[#0D1B2A] font-semibold mb-4">Promo code</h2>
               {appliedPromo ? (
                 <div className="flex items-center justify-between bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-xl px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -1324,7 +1324,7 @@ export default function Checkout() {
                 </p>
               )}
               <div className="flex justify-between text-xl font-bold pt-3 border-t border-[var(--color-border)]">
-                <span className="text-white">Total</span>
+                <span className="text-[#0D1B2A]">Total</span>
                 <span className="text-[var(--color-primary)]">{formatPrice(total)}</span>
               </div>
             </div>
@@ -1381,7 +1381,7 @@ export default function Checkout() {
           <>
             {/* Payment Section */}
             <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4">
-              <h2 className="text-white font-semibold mb-4">Select payment method</h2>
+              <h2 className="text-[#0D1B2A] font-semibold mb-4">Select payment method</h2>
 
               {/* Shipping summary */}
               <div className="mb-4 p-3 bg-[var(--color-background)]/50 rounded-xl">
@@ -1428,7 +1428,7 @@ export default function Checkout() {
             {/* Order Total - Payment Step */}
             <div className="bg-[var(--color-surface)]/80 backdrop-blur-sm rounded-2xl border border-[var(--color-border)] p-4">
               <div className="flex justify-between text-xl font-bold">
-                <span className="text-white">Total</span>
+                <span className="text-[#0D1B2A]">Total</span>
                 <span className="text-[var(--color-primary)]">{formatPrice(total)}</span>
               </div>
             </div>

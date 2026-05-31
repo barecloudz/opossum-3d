@@ -101,7 +101,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         {/* Quick add button */}
         <button
           onClick={handleAddToCart}
-          disabled={stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock}
+          disabled={product.track_inventory && stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock}
           className="absolute bottom-2 right-2 p-2 bg-brand-neon text-brand-black rounded-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-emerald"
         >
           <ShoppingCart className="h-5 w-5" />
@@ -125,7 +125,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           {/* Mobile Add to Cart */}
           <button
             onClick={handleAddToCart}
-            disabled={stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock}
+            disabled={product.track_inventory && stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock}
             className="md:hidden p-2 bg-brand-neon text-brand-black rounded-lg disabled:opacity-50 disabled:cursor-not-allowed active:bg-brand-emerald"
           >
             <ShoppingCart className="h-4 w-4" />
