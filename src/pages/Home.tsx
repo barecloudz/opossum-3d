@@ -77,44 +77,66 @@ export default function Home() {
     <div className="min-h-screen bg-white">
 
       {/* ── HERO ─────────────────────────────────────────────── */}
-      <div className="relative min-h-[520px] md:min-h-[600px] flex items-center overflow-hidden">
-        {/* Background */}
-        <img
-          src="/images/hero.jpg"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0D1B2A]/90 via-[#0D1B2A]/75 to-[#1677FF]/40" />
+      <div className="bg-[#0D1B2A] overflow-hidden">
+        <div className="max-w-6xl mx-auto px-5 py-14 md:py-20 flex flex-col md:flex-row items-center gap-10 md:gap-16">
 
-        {/* Content */}
-        <div className="relative z-10 w-full px-5 py-20 md:py-28">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-6 backdrop-blur-sm">
+          {/* Left — text */}
+          <div className="flex-1 text-center md:text-left order-2 md:order-1">
+            <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 rounded-full px-4 py-1.5 mb-5">
               <span className="w-2 h-2 bg-[#1677FF] rounded-full animate-pulse" />
-              <span className="text-white/90 text-sm font-medium">Custom 3D Printing & Laser Engraving</span>
+              <span className="text-white/80 text-sm font-medium">Custom 3D Printing & Laser Engraving</span>
             </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white leading-tight tracking-tight mb-5">
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-white leading-tight tracking-tight mb-4">
               Your Vision.<br />
               <span className="text-[#1677FF]">Made Real.</span>
             </h1>
-            <p className="text-white/70 text-base md:text-lg mb-8 max-w-xl mx-auto leading-relaxed">
-              Precision 3D printed and laser engraved products built to your exact specifications. Custom orders welcome.
+            <p className="text-white/60 text-base mb-8 max-w-md leading-relaxed">
+              Precision 3D printed products built to your exact specifications. Custom and bulk orders welcome.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
               <Link
                 to="/products"
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#1677FF] hover:bg-[#1060d0] text-white font-bold rounded-2xl transition-colors btn-press text-base"
               >
-                Shop Products <ArrowRight className="h-4 w-4" />
+                Shop Now <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 to="/custom-quote"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold rounded-2xl transition-colors btn-press backdrop-blur-sm text-base"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-2xl transition-colors btn-press text-base"
               >
-                Get a Custom Quote
+                Custom Quote
               </Link>
             </div>
           </div>
+
+          {/* Right — product showcase */}
+          <div className="flex-1 order-1 md:order-2 flex justify-center md:justify-end">
+            <div className="relative">
+              {/* Glow */}
+              <div className="absolute inset-0 bg-[#1677FF]/20 rounded-3xl blur-3xl scale-110" />
+              {/* Product card */}
+              <Link to="/products/shake-maker-spoons" className="relative block">
+                <div className="relative bg-gradient-to-br from-white/10 to-white/5 border border-white/10 rounded-3xl p-3 backdrop-blur-sm">
+                  <img
+                    src="https://res.cloudinary.com/dblvtidrh/image/upload/v1779975289/opossum/products/1000018893_ynfaqo.png"
+                    alt="Shake Maker Spoons"
+                    className="w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 object-contain rounded-2xl"
+                  />
+                  {/* Label */}
+                  <div className="mt-2 px-3 pb-2 flex items-center justify-between">
+                    <div>
+                      <p className="text-white font-bold text-sm">Shake Maker Spoons</p>
+                      <p className="text-[#1677FF] font-extrabold">$5.00</p>
+                    </div>
+                    <div className="bg-[#1677FF] text-white text-xs font-bold px-3 py-1.5 rounded-xl">
+                      Shop →
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
+
         </div>
       </div>
 
