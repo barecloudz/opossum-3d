@@ -897,23 +897,29 @@ export default function AffiliateDashboard() {
         {/* ── MILESTONES TAB ── */}
         {activeTab === 'milestones' && (() => {
           const completedConversions = conversions.filter(c => c.status !== 'reversed').length;
-          const maxRate = milestones.length > 0 ? Math.max(...milestones.map(m => m.commission_rate)) : commissionRate;
+          // Use DB tiers if available, else show defaults so the UI always renders
+          const displayTiers: MilestoneTier[] = milestones.length > 0 ? milestones : [
+            { id: '__starter',    conversions_required: 0,  commission_rate: 5,  label: 'Starter',     description: 'Your starting commission rate when you join the program.', display_order: 0, is_active: true },
+            { id: '__rising',     conversions_required: 20, commission_rate: 7,  label: 'Rising Star', description: 'Refer 20 orders to unlock 7% commission. Keep growing!',         display_order: 1, is_active: true },
+            { id: '__elite',      conversions_required: 45, commission_rate: 10, label: 'Elite',       description: 'Refer 45 total orders to unlock the maximum 10% commission.',   display_order: 2, is_active: true },
+          ];
+          const maxRate = Math.max(...displayTiers.map(m => m.commission_rate));
           const isMaxed = commissionRate >= maxRate;
-          const nextTier = milestones.find(t => completedConversions < t.conversions_required);
+          const nextTier = displayTiers.find(t => completedConversions < t.conversions_required);
           const ordersToNext = nextTier ? nextTier.conversions_required - completedConversions : 0;
 
           return (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Header card */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <div className="flex items-center gap-3 mb-1">
-                      <Trophy className="h-6 w-6 text-yellow-500" />
-                      <h2 className="text-xl font-bold text-[#0D1B2A]">Commission Milestones</h2>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Trophy className="h-5 w-5 text-yellow-500" />
+                      <h2 className="text-lg font-bold text-[#0D1B2A]">Commission Milestones</h2>
                     </div>
-                    <p className="text-sm text-gray-500 max-w-lg">
-                      Every order you refer counts. Reach each milestone to permanently unlock a higher commission rate. Upgrades apply automatically the moment you qualify.
+                    <p className="text-sm text-gray-500 max-w-md">
+                      Refer more orders, unlock higher rates permanently. Upgrades apply automatically the moment you qualify.
                     </p>
                   </div>
                   <div className="text-right">
@@ -921,21 +927,20 @@ export default function AffiliateDashboard() {
                     <p className="text-4xl font-black text-[#1677FF]">{commissionRate}%</p>
                     {isMaxed
                       ? <p className="text-xs text-green-600 font-semibold mt-0.5">Max rate achieved!</p>
-                      : <p className="text-xs text-gray-400 mt-0.5">{ordersToNext} more order{ordersToNext !== 1 ? 's' : ''} to next tier</p>
+                      : <p className="text-xs text-gray-400 mt-0.5">{ordersToNext} order{ordersToNext !== 1 ? 's' : ''} to next tier</p>
                     }
                   </div>
                 </div>
-
-                {/* Overall progress bar */}
-                {!isMaxed && nextTier && (
-                  <div className="mt-5">
-                    <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-                      <span className="font-medium">{completedConversions} referrals completed</span>
-                      <span>{nextTier.conversions_required} needed for {nextTier.label}</span>
+                {/* Overall progress bar toward next tier */}
+                {!isMaxed && nextTier && nextTier.conversions_required > 0 && (
+                  <div className="mt-4">
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>{completedConversions} referrals</span>
+                      <span>{nextTier.conversions_required} for {nextTier.label}</span>
                     </div>
-                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#1677FF] to-[#0D3B8C] transition-all"
+                        className="h-full rounded-full bg-gradient-to-r from-[#1677FF] to-[#0D3B8C] transition-all duration-700"
                         style={{ width: `${Math.min(100, Math.round((completedConversions / nextTier.conversions_required) * 100))}%` }}
                       />
                     </div>
@@ -944,149 +949,123 @@ export default function AffiliateDashboard() {
               </div>
 
               {/* Timeline */}
-              {milestones.length > 0 && (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-8">Your Progress Path</p>
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Your Progress Path</p>
 
-                  <div className="relative">
-                    {/* Vertical connector line */}
-                    <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gray-200" />
-                    {/* Filled portion of connector line */}
-                    <div
-                      className="absolute left-6 top-6 w-0.5 bg-gradient-to-b from-green-400 to-[#1677FF] transition-all"
-                      style={{
-                        height: (() => {
-                          const unlockedCount = milestones.filter(t => completedConversions >= t.conversions_required).length;
-                          if (unlockedCount === 0) return '0%';
-                          if (unlockedCount >= milestones.length) return 'calc(100% - 48px)';
-                          const pct = ((unlockedCount - 0.5) / (milestones.length - 1)) * 100;
-                          return `${pct}%`;
-                        })()
-                      }}
-                    />
+                <div>
+                  {displayTiers.map((tier, i) => {
+                    const isLast = i === displayTiers.length - 1;
+                    const isUnlocked = completedConversions >= tier.conversions_required;
+                    const isCurrent = commissionRate === tier.commission_rate;
+                    const isNext = !isUnlocked && displayTiers.slice(0, i).every(t => completedConversions >= t.conversions_required);
+                    const prevRequired = i > 0 ? displayTiers[i - 1].conversions_required : 0;
+                    const segmentProgress = tier.conversions_required === 0
+                      ? 100
+                      : Math.min(100, Math.max(0, Math.round(((completedConversions - prevRequired) / (tier.conversions_required - prevRequired)) * 100)));
 
-                    <div className="space-y-6">
-                      {milestones.map((tier, i) => {
-                        const isUnlocked = completedConversions >= tier.conversions_required;
-                        const isCurrent = commissionRate === tier.commission_rate;
-                        const isNext = !isUnlocked && milestones.slice(0, i).every(t => completedConversions >= t.conversions_required);
-                        const prevRequired = i > 0 ? milestones[i - 1].conversions_required : 0;
-                        const segmentProgress = tier.conversions_required === 0
-                          ? 100
-                          : Math.min(100, Math.max(0, Math.round(((completedConversions - prevRequired) / (tier.conversions_required - prevRequired)) * 100)));
-
-                        return (
-                          <div key={tier.id} className="relative flex gap-5 items-start">
-                            {/* Circle node */}
-                            <div className={`relative z-10 w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center border-4 transition-all shadow-sm ${
-                              isUnlocked
-                                ? 'bg-green-500 border-green-500 text-white'
-                                : isCurrent
-                                ? 'bg-[#1677FF] border-[#1677FF] text-white'
-                                : isNext
-                                ? 'bg-white border-yellow-400 text-yellow-500'
-                                : 'bg-white border-gray-200 text-gray-300'
-                            }`}>
-                              {isUnlocked
-                                ? <Check className="h-5 w-5" />
-                                : isNext
-                                ? <Trophy className="h-5 w-5" />
-                                : <Lock className="h-4 w-4" />
-                              }
-                            </div>
-
-                            {/* Content card */}
-                            <div className={`flex-1 rounded-2xl border p-5 pb-4 transition-all ${
-                              isCurrent
-                                ? 'border-[#1677FF] bg-blue-50'
-                                : isUnlocked
-                                ? 'border-green-200 bg-green-50'
-                                : isNext
-                                ? 'border-yellow-200 bg-yellow-50'
-                                : 'border-gray-100 bg-gray-50'
-                            }`}>
-                              <div className="flex items-start justify-between gap-3 mb-2">
-                                <div>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-bold text-[#0D1B2A] text-base">{tier.label}</span>
-                                    {isUnlocked && !isCurrent && (
-                                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold border border-green-200">Unlocked</span>
-                                    )}
-                                    {isCurrent && (
-                                      <span className="text-xs bg-[#1677FF] text-white px-2 py-0.5 rounded-full font-semibold">Current Tier</span>
-                                    )}
-                                    {isNext && (
-                                      <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-semibold border border-yellow-200">Up Next</span>
-                                    )}
-                                  </div>
-                                  {tier.description && (
-                                    <p className="text-sm text-gray-500 mt-1">{tier.description}</p>
-                                  )}
-                                </div>
-                                <div className="text-right flex-shrink-0">
-                                  <p className={`text-3xl font-black ${isUnlocked || isCurrent ? 'text-[#1677FF]' : 'text-gray-300'}`}>
-                                    {tier.commission_rate}%
-                                  </p>
-                                  <p className="text-xs text-gray-400">commission</p>
-                                </div>
-                              </div>
-
-                              {/* Stats row */}
-                              <div className="flex items-center gap-4 text-xs text-gray-500 mb-3 flex-wrap">
-                                <span className="flex items-center gap-1">
-                                  <span className="font-semibold text-[#0D1B2A]">{tier.conversions_required}</span> orders required
-                                </span>
-                                {isUnlocked ? (
-                                  <span className="flex items-center gap-1 text-green-600 font-semibold">
-                                    <Check className="h-3.5 w-3.5" /> Completed
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center gap-1">
-                                    <span className="font-semibold text-[#0D1B2A]">{completedConversions}</span> / {tier.conversions_required} done
-                                    {isNext && <span className="text-yellow-600 font-semibold ml-1">({tier.conversions_required - completedConversions} to go)</span>}
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Progress bar — only for locked/next tiers */}
-                              {!isUnlocked && tier.conversions_required > 0 && (
-                                <div>
-                                  <div className="h-2 bg-white/60 rounded-full overflow-hidden border border-gray-200">
-                                    <div
-                                      className={`h-full rounded-full transition-all ${isNext ? 'bg-yellow-400' : 'bg-gray-200'}`}
-                                      style={{ width: `${isNext ? Math.max(2, segmentProgress) : 0}%` }}
-                                    />
-                                  </div>
-                                  {isNext && segmentProgress > 0 && (
-                                    <p className="text-xs text-yellow-600 font-medium mt-1">{segmentProgress}% of the way there</p>
-                                  )}
-                                </div>
-                              )}
-
-                              {isUnlocked && (
-                                <p className="text-xs text-green-600 font-semibold">
-                                  {isCurrent ? 'This is your active commission rate.' : 'You passed this milestone.'}
-                                </p>
-                              )}
-                            </div>
+                    return (
+                      <div key={tier.id} className="flex gap-4 sm:gap-6">
+                        {/* Left column: circle + connecting line */}
+                        <div className="flex flex-col items-center flex-shrink-0">
+                          {/* Circle */}
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center border-4 shadow-md transition-all z-10 ${
+                            isUnlocked
+                              ? 'bg-green-500 border-green-400 text-white'
+                              : isCurrent
+                              ? 'bg-[#1677FF] border-blue-400 text-white'
+                              : isNext
+                              ? 'bg-yellow-400 border-yellow-300 text-yellow-900'
+                              : 'bg-gray-100 border-gray-200 text-gray-300'
+                          }`}>
+                            {isUnlocked
+                              ? <Check className="h-5 w-5 stroke-[3]" />
+                              : isNext
+                              ? <Trophy className="h-5 w-5" />
+                              : <Lock className="h-4 w-4" />
+                            }
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                          {/* Connector line to next node */}
+                          {!isLast && (
+                            <div className="w-1 flex-1 my-1 rounded-full overflow-hidden bg-gray-100 min-h-[40px]">
+                              <div
+                                className={`w-full transition-all duration-700 rounded-full ${isUnlocked ? 'bg-green-400' : 'bg-gray-200'}`}
+                                style={{ height: isUnlocked ? '100%' : '0%' }}
+                              />
+                            </div>
+                          )}
+                        </div>
 
-                  <p className="text-xs text-gray-400 mt-8 text-center border-t border-gray-100 pt-4">
-                    Commission upgrades are applied automatically when you reach the required referrals. Keep sharing your link!
-                  </p>
-                </div>
-              )}
+                        {/* Right column: content */}
+                        <div className={`flex-1 mb-4 ${isLast ? '' : 'pb-2'}`}>
+                          <div className={`rounded-2xl border p-4 sm:p-5 transition-all ${
+                            isCurrent   ? 'border-[#1677FF] bg-blue-50 shadow-sm shadow-blue-100' :
+                            isUnlocked  ? 'border-green-200 bg-green-50' :
+                            isNext      ? 'border-yellow-200 bg-yellow-50 shadow-sm shadow-yellow-100' :
+                            'border-gray-100 bg-gray-50'
+                          }`}>
+                            {/* Top row: name + badges + rate */}
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                  <span className="font-bold text-[#0D1B2A] text-base">{tier.label}</span>
+                                  {isCurrent && <span className="text-[10px] bg-[#1677FF] text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Current</span>}
+                                  {isUnlocked && !isCurrent && <span className="text-[10px] bg-green-500 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Unlocked</span>}
+                                  {isNext && <span className="text-[10px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Up Next</span>}
+                                </div>
+                                {tier.description && <p className="text-xs text-gray-500 leading-relaxed">{tier.description}</p>}
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className={`text-2xl sm:text-3xl font-black leading-none ${isUnlocked || isCurrent ? 'text-[#1677FF]' : 'text-gray-300'}`}>
+                                  {tier.commission_rate}%
+                                </p>
+                                <p className="text-[10px] text-gray-400 mt-0.5">commission</p>
+                              </div>
+                            </div>
 
-              {milestones.length === 0 && (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center">
-                  <Trophy className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-400 text-sm">No milestone tiers configured yet. Check back soon.</p>
+                            {/* Stats + progress */}
+                            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                              {tier.conversions_required === 0 ? (
+                                <span className="text-green-600 font-semibold">Starting tier — no orders required</span>
+                              ) : isUnlocked ? (
+                                <span className="flex items-center gap-1 text-green-600 font-semibold">
+                                  <Check className="h-3 w-3 stroke-[3]" /> Completed at {tier.conversions_required} orders
+                                </span>
+                              ) : (
+                                <span>
+                                  <span className="font-bold text-[#0D1B2A]">{completedConversions}</span>
+                                  <span className="text-gray-400"> / {tier.conversions_required} orders</span>
+                                  {isNext && (
+                                    <span className="text-yellow-600 font-bold"> — {tier.conversions_required - completedConversions} to go!</span>
+                                  )}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Progress bar for active/locked tiers */}
+                            {!isUnlocked && tier.conversions_required > 0 && (
+                              <div className="h-2 bg-white rounded-full overflow-hidden border border-gray-200">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-700 ${isNext ? 'bg-yellow-400' : 'bg-gray-200'}`}
+                                  style={{ width: `${isNext && segmentProgress > 0 ? Math.max(3, segmentProgress) : 0}%` }}
+                                />
+                              </div>
+                            )}
+                            {isUnlocked && (
+                              <div className="h-2 bg-green-200 rounded-full overflow-hidden">
+                                <div className="h-full w-full bg-green-400 rounded-full" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+
+                <p className="text-xs text-gray-400 text-center border-t border-gray-100 pt-4 mt-2">
+                  Commission upgrades apply automatically when you hit the threshold. Keep sharing your link!
+                </p>
+              </div>
             </div>
           );
         })()}
