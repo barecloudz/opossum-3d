@@ -252,7 +252,8 @@ export default function Home() {
                 {banners.map((slide) => (
                   <div
                     key={slide.id}
-                    className={`w-full flex-shrink-0 relative bg-gradient-to-r ${slide.gradient} min-h-[160px] md:min-h-[200px] flex items-center overflow-hidden`}
+                    className="w-full flex-shrink-0 relative min-h-[160px] md:min-h-[200px] flex items-center overflow-hidden"
+                    style={{ background: slide.gradient }}
                   >
                     {/* Decorative circles */}
                     <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full pointer-events-none" />
@@ -348,10 +349,7 @@ export default function Home() {
               },
             ].map((item) => (
               <div key={item.step} className="relative bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                <span className="absolute -top-3 left-5 text-5xl font-extrabold text-[#1677FF]/10 leading-none select-none">
-                  {item.step}
-                </span>
-                <div className="w-10 h-10 bg-[#1677FF]/10 rounded-xl flex items-center justify-center mb-4 mt-2">
+                <div className="w-10 h-10 bg-[#1677FF]/10 rounded-xl flex items-center justify-center mb-4">
                   <span className="text-[#1677FF] font-bold text-sm">{item.step}</span>
                 </div>
                 <h3 className="font-bold text-[#0D1B2A] mb-2">{item.title}</h3>

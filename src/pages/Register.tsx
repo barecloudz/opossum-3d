@@ -89,7 +89,7 @@ export default function Register() {
   // Confirmation Modal
   if (showConfirmModal) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4 py-12">
+      <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12">
         <Card className="w-full max-w-md text-center">
           <div className="flex justify-center mb-6">
             <div className="w-16 h-16 bg-[var(--color-primary)]/10 rounded-full flex items-center justify-center">
@@ -138,7 +138,7 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-[60vh] flex items-center justify-center px-4 py-12">
+    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-theme">Create Account</h1>

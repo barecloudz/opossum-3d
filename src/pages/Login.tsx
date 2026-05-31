@@ -60,7 +60,7 @@ export default function Login() {
 
   if (forgotMode) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center px-4 py-12">
+      <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12">
         <Card className="w-full max-w-md">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-theme">Reset Password</h1>
@@ -112,7 +112,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-[60vh] flex items-center justify-center px-4 py-12">
+    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-theme">Welcome Back</h1>
