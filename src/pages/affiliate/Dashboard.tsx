@@ -28,6 +28,7 @@ interface MilestoneTier {
   label: string;
   description: string;
   display_order: number;
+  is_active: boolean;
 }
 
 // ---------------------------------------------------------------------------
