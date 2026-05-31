@@ -93,6 +93,8 @@ export const useProductStore = create<ProductStore>((set, get) => ({
 
     inFlightPromise = doFetch().finally(() => {
       inFlightPromise = null;
+      // Safety net: ensure isLoading never stays permanently true
+      set(state => state.isLoading ? { isLoading: false } : {});
     });
 
     return inFlightPromise;

@@ -256,7 +256,7 @@ export default function AffiliateDashboard() {
         .eq('affiliate_id', affiliateId),
       supabase
         .from('affiliate_conversions')
-        .select('id, affiliate_id, order_id, order_total, commission_amount, status, payout_id, created_at, order:orders(order_number, created_at, total)')
+        .select('id, affiliate_id, order_id, order_total, commission_amount, status, payout_id, created_at, order:orders(order_number, created_at, total, guest_name, guest_email, items:order_items(product_name, quantity))')
         .eq('affiliate_id', affiliateId)
         .order('created_at', { ascending: false })
         .limit(10),
@@ -618,24 +618,38 @@ export default function AffiliateDashboard() {
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
                     <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Order</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Customer</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Items</th>
                     <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
-                    <th className="text-right px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Order Total</th>
                     <th className="text-right px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Commission</th>
                     <th className="text-center px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {conversions.map((conv) => (
-                    <tr key={conv.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-semibold text-[#0D1B2A]">
-                        {conv.order ? `#${conv.order.order_number}` : '—'}
-                      </td>
-                      <td className="px-6 py-4 text-gray-500">{formatDate(conv.created_at)}</td>
-                      <td className="px-6 py-4 text-right text-[#0D1B2A]">{formatCurrency(conv.order_total)}</td>
-                      <td className="px-6 py-4 text-right font-bold text-[#1677FF]">{formatCurrency(conv.commission_amount)}</td>
-                      <td className="px-6 py-4 text-center"><ConversionStatusBadge status={conv.status} /></td>
-                    </tr>
-                  ))}
+                  {conversions.map((conv) => {
+                    const name = conv.order?.guest_name || conv.order?.guest_email || '—';
+                    const initials = conv.order?.guest_name
+                      ? conv.order.guest_name.trim().split(/\s+/).map((w: string) => w[0].toUpperCase()).slice(0, 2).join('. ') + '.'
+                      : name;
+                    const items = conv.order?.items ?? [];
+                    const itemSummary = items.length > 0
+                      ? items.map((i: { product_name: string; quantity: number }) =>
+                          `${i.quantity}x ${i.product_name}`
+                        ).join(', ')
+                      : '—';
+                    return (
+                      <tr key={conv.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 font-semibold text-[#0D1B2A]">
+                          {conv.order ? `#${conv.order.order_number}` : '—'}
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">{initials}</td>
+                        <td className="px-6 py-4 text-gray-500 max-w-[180px] truncate" title={itemSummary}>{itemSummary}</td>
+                        <td className="px-6 py-4 text-gray-500">{formatDate(conv.created_at)}</td>
+                        <td className="px-6 py-4 text-right font-bold text-[#1677FF]">{formatCurrency(conv.commission_amount)}</td>
+                        <td className="px-6 py-4 text-center"><ConversionStatusBadge status={conv.status} /></td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

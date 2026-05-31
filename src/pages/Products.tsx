@@ -47,6 +47,18 @@ export default function Products() {
     fetchProducts();
   }, [fetchProducts]);
 
+  // Safety net: if stuck loading for >12s with no products, force retry
+  useEffect(() => {
+    if (!isLoading) return;
+    const timer = setTimeout(() => {
+      const { isLoading: stillLoading, products: currentProducts } = useProductStore.getState();
+      if (stillLoading && currentProducts.length === 0) {
+        fetchProducts(true);
+      }
+    }, 12000);
+    return () => clearTimeout(timer);
+  }, [isLoading, fetchProducts]);
+
   const filteredProducts = products
     .filter((product) => {
       const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase());
