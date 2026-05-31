@@ -35,7 +35,7 @@ const generateEmailHtml = (data: ShippingConfirmationRequest) => {
 
       <!-- Logo Header -->
       <div style="text-align: center; margin-bottom: 32px;">
-        <h1 style="color: #111827; font-size: 28px; margin: 0; letter-spacing: 2px; font-weight: 800;">OPOSSUM WORKS</h1>
+        <h1 style="color: #111827; font-size: 28px; margin: 0; letter-spacing: 2px; font-weight: 800;">NEXALON CREATIONS</h1>
         <div style="width: 60px; height: 2px; background-color: #a3a3a3; margin: 10px auto 0;"></div>
       </div>
 
@@ -106,7 +106,7 @@ const generateEmailHtml = (data: ShippingConfirmationRequest) => {
           Questions about your shipment? Just reply to this email.
         </p>
         <p style="color: #d4d4d8; font-size: 11px; margin: 0; letter-spacing: 0.5px;">
-          &copy; ${new Date().getFullYear()} OPOSSUM WORKS
+          &copy; ${new Date().getFullYear()} NEXALON CREATIONS
         </p>
       </div>
 
