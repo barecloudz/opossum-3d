@@ -263,7 +263,7 @@ export interface AffiliateSettings {
 }
 
 export type AffiliateStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
-export type AffiliateConversionStatus = 'pending' | 'approved' | 'paid';
+export type AffiliateConversionStatus = 'pending' | 'approved' | 'paid' | 'reversed';
 
 export interface Affiliate {
   id: string;

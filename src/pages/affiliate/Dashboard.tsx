@@ -69,6 +69,7 @@ function ConversionStatusBadge({ status }: { status: AffiliateConversion['status
     pending: { label: 'Pending', classes: 'bg-yellow-100 text-yellow-800 border border-yellow-200' },
     approved: { label: 'Approved', classes: 'bg-blue-100 text-blue-800 border border-blue-200' },
     paid: { label: 'Paid', classes: 'bg-green-100 text-green-800 border border-green-200' },
+    reversed: { label: 'Reversed', classes: 'bg-gray-100 text-gray-500 border border-gray-200 line-through' },
   };
   const { label, classes } = map[status];
   return (
@@ -223,11 +224,13 @@ export default function AffiliateDashboard() {
   const [stats, setStats] = useState({
     totalClicks: 0,
     totalConversions: 0,
+    conversionRate: 0,
     totalEarned: 0,
     pendingBalance: 0,
   });
   const [conversions, setConversions] = useState<AffiliateConversion[]>([]);
   const [payouts, setPayouts] = useState<AffiliatePayout[]>([]);
+  const [campaignStats, setCampaignStats] = useState<{ sub_id: string | null; count: number }[]>([]);
 
   // Payout info editing
   const [payoutMethod, setPayoutMethod] = useState('');
@@ -246,7 +249,7 @@ export default function AffiliateDashboard() {
       .single();
     if (settingsData) setGlobalCommissionRate(settingsData.commission_rate);
 
-    const [clicksRes, conversionsRes, payoutsRes] = await Promise.all([
+    const [clicksRes, conversionsRes, payoutsRes, campaignRes] = await Promise.all([
       supabase
         .from('affiliate_clicks')
         .select('id', { count: 'exact', head: true })
@@ -263,7 +266,23 @@ export default function AffiliateDashboard() {
         .eq('affiliate_id', affiliateId)
         .order('created_at', { ascending: false })
         .limit(10),
+      supabase
+        .from('affiliate_clicks')
+        .select('sub_id')
+        .eq('affiliate_id', affiliateId),
     ]);
+
+    // Build campaign breakdown from sub_id counts
+    const rawClicks = (campaignRes.data ?? []) as { sub_id: string | null }[];
+    const campaignMap: Record<string, number> = {};
+    for (const row of rawClicks) {
+      const key = row.sub_id ?? '(direct link)';
+      campaignMap[key] = (campaignMap[key] || 0) + 1;
+    }
+    const campaigns = Object.entries(campaignMap)
+      .map(([sub_id, count]) => ({ sub_id: sub_id === '(direct link)' ? null : sub_id, count }))
+      .sort((a, b) => b.count - a.count);
+    setCampaignStats(campaigns);
 
     const totalClicks = clicksRes.count ?? 0;
     const allConversions = (conversionsRes.data ?? []) as unknown as AffiliateConversion[];
@@ -276,7 +295,11 @@ export default function AffiliateDashboard() {
       .filter((c) => c.status === 'pending' || c.status === 'approved')
       .reduce((sum, c) => sum + c.commission_amount, 0);
 
-    setStats({ totalClicks, totalConversions: allConversions.length, totalEarned, pendingBalance });
+    const conversionRate = totalClicks > 0
+      ? (allConversions.length / totalClicks) * 100
+      : 0;
+
+    setStats({ totalClicks, totalConversions: allConversions.length, conversionRate, totalEarned, pendingBalance });
     setConversions(allConversions);
     setPayouts((payoutsRes.data ?? []) as AffiliatePayout[]);
   }, []);
@@ -496,7 +519,7 @@ export default function AffiliateDashboard() {
             icon={ShoppingBag}
             label="Conversions"
             value={stats.totalConversions.toLocaleString()}
-            sub="Referred orders"
+            sub={stats.totalClicks > 0 ? `${stats.conversionRate.toFixed(1)}% conversion rate` : 'Referred orders'}
             accent="bg-purple-100 text-purple-600"
           />
           <StatCard
@@ -539,6 +562,36 @@ export default function AffiliateDashboard() {
           <p className="text-xs text-gray-400 mt-4">
             Customers who use your code or link get a discount — you earn {commissionRate}% on every order they place.
           </p>
+
+          {/* Campaign breakdown — only show if sub_id data exists */}
+          {campaignStats.length > 1 && (
+            <div className="mt-5 pt-5 border-t border-gray-100">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Clicks by Campaign</p>
+              <div className="space-y-2">
+                {campaignStats.map((c) => {
+                  const total = campaignStats.reduce((s, x) => s + x.count, 0);
+                  const pct = total > 0 ? Math.round((c.count / total) * 100) : 0;
+                  return (
+                    <div key={c.sub_id ?? '__direct'} className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500 w-24 truncate font-mono">
+                        {c.sub_id ?? 'direct'}
+                      </span>
+                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#1677FF] rounded-full"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500 w-10 text-right">{c.count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-400 mt-3">
+                Add <span className="font-mono text-[#1677FF]">?sub=instagram</span> (or tiktok, youtube, etc.) to your link to track which platform drives traffic.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Recent Conversions */}

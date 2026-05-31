@@ -32,7 +32,7 @@ function statusBadgeVariant(status: AffiliateStatus): 'warning' | 'success' | 'd
 
 function convStatusBadgeVariant(
   status: AffiliateConversionStatus
-): 'warning' | 'info' | 'success' {
+): 'warning' | 'info' | 'success' | 'danger' {
   switch (status) {
     case 'pending':
       return 'warning';
@@ -40,6 +40,8 @@ function convStatusBadgeVariant(
       return 'info';
     case 'paid':
       return 'success';
+    case 'reversed':
+      return 'danger';
   }
 }
 
@@ -549,6 +551,9 @@ export default function AdminAffiliateDetail() {
                         )}
                         {conv.status === 'paid' && (
                           <span className="text-xs text-gray-500">Paid</span>
+                        )}
+                        {conv.status === 'reversed' && (
+                          <span className="text-xs text-red-400">Reversed</span>
                         )}
                       </div>
                     </td>

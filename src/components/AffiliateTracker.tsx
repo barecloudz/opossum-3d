@@ -29,6 +29,7 @@ export default function AffiliateTracker() {
     if (!ref) return;
 
     const code = ref.toUpperCase().trim();
+    const subId = params.get('sub')?.trim() || null;
 
     const trackClick = async () => {
       try {
@@ -41,11 +42,20 @@ export default function AffiliateTracker() {
 
         if (!affiliate) return;
 
+        // Dedup: only log one click per session per affiliate
+        const dedupKey = `nexalon_clicked_${affiliate.id}`;
+        if (sessionStorage.getItem(dedupKey)) {
+          // Still refresh cookie even if we don't log another click
+          setAffiliateCookie(code);
+          return;
+        }
+        sessionStorage.setItem(dedupKey, '1');
+
         setAffiliateCookie(code);
 
         await supabase
           .from('affiliate_clicks')
-          .insert({ affiliate_id: affiliate.id });
+          .insert({ affiliate_id: affiliate.id, sub_id: subId });
       } catch {
         // silently fail — don't interrupt user experience
       }

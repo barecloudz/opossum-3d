@@ -123,6 +123,15 @@ export default function AdminOrderDetail() {
         }
       }
 
+      // Refund clawback: if order is being cancelled, reverse any affiliate commissions
+      if (status === 'cancelled' && order.status !== 'cancelled') {
+        await supabase
+          .from('affiliate_conversions')
+          .update({ status: 'reversed' })
+          .eq('order_id', order.id)
+          .in('status', ['pending', 'approved']);
+      }
+
       setOrder({ ...order, status, tracking_number: trackingNumber, notes });
     } catch (err) {
       console.error('Error updating order:', err);

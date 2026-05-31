@@ -462,6 +462,18 @@ export default function Checkout() {
           status: 'pending',
         });
         clearAffiliateCookie();
+
+        // Notify affiliate of their sale — fire and forget
+        fetch('/.netlify/functions/send-affiliate-sale-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            affiliateId: appliedAffiliate.id,
+            orderNumber: order.order_number,
+            commissionAmount,
+            orderTotal: total,
+          }),
+        }).catch(() => {});
       }
 
       // Validate variant IDs still exist in database before inserting
