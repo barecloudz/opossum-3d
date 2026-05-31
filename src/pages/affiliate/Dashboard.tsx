@@ -956,9 +956,10 @@ export default function AffiliateDashboard() {
                 <div>
                   {displayTiers.map((tier, i) => {
                     const isLast = i === displayTiers.length - 1;
-                    const isUnlocked = completedConversions >= tier.conversions_required;
+                    // Treat as unlocked if they hit the conversions OR if their rate is already at/above this tier
+                    const isUnlocked = completedConversions >= tier.conversions_required || commissionRate >= tier.commission_rate;
                     const isCurrent = commissionRate === tier.commission_rate;
-                    const isNext = !isUnlocked && displayTiers.slice(0, i).every(t => completedConversions >= t.conversions_required);
+                    const isNext = !isUnlocked && displayTiers.slice(0, i).every(t => completedConversions >= t.conversions_required || commissionRate >= t.commission_rate);
                     const prevRequired = i > 0 ? displayTiers[i - 1].conversions_required : 0;
                     const segmentProgress = tier.conversions_required === 0
                       ? 100
