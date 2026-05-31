@@ -229,6 +229,13 @@ export default function AffiliateDashboard() {
   const [conversions, setConversions] = useState<AffiliateConversion[]>([]);
   const [payouts, setPayouts] = useState<AffiliatePayout[]>([]);
 
+  // Payout info editing
+  const [payoutMethod, setPayoutMethod] = useState('');
+  const [payoutDetails, setPayoutDetails] = useState('');
+  const [savingPayout, setSavingPayout] = useState(false);
+  const [payoutSaved, setPayoutSaved] = useState(false);
+  const [payoutError, setPayoutError] = useState('');
+
   const loadDashboard = useCallback(async (affiliateRecord: Affiliate) => {
     const affiliateId = affiliateRecord.id;
 
@@ -315,6 +322,8 @@ export default function AffiliateDashboard() {
 
       const record = data as Affiliate;
       setAffiliate(record);
+      setPayoutMethod(record.payout_method ?? '');
+      setPayoutDetails(record.payout_details ?? '');
 
       if (record.status === 'pending') setPageState('pending');
       else if (record.status === 'rejected' || record.status === 'suspended') setPageState('rejected');
@@ -356,6 +365,23 @@ export default function AffiliateDashboard() {
     setNeedsPassword(false);
     setNewPassword('');
     setConfirmPassword('');
+  };
+
+  const handleSavePayoutInfo = async () => {
+    if (!affiliate) return;
+    if (!payoutMethod) { setPayoutError('Please select a payout method'); return; }
+    if (!payoutDetails.trim()) { setPayoutError('Please enter your payout details (e.g. your handle or email)'); return; }
+    setPayoutError('');
+    setSavingPayout(true);
+    const { error } = await supabase
+      .from('affiliates')
+      .update({ payout_method: payoutMethod, payout_details: payoutDetails.trim() })
+      .eq('id', affiliate.id);
+    setSavingPayout(false);
+    if (error) { setPayoutError('Failed to save. Please try again.'); return; }
+    setAffiliate(prev => prev ? { ...prev, payout_method: payoutMethod, payout_details: payoutDetails.trim() } : prev);
+    setPayoutSaved(true);
+    setTimeout(() => setPayoutSaved(false), 3000);
   };
 
   if (pageState === 'loading' || pageState === 'no-record') return <LoadingScreen />;
@@ -606,23 +632,73 @@ export default function AffiliateDashboard() {
 
         {/* Payout Info */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-          <h2 className="text-base font-bold text-[#0D1B2A] mb-4">Payout Information</h2>
-          <div className="grid sm:grid-cols-2 gap-4 mb-5">
-            <div className="p-4 bg-[#F4F6F9] rounded-xl border border-gray-200">
-              <p className="text-xs uppercase tracking-wide font-semibold text-gray-500 mb-1">Method</p>
-              <p className="text-[#0D1B2A] font-medium capitalize">
-                {affiliate.payout_method ?? <span className="text-gray-400 italic font-normal">Not set</span>}
-              </p>
+          <h2 className="text-base font-bold text-[#0D1B2A] mb-1">Payout Information</h2>
+          <p className="text-xs text-gray-400 mb-5">Tell us how you want to be paid so we can send your commissions.</p>
+
+          <div className="grid sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Payout Method</label>
+              <select
+                value={payoutMethod}
+                onChange={e => setPayoutMethod(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-[#0D1B2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#1677FF] focus:border-transparent"
+              >
+                <option value="">Select method…</option>
+                <option value="cash_app">Cash App</option>
+                <option value="venmo">Venmo</option>
+                <option value="paypal">PayPal</option>
+                <option value="zelle">Zelle</option>
+                <option value="check">Check</option>
+                <option value="bank_transfer">Bank Transfer</option>
+              </select>
             </div>
-            <div className="p-4 bg-[#F4F6F9] rounded-xl border border-gray-200">
-              <p className="text-xs uppercase tracking-wide font-semibold text-gray-500 mb-1">Details</p>
-              <p className="text-[#0D1B2A] font-medium break-all">
-                {affiliate.payout_details ?? <span className="text-gray-400 italic font-normal">Not set</span>}
-              </p>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                {payoutMethod === 'cash_app' ? 'Your $Cashtag' :
+                 payoutMethod === 'venmo' ? 'Your @handle' :
+                 payoutMethod === 'paypal' ? 'Your PayPal email' :
+                 payoutMethod === 'zelle' ? 'Your phone or email' :
+                 payoutMethod === 'check' ? 'Name on check' :
+                 payoutMethod === 'bank_transfer' ? 'Account details' :
+                 'Your details'}
+              </label>
+              <input
+                type="text"
+                value={payoutDetails}
+                onChange={e => setPayoutDetails(e.target.value)}
+                placeholder={
+                  payoutMethod === 'cash_app' ? '$YourCashtag' :
+                  payoutMethod === 'venmo' ? '@yourhandle' :
+                  payoutMethod === 'paypal' ? 'email@example.com' :
+                  payoutMethod === 'zelle' ? 'phone or email' :
+                  'Enter details'
+                }
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-[#0D1B2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#1677FF] focus:border-transparent"
+              />
             </div>
           </div>
-          <p className="text-xs text-gray-400 border-t border-gray-100 pt-4">
-            To update your payout information, contact{' '}
+
+          {payoutError && (
+            <p className="text-red-500 text-sm mb-3">{payoutError}</p>
+          )}
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSavePayoutInfo}
+              disabled={savingPayout}
+              className="px-5 py-2.5 bg-[#1677FF] hover:bg-[#1060d0] text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
+            >
+              {savingPayout ? 'Saving…' : 'Save Payout Info'}
+            </button>
+            {payoutSaved && (
+              <span className="text-green-600 text-sm font-medium flex items-center gap-1">
+                <Check className="h-4 w-4" /> Saved!
+              </span>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-400 border-t border-gray-100 pt-4 mt-4">
+            Payouts are processed during the first week of each month for approved balances. Questions?{' '}
             <a href="mailto:NexalonCreations@gmail.com" className="text-[#1677FF] hover:underline font-medium">
               NexalonCreations@gmail.com
             </a>

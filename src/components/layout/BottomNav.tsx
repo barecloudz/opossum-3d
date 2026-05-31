@@ -1,13 +1,27 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, ShoppingCart, User } from 'lucide-react';
+import { Home, Search, ShoppingCart, User, Handshake } from 'lucide-react';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
+import { supabase } from '../../lib/supabase';
 
 export default function BottomNav() {
   const location = useLocation();
   const { openCart, getItemCount } = useCartStore();
   const { user } = useAuthStore();
   const itemCount = getItemCount();
+  const [isAffiliate, setIsAffiliate] = useState(false);
+
+  useEffect(() => {
+    if (!user) { setIsAffiliate(false); return; }
+    supabase
+      .from('affiliates')
+      .select('id')
+      .eq('status', 'approved')
+      .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+      .maybeSingle()
+      .then(({ data }) => { setIsAffiliate(!!data); });
+  }, [user]);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -66,6 +80,30 @@ export default function BottomNav() {
           </div>
           <span className="relative z-10 text-xs mt-1 font-medium text-gray-400">Cart</span>
         </button>
+
+        {/* Affiliate - only shown for approved affiliates */}
+        {isAffiliate && user && (
+          <Link
+            to="/affiliate/dashboard"
+            className="relative flex flex-col items-center justify-center w-16 h-16 transition-all btn-press"
+          >
+            {isActive('/affiliate/dashboard') && (
+              <div className="absolute inset-1 bg-[var(--color-primary)]/20 rounded-2xl animate-glow-pulse" />
+            )}
+            <div className={`relative z-10 p-2 rounded-xl transition-all ${
+              isActive('/affiliate/dashboard')
+                ? 'text-[var(--color-primary)]'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}>
+              <Handshake className={`h-6 w-6 transition-transform ${isActive('/affiliate/dashboard') ? 'scale-110' : ''}`} />
+            </div>
+            <span className={`relative z-10 text-xs mt-0.5 font-medium transition-colors ${
+              isActive('/affiliate/dashboard') ? 'text-[var(--color-primary)]' : 'text-gray-500'
+            }`}>
+              Affiliate
+            </span>
+          </Link>
+        )}
 
         {/* Account */}
         <Link
