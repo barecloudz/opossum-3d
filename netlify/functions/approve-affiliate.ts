@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from './require-admin';
 
 interface ApproveRequest {
   affiliateId: string;
@@ -62,6 +63,9 @@ const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
+
+  const authResult = await requireAdmin(event.headers as Record<string, string>);
+  if ('error' in authResult) return authResult.error;
 
   const resendApiKey = process.env.RESEND_API_KEY;
   const resendFromEmail = process.env.RESEND_FROM_EMAIL || 'Nexalon Creations <orders@resend.dev>';

@@ -516,9 +516,13 @@ export default function AffiliateDashboard() {
   const deleteShareImageFromCloudinary = async (url: string) => {
     if (!url || !url.includes('cloudinary.com') || !url.includes('affiliate-share')) return;
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       await fetch('/.netlify/functions/delete-cloudinary-images', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ url }),
       });
     } catch (err) {

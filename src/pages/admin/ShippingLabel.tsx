@@ -5,6 +5,7 @@ import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
 import { formatPrice } from '../../lib/utils';
 import { useToast } from '../../components/ui/Toast';
+import { supabase } from '../../lib/supabase';
 
 interface RateOption {
   serviceToken: string;
@@ -105,9 +106,13 @@ export default function AdminShippingLabel() {
     setLabelLoading(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/.netlify/functions/create-shipping-label', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           orderId: `manual-${Date.now()}`,
           orderNumber: `MANUAL`,

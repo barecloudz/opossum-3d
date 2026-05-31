@@ -178,9 +178,13 @@ export default function AdminOrderDetail() {
       const firstName = nameParts[0] || 'Customer';
       const lastName = nameParts.slice(1).join(' ') || firstName;
 
+      const { data: { session: labelSession } } = await supabase.auth.getSession();
       const response = await fetch('/.netlify/functions/create-shipping-label', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(labelSession?.access_token ? { 'Authorization': `Bearer ${labelSession.access_token}` } : {}),
+        },
         body: JSON.stringify({
           orderId: order.id,
           orderNumber: order.order_number,
@@ -290,9 +294,13 @@ export default function AdminOrderDetail() {
     setRefundMessage(null);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/.netlify/functions/refund-shipping-label', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ orderId: order.id }),
       });
 

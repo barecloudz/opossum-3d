@@ -2,6 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import { getShippoClient } from './shippo-client';
 import { getCorsHeaders, getRequestOrigin } from './cors-helper';
+import { requireAdmin } from './require-admin';
 
 const handler: Handler = async (event) => {
   const origin = getRequestOrigin(event.headers as Record<string, string>);
@@ -14,6 +15,9 @@ const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers: corsHeaders, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
+
+  const authResult = await requireAdmin(event.headers as Record<string, string>);
+  if ('error' in authResult) return { ...authResult.error, headers: corsHeaders };
 
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

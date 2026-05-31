@@ -1,6 +1,7 @@
 import type { Handler } from '@netlify/functions';
 import { getShippoClient, FROM_ADDRESS, DEFAULT_PARCEL } from './shippo-client';
 import { getCorsHeaders, getRequestOrigin } from './cors-helper';
+import { requireAdmin } from './require-admin';
 
 interface CreateLabelRequest {
   orderId: string;
@@ -46,6 +47,9 @@ const handler: Handler = async (event) => {
       body: JSON.stringify({ error: 'Method not allowed' }),
     };
   }
+
+  const authResult = await requireAdmin(event.headers as Record<string, string>);
+  if ('error' in authResult) return { ...authResult.error, headers: corsHeaders };
 
   try {
     const { orderId, orderNumber, recipientAddress, totalWeightOz, serviceToken } = JSON.parse(event.body || '{}') as CreateLabelRequest;

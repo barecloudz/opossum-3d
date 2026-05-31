@@ -13,7 +13,7 @@ export function useSupabaseQuery<T>(
   deps: any[] = [],
   options: QueryOptions = {}
 ) {
-  const { timeout = 10000, fetchOnMount = true } = options;
+  const { timeout = 20000, fetchOnMount = true } = options;
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(fetchOnMount);
   const [error, setError] = useState<Error | null>(null);

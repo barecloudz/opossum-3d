@@ -296,16 +296,21 @@ export default function AdminAffiliates() {
       );
 
       // Send approval email with one-click magic link — fire and forget
-      fetch('/.netlify/functions/approve-affiliate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          affiliateId: affiliate.id,
-          name: affiliate.name,
-          email: affiliate.email,
-          code: affiliate.code,
-        }),
-      }).catch(err => console.error('[Affiliates] Approval email failed:', err));
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        fetch('/.netlify/functions/approve-affiliate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({
+            affiliateId: affiliate.id,
+            name: affiliate.name,
+            email: affiliate.email,
+            code: affiliate.code,
+          }),
+        }).catch(err => console.error('[Affiliates] Approval email failed:', err));
+      });
 
     } catch (err) {
       console.error('Error approving affiliate:', err);

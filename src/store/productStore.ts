@@ -47,7 +47,7 @@ export const useProductStore = create<ProductStore>((set, get) => ({
       try {
         // Use Promise.race for a reliable timeout that doesn't depend on library support
         const timeout = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), 10000)
+          setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), 20000)
         );
 
         const query = supabase

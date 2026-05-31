@@ -39,9 +39,13 @@ async function deleteProductImages(productIds: string[]) {
   if (urls.length === 0) return;
 
   try {
+    const { data: { session } } = await supabase.auth.getSession();
     await fetch(CLOUDINARY_DELETE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+      },
       body: JSON.stringify({ urls }),
     });
   } catch (err) {

@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogOut, Handshake } from 'lucide-react';
+import { Menu, X, User, LogOut, Handshake, ShoppingBag } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
@@ -60,6 +60,13 @@ export default function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             <Link
+              to="/products"
+              className="flex items-center gap-1.5 text-theme hover:text-[var(--color-primary)] transition-colors text-sm font-medium"
+            >
+              <ShoppingBag className="h-4 w-4" />
+              Shop
+            </Link>
+            <Link
               to="/faq"
               className="text-theme hover:text-[var(--color-primary)] transition-colors text-sm font-medium"
             >
@@ -119,6 +126,14 @@ export default function Header() {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-[var(--color-border)]">
             <nav className="flex flex-col gap-3 px-2">
+              <Link
+                to="/products"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-2 py-3 px-4 bg-[var(--color-surface)] hover:bg-[var(--color-primary)]/10 border border-[var(--color-border)] hover:border-[var(--color-primary)]/50 rounded-xl text-theme font-medium transition-all"
+              >
+                <ShoppingBag className="h-5 w-5" />
+                Shop
+              </Link>
               <Link
                 to="/faq"
                 onClick={() => setMobileMenuOpen(false)}
