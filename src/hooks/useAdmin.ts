@@ -5,13 +5,12 @@ import type { Profile, QuoteRequest } from '../types';
 
 export function useCustomers() {
   const { data, isLoading, error, refetch } = useSupabaseQuery<Profile[]>(
-    (signal) =>
+    () =>
       supabase
         .from('profiles')
         .select('*')
         .eq('role', 'customer')
-        .order('created_at', { ascending: false })
-        .abortSignal(signal),
+        .order('created_at', { ascending: false }),
     []
   );
 
@@ -30,34 +29,26 @@ export function useTeamMembers() {
     setError(null);
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out. Please try again.')), 10000)
+      );
 
-      const { data: admins, error: adminError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'admin')
-        .order('created_at', { ascending: false })
-        .abortSignal(controller.signal);
+      const [adminsResult, usersResult] = await Promise.race([
+        Promise.all([
+          supabase.from('profiles').select('*').eq('role', 'admin').order('created_at', { ascending: false }),
+          supabase.from('profiles').select('*').order('email', { ascending: true }),
+        ]),
+        timeout,
+      ]);
 
       if (!mountedRef.current) return;
-      if (adminError) throw adminError;
-      setTeamMembers(admins || []);
-
-      const { data: users, error: usersError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('email', { ascending: true })
-        .abortSignal(controller.signal);
-
-      clearTimeout(timeoutId);
-      if (!mountedRef.current) return;
-      if (usersError) throw usersError;
-      setAllUsers(users || []);
+      if (adminsResult.error) throw adminsResult.error;
+      if (usersResult.error) throw usersResult.error;
+      setTeamMembers(adminsResult.data || []);
+      setAllUsers(usersResult.data || []);
     } catch (err: any) {
       if (mountedRef.current) {
-        const msg = err.name === 'AbortError' ? 'Request timed out. Please try again.' : err.message;
-        setError(new Error(msg));
+        setError(new Error(err.message || 'Failed to load team members'));
       }
     } finally {
       if (mountedRef.current) setIsLoading(false);
@@ -93,12 +84,11 @@ export function useTeamMembers() {
 
 export function useQuoteRequests() {
   const { data, isLoading, error, refetch } = useSupabaseQuery<QuoteRequest[]>(
-    (signal) =>
+    () =>
       supabase
         .from('quote_requests')
         .select('*')
-        .order('created_at', { ascending: false })
-        .abortSignal(signal),
+        .order('created_at', { ascending: false }),
     []
   );
 

@@ -10,12 +10,11 @@ export function useCategories(options: UseCategoriesOptions = {}) {
   const { includeInactive = false } = options;
 
   const { data, isLoading, error, refetch } = useSupabaseQuery<Category[]>(
-    (signal) => {
+    () => {
       let query = supabase
         .from('categories')
         .select('*')
-        .order('display_order', { ascending: true })
-        .abortSignal(signal);
+        .order('display_order', { ascending: true });
 
       if (!includeInactive) {
         query = query.eq('is_active', true);

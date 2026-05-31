@@ -4,7 +4,7 @@ import type { Product } from '../types';
 
 export function useProduct(slug: string) {
   const { data, isLoading, error, refetch } = useSupabaseQuery<Product>(
-    (signal) =>
+    () =>
       supabase
         .from('products')
         .select(`
@@ -15,7 +15,6 @@ export function useProduct(slug: string) {
         `)
         .eq('slug', slug)
         .eq('is_active', true)
-        .abortSignal(signal)
         .single(),
     [slug],
     { fetchOnMount: !!slug }
