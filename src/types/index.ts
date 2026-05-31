@@ -278,6 +278,9 @@ export interface Affiliate {
   commission_rate: number | null;
   payout_method: string | null;
   payout_details: string | null;
+  share_title: string | null;
+  share_description: string | null;
+  share_image_url: string | null;
   admin_notes: string | null;
   created_at: string;
   updated_at: string;

@@ -12,6 +12,13 @@
   # These are client-side keys protected by Row Level Security, not secrets
   SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY,VITE_STRIPE_PUBLISHABLE_KEY"
 
+# Affiliate share links with custom OG meta tags — must come before SPA catch-all
+[[redirects]]
+  from = "/share/*"
+  to = "/.netlify/functions/share-link"
+  status = 200
+  force = true
+
 # SPA routing - redirect all routes to index.html for React Router
 [[redirects]]
   from = "/*"

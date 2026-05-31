@@ -16,6 +16,8 @@ import {
   Lock,
   X,
   Tag,
+  Share2,
+  ChevronDown,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
@@ -262,6 +264,15 @@ export default function AffiliateDashboard() {
   const [payoutSaved, setPayoutSaved] = useState(false);
   const [payoutError, setPayoutError] = useState('');
 
+  // Share link customization
+  const [shareCustomOpen, setShareCustomOpen] = useState(false);
+  const [shareTitle, setShareTitle] = useState('');
+  const [shareDescription, setShareDescription] = useState('');
+  const [shareImageUrl, setShareImageUrl] = useState('');
+  const [shareImageUploading, setShareImageUploading] = useState(false);
+  const [savingShare, setSavingShare] = useState(false);
+  const [shareSaved, setShareSaved] = useState(false);
+
   const loadDashboard = useCallback(async (affiliateRecord: Affiliate) => {
     const affiliateId = affiliateRecord.id;
 
@@ -404,6 +415,9 @@ export default function AffiliateDashboard() {
         setAffiliate(record);
         setPayoutMethod(record.payout_method ?? '');
         setPayoutDetails(record.payout_details ?? '');
+        setShareTitle(record.share_title ?? '');
+        setShareDescription(record.share_description ?? '');
+        setShareImageUrl(record.share_image_url ?? '');
 
         if (record.status === 'pending') { setPageState('pending'); return; }
         if (record.status === 'rejected' || record.status === 'suspended') { setPageState('rejected'); return; }
@@ -475,6 +489,37 @@ export default function AffiliateDashboard() {
     setAffiliate(prev => prev ? { ...prev, payout_method: payoutMethod, payout_details: payoutDetails.trim() } : prev);
     setPayoutSaved(true);
     setTimeout(() => setPayoutSaved(false), 3000);
+  };
+
+  const handleSaveShareCustomization = async () => {
+    if (!affiliate) return;
+    setSavingShare(true);
+    const { error } = await supabase
+      .from('affiliates')
+      .update({
+        share_title: shareTitle.trim() || null,
+        share_description: shareDescription.trim() || null,
+        share_image_url: shareImageUrl.trim() || null,
+      })
+      .eq('id', affiliate.id);
+    setSavingShare(false);
+    if (error) { alert('Failed to save. Please try again.'); return; }
+    setAffiliate(prev => prev ? { ...prev, share_title: shareTitle.trim() || null, share_description: shareDescription.trim() || null, share_image_url: shareImageUrl.trim() || null } : prev);
+    setShareSaved(true);
+    setTimeout(() => setShareSaved(false), 3000);
+  };
+
+  const handleShareImageUpload = async (file: File) => {
+    setShareImageUploading(true);
+    try {
+      const { uploadToCloudinary } = await import('../../lib/cloudinary');
+      const url = await uploadToCloudinary(file, 'affiliate-share');
+      setShareImageUrl(url);
+    } catch (err) {
+      alert('Image upload failed. Please try again.');
+    } finally {
+      setShareImageUploading(false);
+    }
   };
 
   if (pageState === 'loading' || pageState === 'no-record') return <LoadingScreen />;
@@ -711,6 +756,109 @@ export default function AffiliateDashboard() {
               <p className="text-xs text-gray-400 mt-3">
                 Add <span className="font-mono text-[#1677FF]">?sub=instagram</span> (or tiktok, youtube, etc.) to your link to track which platform drives traffic.
               </p>
+            </div>
+          )}
+        </div>
+
+        {/* Share Link Card */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Share2 className="h-5 w-5 text-[#1677FF]" />
+            <h2 className="text-base font-bold text-[#0D1B2A]">Your Share Link</h2>
+          </div>
+
+          {/* Share URL */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-[#F4F6F9] rounded-xl border border-gray-200 mb-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-500 font-medium mb-0.5 uppercase tracking-wide">Share URL (with OG preview)</p>
+              <p className="font-mono text-sm text-[#0D1B2A] truncate">{`${window.location.origin}/share/${affiliate.code}`}</p>
+            </div>
+            <CopyButton value={`${window.location.origin}/share/${affiliate.code}`} label="Copy Share Link" />
+          </div>
+
+          {customerDiscountRate > 0 && (
+            <p className="text-xs text-gray-500 mb-4">
+              When someone opens your share link on social media, they'll see a preview that says <span className="font-semibold text-green-700">"{customerDiscountRate > 0 ? `Get ${customerDiscountRate}% off at Nexalon Creations!` : 'Shop Nexalon Creations'}"</span> — use the customization below to change this.
+            </p>
+          )}
+
+          {/* Customize toggle */}
+          <button
+            onClick={() => setShareCustomOpen(!shareCustomOpen)}
+            className="flex items-center gap-2 text-sm font-semibold text-[#1677FF] hover:text-blue-700 transition-colors"
+          >
+            <span>{shareCustomOpen ? 'Hide' : 'Customize'} Link Preview</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${shareCustomOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {shareCustomOpen && (
+            <div className="mt-4 pt-4 border-t border-gray-100 space-y-4">
+              <p className="text-xs text-gray-400">Customize what people see when you share this link on Instagram, TikTok, iMessage, etc. Leave fields blank to use the default.</p>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Preview Title</label>
+                <input
+                  type="text"
+                  value={shareTitle}
+                  onChange={e => setShareTitle(e.target.value)}
+                  placeholder={customerDiscountRate > 0 ? `Get ${customerDiscountRate}% off at Nexalon Creations!` : 'Nexalon Creations - Custom 3D Printing & Laser Engraving'}
+                  maxLength={100}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-[#0D1B2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#1677FF] focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Preview Description</label>
+                <textarea
+                  value={shareDescription}
+                  onChange={e => setShareDescription(e.target.value)}
+                  placeholder={`Use my link for an exclusive discount on custom 3D printed and laser engraved products.`}
+                  maxLength={200}
+                  rows={3}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-[#0D1B2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#1677FF] focus:border-transparent resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Preview Image</label>
+                {shareImageUrl && (
+                  <div className="mb-2 relative w-full max-w-xs">
+                    <img src={shareImageUrl} alt="Share preview" className="w-full h-32 object-cover rounded-xl border border-gray-200" />
+                    <button
+                      onClick={() => setShareImageUrl('')}
+                      className="absolute top-2 right-2 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center text-xs hover:bg-black/80"
+                    >x</button>
+                  </div>
+                )}
+                <label className={`flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-[#1677FF] hover:bg-blue-50 transition-all text-sm text-gray-500 ${shareImageUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleShareImageUpload(f); }}
+                  />
+                  {shareImageUploading ? 'Uploading...' : shareImageUrl ? 'Replace image' : 'Upload a custom image (1200x630 recommended)'}
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  onClick={handleSaveShareCustomization}
+                  disabled={savingShare}
+                  className="px-5 py-2.5 bg-[#1677FF] hover:bg-[#1060d0] text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
+                >
+                  {savingShare ? 'Saving...' : 'Save Customization'}
+                </button>
+                {(shareTitle || shareDescription || shareImageUrl) && (
+                  <button
+                    onClick={() => { setShareTitle(''); setShareDescription(''); setShareImageUrl(''); }}
+                    className="px-4 py-2.5 text-sm text-gray-500 hover:text-red-500 transition-colors"
+                  >
+                    Reset to default
+                  </button>
+                )}
+                {shareSaved && <span className="text-green-600 text-sm font-medium flex items-center gap-1"><Check className="h-4 w-4" /> Saved!</span>}
+              </div>
             </div>
           )}
         </div>
