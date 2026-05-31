@@ -323,7 +323,7 @@ export default function AdminThemes() {
                   className="font-bold text-lg"
                   style={{ color: theme.primary_color }}
                 >
-                  OPOSSUM
+                  NEXALON
                 </span>
                 <div className="flex gap-2">
                   <span style={{ color: theme.text_color, opacity: 0.7 }}>Products</span>

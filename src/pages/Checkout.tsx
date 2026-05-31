@@ -522,6 +522,7 @@ export default function Checkout() {
           quantity: item.quantity,
           unit_price: unitPrice,
           total_price: unitPrice * item.quantity,
+          customization_image_url: item.customization_image_url || null,
         };
       });
 
@@ -655,14 +656,13 @@ export default function Checkout() {
     navigate(`/order-confirmation/${confirmedOrderId}`);
 
     // Auto-generate shipping label in background (non-blocking)
-    // DISABLED for code-testing branch
-    // if (formData.address !== 'Local Pickup') {
-    //   fetch('/.netlify/functions/auto-generate-shipping-label', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ orderId: confirmedOrderId }),
-    //   }).catch(err => console.error('[Checkout] Auto label generation failed:', err));
-    // }
+    if (import.meta.env.VITE_DEV_MODE !== 'true' && formData.address !== 'Local Pickup') {
+      fetch('/.netlify/functions/auto-generate-shipping-label', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: confirmedOrderId }),
+      }).catch(err => console.error('[Checkout] Auto label generation failed:', err));
+    }
 
     // Send admin notification email in background (non-blocking)
     const orderPayload = {
@@ -785,6 +785,7 @@ export default function Checkout() {
           quantity: item.quantity,
           unit_price: unitPrice,
           total_price: unitPrice * item.quantity,
+          customization_image_url: item.customization_image_url || null,
         };
       });
 
@@ -876,15 +877,14 @@ export default function Checkout() {
       clearCart();
       navigate(`/order-confirmation/${order.id}`);
 
-      // Auto-generate shipping label in background
-      // DISABLED for code-testing branch
-      // if (formData.address !== 'Local Pickup') {
-      //   fetch('/.netlify/functions/auto-generate-shipping-label', {
-      //     method: 'POST',
-      //     headers: { 'Content-Type': 'application/json' },
-      //     body: JSON.stringify({ orderId: order.id }),
-      //   }).catch(err => console.error('[Checkout] Auto label generation failed:', err));
-      // }
+      // Auto-generate shipping label in background (non-blocking)
+      if (import.meta.env.VITE_DEV_MODE !== 'true' && formData.address !== 'Local Pickup') {
+        fetch('/.netlify/functions/auto-generate-shipping-label', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: order.id }),
+        }).catch(err => console.error('[Checkout] Auto label generation failed:', err));
+      }
 
       // Send admin notification email
       const testOrderPayload = {
@@ -1360,7 +1360,7 @@ export default function Checkout() {
               Continue to Payment
             </Button>
 
-            {isAdmin && (
+            {isAdmin && import.meta.env.VITE_DEV_MODE === 'true' && (
               <button
                 type="button"
                 onClick={handleTestPayment}

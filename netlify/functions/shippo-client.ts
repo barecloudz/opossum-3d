@@ -24,7 +24,7 @@ export const FROM_ADDRESS = {
   state: 'SC',
   zip: '29661',
   country: 'US',
-  email: 'printsbythepossum@gmail.com',
+  email: 'NexalonCreations@gmail.com',
   phone: '8283882151',
 };
 

@@ -10,7 +10,7 @@ interface CartState {
   isOpen: boolean;
 
   // Actions
-  addItem: (product: Product, variant?: ProductVariant, quantity?: number) => void;
+  addItem: (product: Product, variant?: ProductVariant, quantity?: number, customizationImageUrl?: string) => void;
   removeItem: (productId: string, variantId?: string) => void;
   updateQuantity: (productId: string, quantity: number, variantId?: string) => void;
   clearCart: () => void;
@@ -29,7 +29,7 @@ export const useCartStore = create<CartState>()(
       items: [],
       isOpen: false,
 
-      addItem: (product, variant, quantity = 1) => {
+      addItem: (product, variant, quantity = 1, customizationImageUrl?: string) => {
         // Validate quantity - must be positive integer, max 99
         const validQuantity = Math.min(
           MAX_QUANTITY_PER_ITEM,
@@ -37,10 +37,18 @@ export const useCartStore = create<CartState>()(
         );
 
         set((state) => {
+          // Customized items are always unique line items (each logo upload is distinct)
+          if (customizationImageUrl) {
+            return {
+              items: [...state.items, { product, variant, quantity: validQuantity, customization_image_url: customizationImageUrl }],
+            };
+          }
+
           const existingIndex = state.items.findIndex(
             (item) =>
               item.product.id === product.id &&
-              item.variant?.id === variant?.id
+              item.variant?.id === variant?.id &&
+              !item.customization_image_url
           );
 
           if (existingIndex > -1) {
@@ -108,7 +116,7 @@ export const useCartStore = create<CartState>()(
       },
     }),
     {
-      name: 'opossum-cart',
+      name: 'nexalon-cart',
       partialize: (state) => ({ items: state.items }),
     }
   )

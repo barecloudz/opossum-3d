@@ -29,6 +29,7 @@ export interface Product {
   display_order: number;
   print_time_hours: number | null;
   weight_oz: number | null;
+  is_customizable: boolean;
   created_at: string;
   updated_at: string;
   images?: ProductImage[];
@@ -71,6 +72,7 @@ export interface CartItem {
   product: Product;
   variant?: ProductVariant;
   quantity: number;
+  customization_image_url?: string;
 }
 
 export interface Address {
@@ -131,6 +133,7 @@ export interface OrderItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+  customization_image_url: string | null;
   created_at: string;
 }
 

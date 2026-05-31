@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Package, LogOut, Settings, ChevronRight, MapPin, Clock, Handshake } from 'lucide-react';
+import { User, Package, LogOut, Settings, ChevronRight, MapPin, Clock, Handshake, KeyRound } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
 import Button from '../components/ui/Button';
@@ -19,7 +19,7 @@ interface OrderWithItems extends Order {
 
 export default function Account() {
   const navigate = useNavigate();
-  const { user, profile, signOut, updateProfile } = useAuthStore();
+  const { user, profile, isLoading: authLoading, signOut, updateProfile } = useAuthStore();
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState<'orders' | 'settings'>('orders');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -27,6 +27,13 @@ export default function Account() {
   const [isAffiliate, setIsAffiliate] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Password change state
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: profile?.first_name || '',
@@ -47,9 +54,19 @@ export default function Account() {
   }, [profile]);
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      if (!user) return;
+    if (authLoading) return; // Wait until auth is resolved
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
+    let cancelled = false;
+    // Failsafe: never leave the spinner spinning forever
+    const failsafe = setTimeout(() => {
+      if (!cancelled) setIsLoading(false);
+    }, 10000);
+
+    const fetchOrders = async () => {
       try {
         const { data, error } = await supabase
           .from('orders')
@@ -60,17 +77,24 @@ export default function Account() {
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
+        if (cancelled) return;
         if (error) throw error;
         setOrders(data || []);
       } catch (err) {
         console.error('Error fetching orders:', err);
       } finally {
-        setIsLoading(false);
+        clearTimeout(failsafe);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     fetchOrders();
-  }, [user]);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(failsafe);
+    };
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (!user) return;
@@ -82,6 +106,21 @@ export default function Account() {
       .maybeSingle()
       .then(({ data }) => { if (data) setIsAffiliate(true); });
   }, [user]);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    if (newPassword.length < 6) { setPasswordError('Password must be at least 6 characters.'); return; }
+    if (newPassword !== confirmPassword) { setPasswordError('Passwords do not match.'); return; }
+    setPasswordSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPasswordSaving(false);
+    if (error) { setPasswordError(error.message); return; }
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordChanged(true);
+    setTimeout(() => setPasswordChanged(false), 4000);
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -396,6 +435,40 @@ export default function Account() {
                 </span>
               </div>
             </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-[var(--color-border)]">
+            <div className="flex items-center gap-2 mb-4">
+              <KeyRound className="h-5 w-5 text-[var(--color-primary)]" />
+              <h3 className="text-lg font-semibold text-theme">Change Password</h3>
+            </div>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="New Password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Min 6 characters"
+                />
+                <Input
+                  label="Confirm New Password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat password"
+                />
+              </div>
+              {passwordError && (
+                <p className="text-red-500 text-sm">{passwordError}</p>
+              )}
+              {passwordChanged && (
+                <p className="text-green-500 text-sm font-medium">Password changed successfully.</p>
+              )}
+              <Button type="submit" isLoading={passwordSaving}>
+                Update Password
+              </Button>
+            </form>
           </div>
 
           <div className="mt-8 pt-6 border-t border-[var(--color-border)]">

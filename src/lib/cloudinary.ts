@@ -5,7 +5,7 @@ export async function uploadToCloudinary(file: File, folder: string): Promise<st
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', UPLOAD_PRESET);
-  formData.append('folder', `opossum/${folder}`);
+  formData.append('folder', `nexalon/${folder}`);
 
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,

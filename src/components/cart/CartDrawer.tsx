@@ -1,4 +1,4 @@
-import { X, ShoppingBag, Minus, Plus, Trash2 } from 'lucide-react';
+import { X, ShoppingBag, Minus, Plus, Trash2, ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCartStore } from '../../store/cartStore';
 import { formatPrice } from '../../lib/utils';
@@ -70,6 +70,18 @@ export default function CartDrawer() {
                       <h3 className="text-theme font-medium truncate">{item.product.name}</h3>
                       {item.variant && (
                         <p className="text-theme opacity-60 text-sm">{item.variant.name}</p>
+                      )}
+                      {item.customization_image_url && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <img
+                            src={item.customization_image_url}
+                            alt="Custom artwork"
+                            className="w-7 h-7 rounded object-contain border border-[var(--color-border)] bg-white p-0.5"
+                          />
+                          <span className="text-theme opacity-50 text-xs flex items-center gap-0.5">
+                            <ImageIcon className="h-3 w-3" /> Custom artwork
+                          </span>
+                        </div>
                       )}
                       <p className="text-[var(--color-primary)] font-semibold mt-1">
                         {formatPrice(itemPrice)}

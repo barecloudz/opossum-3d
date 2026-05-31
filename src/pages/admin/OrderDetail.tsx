@@ -387,6 +387,22 @@ export default function AdminOrderDetail() {
                         <p className="text-gray-500 text-sm">{item.variant_name}</p>
                       )}
                       <p className="text-gray-400 text-sm">Qty: {item.quantity}</p>
+                      {item.customization_image_url && (
+                        <a
+                          href={item.customization_image_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 flex items-center gap-2 group"
+                          title="View full size"
+                        >
+                          <img
+                            src={item.customization_image_url}
+                            alt="Customer artwork"
+                            className="w-12 h-12 object-contain rounded-lg border border-gray-200 bg-white p-1"
+                          />
+                          <span className="text-xs text-blue-500 group-hover:underline">View artwork</span>
+                        </a>
+                      )}
                     </div>
                   </div>
                   <span className="text-brand-neon font-medium">

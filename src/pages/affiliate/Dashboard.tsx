@@ -264,6 +264,9 @@ export default function AffiliateDashboard() {
   const [payoutSaved, setPayoutSaved] = useState(false);
   const [payoutError, setPayoutError] = useState('');
 
+  // Conversion detail modal
+  const [selectedConversion, setSelectedConversion] = useState<AffiliateConversion | null>(null);
+
   // Share link customization
   const [shareCustomOpen, setShareCustomOpen] = useState(false);
   const [shareTitle, setShareTitle] = useState('');
@@ -924,23 +927,28 @@ export default function AffiliateDashboard() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {conversions.map((conv) => {
-                    const name = conv.order?.guest_name || conv.order?.guest_email || '-';
-                    const initials = conv.order?.guest_name
-                      ? conv.order.guest_name.trim().split(/\s+/).map((w: string) => w[0].toUpperCase()).slice(0, 2).join('. ') + '.'
-                      : name;
+                    const customerName = conv.order?.guest_name || conv.order?.guest_email?.split('@')[0] || 'Customer';
                     const items = conv.order?.items ?? [];
                     const itemSummary = items.length > 0
-                      ? items.map((i: { product_name: string; quantity: number }) =>
-                          `${i.quantity}x ${i.product_name}`
-                        ).join(', ')
-                      : '-';
+                      ? items.map((i: { product_name: string; quantity: number }) => `${i.quantity}x ${i.product_name}`).join(', ')
+                      : null;
                     return (
-                      <tr key={conv.id} className="hover:bg-gray-50 transition-colors">
+                      <tr
+                        key={conv.id}
+                        onClick={() => setSelectedConversion(conv)}
+                        className="hover:bg-blue-50 cursor-pointer transition-colors"
+                      >
                         <td className="px-6 py-4 font-semibold text-[#0D1B2A]">
-                          {conv.order ? `#${conv.order.order_number}` : '-'}
+                          {conv.order ? `#${conv.order.order_number}` : <span className="text-gray-300 text-xs">Pending</span>}
                         </td>
-                        <td className="px-6 py-4 text-gray-600">{initials}</td>
-                        <td className="px-6 py-4 text-gray-500 max-w-[180px] truncate" title={itemSummary}>{itemSummary}</td>
+                        <td className="px-6 py-4 text-gray-600">
+                          {conv.order ? customerName : <span className="text-gray-300 text-xs">-</span>}
+                        </td>
+                        <td className="px-6 py-4 text-gray-500 max-w-[180px] truncate">
+                          {itemSummary
+                            ? <span title={itemSummary}>{itemSummary}</span>
+                            : <span className="text-gray-300 text-xs">-</span>}
+                        </td>
                         <td className="px-6 py-4 text-gray-500">{formatDate(conv.created_at)}</td>
                         <td className="px-6 py-4 text-right font-bold text-[#1677FF]">{formatCurrency(conv.commission_amount)}</td>
                         <td className="px-6 py-4 text-center"><ConversionStatusBadge status={conv.status} /></td>
@@ -1363,6 +1371,77 @@ export default function AffiliateDashboard() {
         )}
 
       </div>
+
+      {/* ── CONVERSION DETAIL MODAL ── */}
+      {selectedConversion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedConversion(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="bg-[#F4F6F9] border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-[#0D1B2A]">
+                  {selectedConversion.order ? `Order #${selectedConversion.order.order_number}` : 'Conversion Details'}
+                </h2>
+                <p className="text-xs text-gray-400 mt-0.5">{formatDate(selectedConversion.created_at)}</p>
+              </div>
+              <button onClick={() => setSelectedConversion(null)} className="text-gray-400 hover:text-[#0D1B2A] transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Commission highlight */}
+              <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl p-4">
+                <div>
+                  <p className="text-xs text-blue-400 font-semibold uppercase tracking-wide">Your Commission</p>
+                  <p className="text-2xl font-black text-[#1677FF]">{formatCurrency(selectedConversion.commission_amount)}</p>
+                </div>
+                <ConversionStatusBadge status={selectedConversion.status} />
+              </div>
+
+              {/* Items ordered */}
+              {selectedConversion.order?.items && selectedConversion.order.items.length > 0 ? (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Items Ordered</p>
+                  <div className="divide-y divide-gray-100">
+                    {selectedConversion.order.items.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between py-2.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <ShoppingBag className="h-3.5 w-3.5 text-[#1677FF]" />
+                          </div>
+                          <span className="text-sm text-[#0D1B2A] font-medium">{item.product_name}</span>
+                        </div>
+                        <span className="text-sm text-gray-500 font-semibold ml-3">x{item.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <p className="text-gray-400 text-sm">Order items will appear here once the order is confirmed.</p>
+                </div>
+              )}
+
+              {/* Order summary */}
+              <div className="bg-gray-50 rounded-xl p-4 space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Order Total</span>
+                  <span className="font-semibold text-[#0D1B2A]">{formatCurrency(selectedConversion.order_total)}</span>
+                </div>
+                {selectedConversion.order && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Placed</span>
+                    <span className="text-[#0D1B2A]">{formatDate(selectedConversion.order.created_at)}</span>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-400 text-center">Customer address and payment details are not shown for privacy.</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── UPGRADE MODAL ── */}
       {showUpgradeModal && (() => {

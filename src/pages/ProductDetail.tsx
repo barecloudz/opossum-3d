@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check, ChevronDown, ChevronUp, Upload, X as XIcon, ImageIcon } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { ProductDetailSkeleton } from '../components/ui/Skeleton';
 import RelatedProducts from '../components/product/RelatedProducts';
@@ -23,6 +23,8 @@ export default function ProductDetail() {
   const [isAdding, setIsAdding] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+  const [customizationImageUrl, setCustomizationImageUrl] = useState('');
+  const [customizationUploading, setCustomizationUploading] = useState(false);
   const { addItem, openCart } = useCartStore();
 
   // Swipe support for main image
@@ -104,9 +106,27 @@ export default function ProductDetail() {
     ? Math.round(((product.compare_at_price! - product.price) / product.compare_at_price!) * 100)
     : 0;
 
+  const handleCustomizationUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Please upload an image under 10MB.');
+      return;
+    }
+    setCustomizationUploading(true);
+    try {
+      const { uploadToCloudinary } = await import('../lib/cloudinary');
+      const url = await uploadToCloudinary(file, 'customizations');
+      setCustomizationImageUrl(url);
+    } catch {
+      alert('Upload failed. Please try again.');
+    } finally {
+      setCustomizationUploading(false);
+    }
+  };
+
   const handleAddToCart = () => {
     setIsAdding(true);
-    addItem(product, selectedVariant, quantity);
+    addItem(product, selectedVariant, quantity, customizationImageUrl || undefined);
     setTimeout(() => {
       setIsAdding(false);
       openCart();
@@ -413,6 +433,52 @@ export default function ProductDetail() {
               </div>
             )}
 
+            {/* Logo / Artwork Upload — only for customizable products */}
+            {product.is_customizable && (
+              <div className="rounded-2xl border-2 border-dashed border-[var(--color-primary)]/40 bg-[var(--color-primary)]/5 p-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <ImageIcon className="h-4 w-4 text-[var(--color-primary)]" />
+                  <p className="text-sm font-semibold text-[#0D1B2A]">Upload Your Logo / Artwork</p>
+                  <span className="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">Required</span>
+                </div>
+                <p className="text-xs text-gray-500 mb-3">
+                  This product is custom-engraved or printed with your design. Upload a high-quality PNG, JPG, or SVG file.
+                </p>
+
+                {customizationImageUrl ? (
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-white flex-shrink-0">
+                      <img src={customizationImageUrl} alt="Your uploaded artwork" className="w-full h-full object-contain p-1" />
+                      <button
+                        onClick={() => setCustomizationImageUrl('')}
+                        className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                      >
+                        <XIcon className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div>
+                      <p className="text-green-600 text-sm font-semibold flex items-center gap-1">
+                        <Check className="h-4 w-4" /> Artwork uploaded
+                      </p>
+                      <label className="mt-1 text-xs text-[var(--color-primary)] underline cursor-pointer hover:opacity-80">
+                        Replace
+                        <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleCustomizationUpload(f); e.target.value = ''; }} />
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <label className={`flex flex-col items-center justify-center gap-2 py-6 rounded-xl border-2 border-dashed border-gray-300 bg-white cursor-pointer hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 transition-all ${customizationUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleCustomizationUpload(f); e.target.value = ''; }} />
+                    <Upload className="h-6 w-6 text-gray-400" />
+                    <span className="text-sm text-gray-500 font-medium">
+                      {customizationUploading ? 'Uploading...' : 'Click to upload your logo'}
+                    </span>
+                    <span className="text-xs text-gray-400">PNG, JPG, SVG up to 10MB</span>
+                  </label>
+                )}
+              </div>
+            )}
+
             {/* Quantity */}
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-3">
@@ -444,12 +510,21 @@ export default function ProductDetail() {
                 onClick={handleAddToCart}
                 size="lg"
                 className={`flex-1 btn-press ${isAdding ? 'animate-cart-bounce' : ''}`}
-                disabled={stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock}
+                disabled={
+                  (stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock) ||
+                  (product.is_customizable && !customizationImageUrl) ||
+                  customizationUploading
+                }
               >
                 {isAdding ? (
                   <>
                     <Check className="h-5 w-5 mr-2" />
                     Added!
+                  </>
+                ) : product.is_customizable && !customizationImageUrl ? (
+                  <>
+                    <Upload className="h-5 w-5 mr-2" />
+                    Upload Artwork to Continue
                   </>
                 ) : (
                   <>

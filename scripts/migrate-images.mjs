@@ -77,7 +77,7 @@ function parseSupabaseUrl(url) {
 async function uploadToCloudinary(sourceUrl, folder) {
   try {
     const result = await cloudinary.uploader.upload(sourceUrl, {
-      folder:        `opossum/${folder}`,
+      folder:        `nexalon/${folder}`,
       resource_type: 'image',
       // Preserve the original filename as the public_id where possible
       use_filename:       true,
@@ -236,7 +236,7 @@ async function migrateExampleWorks() {
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('=== Opossum Image Migration: Supabase Storage → Cloudinary ===');
+  console.log('=== Nexalon Image Migration: Supabase Storage → Cloudinary ===');
   console.log('Cloudinary fetches each file directly — no manual re-uploading.\n');
 
   await migrateProductImages();

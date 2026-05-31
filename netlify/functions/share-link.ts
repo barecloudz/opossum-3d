@@ -2,7 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 
 const DEFAULT_IMAGE = 'https://res.cloudinary.com/dblvtidrh/image/upload/v1780196149/nexalon/banners/it9xqsyawgzke7colzh0.jpg';
-const SITE_URL = 'https://nexaloncreations.netlify.app';
+const SITE_URL = 'https://nexaloncreations.com';
 
 export const handler: Handler = async (event) => {
   // Extract affiliate code from path: /share/CODE

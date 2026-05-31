@@ -161,7 +161,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'opossum-auth',
+      name: 'nexalon-auth',
       partialize: () => ({}), // Don't persist auth state to localStorage
     }
   )
