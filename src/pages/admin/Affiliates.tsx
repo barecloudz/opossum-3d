@@ -186,11 +186,16 @@ export default function AdminAffiliates() {
         )
       );
 
-      // Send approval email — fire and forget
-      fetch('/.netlify/functions/send-affiliate-approval', {
+      // Send approval email with one-click magic link — fire and forget
+      fetch('/.netlify/functions/approve-affiliate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: affiliate.name, email: affiliate.email, code: affiliate.code }),
+        body: JSON.stringify({
+          affiliateId: affiliate.id,
+          name: affiliate.name,
+          email: affiliate.email,
+          code: affiliate.code,
+        }),
       }).catch(err => console.error('[Affiliates] Approval email failed:', err));
 
     } catch (err) {
