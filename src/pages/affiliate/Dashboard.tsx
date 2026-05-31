@@ -560,7 +560,7 @@ export default function AffiliateDashboard() {
                 Here's how your referrals are performing
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex items-center gap-3">
               <div className="flex items-center gap-3 bg-white/15 border border-white/25 rounded-2xl px-5 py-3">
                 <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
                   <DollarSign className="h-5 w-5 text-white" />
@@ -575,7 +575,8 @@ export default function AffiliateDashboard() {
                 className="flex items-center gap-1.5 bg-yellow-400 hover:bg-yellow-300 text-yellow-900 font-bold text-sm px-4 py-2.5 rounded-xl transition-colors shadow-sm"
               >
                 <ArrowUp className="h-4 w-4" />
-                Increase your Commission
+                <span className="hidden sm:inline">Increase your Commission</span>
+                <span className="sm:hidden">Upgrade</span>
               </button>
             </div>
           </div>
