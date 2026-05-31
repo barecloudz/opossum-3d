@@ -391,6 +391,35 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── CREATIVITY BUTTON ────────────────────────────────── */}
+      <div className="px-4 py-14 bg-[#F8FAFC]">
+        <div className="max-w-2xl mx-auto text-center">
+          <p className="text-[#1677FF] text-sm font-semibold uppercase tracking-widest mb-2">Custom Requests</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-[#0D1B2A] mb-3">Have an idea you want brought to life?</h2>
+          <p className="text-gray-500 text-sm mb-8 max-w-lg mx-auto leading-relaxed">
+            Click the Creativity button below to get started. You'll be taken to a quick form where you can tell us exactly what you want, add your details, and submit your request directly to our team. Once submitted, your request will be sent to nexaloncreations@gmail.com and we'll get back to you as soon as possible.
+          </p>
+          <a
+            href="mailto:nexaloncreations@gmail.com?subject=Custom%20Request"
+            className="inline-block group"
+          >
+            <div className="relative mx-auto w-52 h-52 md:w-64 md:h-64 rounded-full overflow-hidden shadow-2xl ring-4 ring-[#1677FF]/20 hover:ring-[#1677FF]/50 transition-all duration-300 hover:scale-105 cursor-pointer">
+              <img
+                src="https://res.cloudinary.com/dblvtidrh/image/upload/v1780197742/nexalon/misc/scnjp9js3tybrv4is50j.jpg"
+                alt="Submit a creative idea"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-[#1677FF]/0 group-hover:bg-[#1677FF]/10 transition-colors duration-300 flex items-end justify-center pb-5">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[#1677FF] text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">
+                  Send Your Idea →
+                </span>
+              </div>
+            </div>
+            <p className="mt-4 text-sm font-semibold text-[#1677FF] group-hover:underline">Creativity Button</p>
+          </a>
+        </div>
+      </div>
+
       {/* ── CTA BANNER ───────────────────────────────────────── */}
       <div className="relative overflow-hidden">
         <img src="/images/hexagon-wall-background.jpg" alt="" className="absolute inset-0 w-full h-full object-cover opacity-20" />
