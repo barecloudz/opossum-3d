@@ -70,8 +70,12 @@ export default function BottomNav() {
           onClick={openCart}
           className="relative flex flex-col items-center justify-center w-16 h-16 btn-press"
         >
-          <div className="relative z-10 p-3 bg-[var(--color-primary)] rounded-2xl shadow-neon transition-transform hover:scale-105 active:scale-95">
-            <ShoppingCart className="h-6 w-6 text-black" />
+          <div className={`relative z-10 p-3 rounded-2xl transition-all hover:scale-105 active:scale-95 ${
+            itemCount > 0
+              ? 'bg-[var(--color-primary)] shadow-neon'
+              : 'bg-gray-700'
+          }`}>
+            <ShoppingCart className={`h-6 w-6 ${itemCount > 0 ? 'text-black' : 'text-gray-300'}`} />
             {itemCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-lg animate-scale-pop">
                 {itemCount > 9 ? '9+' : itemCount}
