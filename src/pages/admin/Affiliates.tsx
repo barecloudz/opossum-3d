@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, ChevronRight, RefreshCw, Settings, Save } from 'lucide-react';
+import { Users, ChevronRight, RefreshCw, Settings, Save, Trash2 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -193,6 +193,24 @@ export default function AdminAffiliates() {
     }
   };
 
+  const handleDelete = async (affiliate: Affiliate) => {
+    if (!window.confirm(`Delete ${affiliate.name} (${affiliate.code})? This cannot be undone.`)) return;
+    setActionLoading(affiliate.id + '-delete');
+    try {
+      const { error } = await supabase
+        .from('affiliates')
+        .delete()
+        .eq('id', affiliate.id);
+      if (error) throw error;
+      setAffiliates((prev) => prev.filter((a) => a.id !== affiliate.id));
+    } catch (err) {
+      console.error('Error deleting affiliate:', err);
+      alert('Failed to delete affiliate');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleReject = async (affiliate: Affiliate) => {
     setActionLoading(affiliate.id + '-reject');
     try {
@@ -365,6 +383,7 @@ export default function AdminAffiliates() {
                   const clicks = clicksMap[affiliate.id] ?? 0;
                   const isApproving = actionLoading === affiliate.id;
                   const isRejecting = actionLoading === affiliate.id + '-reject';
+                  const isDeleting = actionLoading === affiliate.id + '-delete';
 
                   return (
                     <tr
@@ -422,6 +441,14 @@ export default function AdminAffiliates() {
                               </button>
                             </>
                           )}
+                          <button
+                            onClick={() => handleDelete(affiliate)}
+                            disabled={isDeleting || isApproving || isRejecting}
+                            className="p-1.5 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                            title="Delete"
+                          >
+                            {isDeleting ? <span className="text-xs">...</span> : <Trash2 className="h-4 w-4" />}
+                          </button>
                           <button
                             onClick={() => navigate(`/admin/affiliates/${affiliate.id}`)}
                             className="p-1.5 text-gray-500 hover:text-brand-neon transition-colors"
