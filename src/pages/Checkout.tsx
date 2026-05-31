@@ -580,7 +580,7 @@ export default function Checkout() {
       // CRITICAL: Update order status to 'paid' - must complete before navigation
       const { error: statusError } = await supabase
         .from('orders')
-        .update({ status: 'paid' })
+        .update({ status: 'processing' })
         .eq('id', confirmedOrderId);
 
       if (statusError) {
@@ -743,7 +743,7 @@ export default function Checkout() {
           guest_email: formData.email || user?.email || null,
           guest_name: `${formData.firstName} ${formData.lastName}`.trim() || null,
           guest_phone: formData.phone || null,
-          status: 'paid',
+          status: 'processing',
           subtotal,
           shipping_cost: shipping,
           tax: 0,
