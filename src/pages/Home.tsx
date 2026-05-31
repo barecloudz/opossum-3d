@@ -255,36 +255,49 @@ export default function Home() {
                 {banners.map((slide) => (
                   <div
                     key={slide.id}
-                    className={`w-full flex-shrink-0 relative bg-gradient-to-r ${slide.gradient} min-h-[160px] md:min-h-[200px] flex items-center`}
+                    className={`w-full flex-shrink-0 relative bg-gradient-to-r ${slide.gradient} min-h-[160px] md:min-h-[200px] flex items-center overflow-hidden`}
                   >
-                    {slide.image_url && (
-                      <img src={slide.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                    )}
-                    <div className="relative z-10 px-10 py-8 md:px-14">
-                      {slide.badge && (
-                        <div className="inline-block bg-black/20 rounded-lg px-3 py-1 text-xs font-semibold text-white mb-2 uppercase tracking-wide">
-                          {slide.badge}
-                        </div>
-                      )}
-                      <h2 className={`text-2xl md:text-3xl font-extrabold ${slide.text_color === 'dark' ? 'text-black' : 'text-white'} mb-1`}>
-                        {slide.title}
-                      </h2>
-                      <p className={`text-base md:text-lg font-semibold ${slide.text_color === 'dark' ? 'text-black/70' : 'text-white/80'} mb-4`}>
-                        {slide.subtitle}
-                      </p>
-                      <Link
-                        to={slide.cta_link}
-                        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors btn-press ${
-                          slide.text_color === 'dark'
-                            ? 'bg-black text-white hover:bg-black/80'
-                            : 'bg-white text-black hover:bg-white/90'
-                        }`}
-                      >
-                        {slide.cta_text} <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    </div>
+                    {/* Decorative circles */}
                     <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full pointer-events-none" />
                     <div className="absolute -right-5 -bottom-10 w-32 h-32 bg-white/10 rounded-full pointer-events-none" />
+
+                    {/* Content: text left, image right */}
+                    <div className="relative z-10 w-full flex items-center justify-between px-8 md:px-14 py-6">
+                      <div className="flex-1 pr-4">
+                        {slide.badge && (
+                          <div className="inline-block bg-black/20 rounded-lg px-3 py-1 text-xs font-semibold text-white mb-2 uppercase tracking-wide">
+                            {slide.badge}
+                          </div>
+                        )}
+                        <h2 className={`text-2xl md:text-3xl font-extrabold ${slide.text_color === 'dark' ? 'text-black' : 'text-white'} mb-1`}>
+                          {slide.title}
+                        </h2>
+                        <p className={`text-base md:text-lg font-semibold ${slide.text_color === 'dark' ? 'text-black/70' : 'text-white/80'} mb-4`}>
+                          {slide.subtitle}
+                        </p>
+                        <Link
+                          to={slide.cta_link}
+                          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors btn-press ${
+                            slide.text_color === 'dark'
+                              ? 'bg-black text-white hover:bg-black/80'
+                              : 'bg-white text-black hover:bg-white/90'
+                          }`}
+                        >
+                          {slide.cta_text} <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </div>
+
+                      {/* Logo / image — contained on the right */}
+                      {slide.image_url && (
+                        <div className="flex-shrink-0 w-32 h-32 md:w-44 md:h-44 bg-white rounded-2xl shadow-lg flex items-center justify-center overflow-hidden">
+                          <img
+                            src={slide.image_url}
+                            alt=""
+                            className="w-full h-full object-contain p-3"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
