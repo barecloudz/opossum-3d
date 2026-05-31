@@ -100,7 +100,7 @@ export const useWishlistStore = create<WishlistState>()(
       },
     }),
     {
-      name: 'opossum-wishlist',
+      name: 'nexalon-wishlist',
     }
   )
 );

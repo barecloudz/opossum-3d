@@ -62,8 +62,9 @@ export function useSupabaseQuery<T>(
         clearTimeout(timeoutId);
         if (currentFetchId !== fetchIdRef.current) return;
 
-        // Don't retry if this request was intentionally aborted (unmount/re-fetch)
-        if (err.name === 'AbortError') return;
+        // If aborted due to unmount/re-fetch (stale), exit silently
+        // If aborted due to our own timeout, fall through to show error
+        if (err.name === 'AbortError' && currentFetchId !== fetchIdRef.current) return;
 
         const isRetryable =
           err.message?.includes('network') ||

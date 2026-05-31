@@ -11,10 +11,23 @@ import {
   TrendingUp,
   Handshake,
   ArrowRight,
+  ArrowUp,
+  Trophy,
+  Lock,
+  X,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import type { Affiliate, AffiliateConversion, AffiliatePayout } from '../../types';
+
+interface MilestoneTier {
+  id: string;
+  conversions_required: number;
+  commission_rate: number;
+  label: string;
+  description: string;
+  display_order: number;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -232,6 +245,13 @@ export default function AffiliateDashboard() {
   const [payouts, setPayouts] = useState<AffiliatePayout[]>([]);
   const [campaignStats, setCampaignStats] = useState<{ sub_id: string | null; count: number }[]>([]);
 
+  // Tabs
+  const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'payouts'>('overview');
+
+  // Milestones
+  const [milestones, setMilestones] = useState<MilestoneTier[]>([]);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   // Payout info editing
   const [payoutMethod, setPayoutMethod] = useState('');
   const [payoutDetails, setPayoutDetails] = useState('');
@@ -248,6 +268,14 @@ export default function AffiliateDashboard() {
       .eq('id', 1)
       .single();
     if (settingsData) setGlobalCommissionRate(settingsData.commission_rate);
+
+    // Fetch milestone tiers
+    const { data: tierData } = await supabase
+      .from('affiliate_milestone_tiers')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
+    if (tierData) setMilestones(tierData as MilestoneTier[]);
 
     const [clicksRes, conversionsRes, payoutsRes, campaignRes] = await Promise.all([
       supabase
@@ -302,6 +330,22 @@ export default function AffiliateDashboard() {
     setStats({ totalClicks, totalConversions: allConversions.length, conversionRate, totalEarned, pendingBalance });
     setConversions(allConversions);
     setPayouts((payoutsRes.data ?? []) as AffiliatePayout[]);
+
+    // Auto-unlock: check if affiliate has crossed a milestone tier
+    if (tierData && tierData.length > 0) {
+      const completedConversions = allConversions.filter(c => c.status !== 'reversed').length;
+      const earned = [...(tierData as MilestoneTier[])]
+        .filter(t => t.conversions_required <= completedConversions)
+        .sort((a, b) => b.conversions_required - a.conversions_required)[0];
+      const currentRate = affiliateRecord.commission_rate;
+      if (earned && (!currentRate || earned.commission_rate > currentRate)) {
+        await supabase
+          .from('affiliates')
+          .update({ commission_rate: earned.commission_rate })
+          .eq('id', affiliateId);
+        setAffiliate(prev => prev ? { ...prev, commission_rate: earned.commission_rate } : prev);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -309,67 +353,87 @@ export default function AffiliateDashboard() {
     if (!user) { setPageState('no-auth'); return; }
 
     let cancelled = false;
-    (async () => {
-      // First try matching by user_id (returning affiliates)
-      let { data, error } = await supabase
-        .from('affiliates')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
 
-      // Fallback: match by email for newly registered affiliates whose
-      // user_id hasn't been linked yet, then link them now
-      if (!data && user.email) {
-        const { data: byEmail } = await supabase
+    // Failsafe: never stay stuck on loading spinner forever
+    const failsafeTimer = setTimeout(() => {
+      if (!cancelled) setPageState(prev => prev === 'loading' ? 'no-auth' : prev);
+    }, 15000);
+
+    (async () => {
+      try {
+        // First try matching by user_id (returning affiliates)
+        let { data, error } = await supabase
           .from('affiliates')
           .select('*')
-          .eq('email', user.email.toLowerCase())
+          .eq('user_id', user.id)
           .maybeSingle();
 
-        if (byEmail && !byEmail.user_id) {
-          // Link the user_id now that they've registered
-          await supabase
+        // Fallback: match by email for newly registered affiliates whose
+        // user_id hasn't been linked yet, then link them now
+        if (!data && user.email) {
+          const { data: byEmail } = await supabase
             .from('affiliates')
-            .update({ user_id: user.id })
-            .eq('id', byEmail.id);
-          data = { ...byEmail, user_id: user.id };
-          error = null;
-        } else if (byEmail) {
-          data = byEmail;
-          error = null;
+            .select('*')
+            .eq('email', user.email.toLowerCase())
+            .maybeSingle();
+
+          if (byEmail && !byEmail.user_id) {
+            // Link the user_id now that they've registered
+            await supabase
+              .from('affiliates')
+              .update({ user_id: user.id })
+              .eq('id', byEmail.id);
+            data = { ...byEmail, user_id: user.id };
+            error = null;
+          } else if (byEmail) {
+            data = byEmail;
+            error = null;
+          }
         }
+
+        if (cancelled) return;
+        if (error || !data) { setPageState('no-record'); return; }
+
+        const record = data as Affiliate;
+        setAffiliate(record);
+        setPayoutMethod(record.payout_method ?? '');
+        setPayoutDetails(record.payout_details ?? '');
+
+        if (record.status === 'pending') { setPageState('pending'); return; }
+        if (record.status === 'rejected' || record.status === 'suspended') { setPageState('rejected'); return; }
+        if (record.status === 'approved') {
+          try {
+            await loadDashboard(record);
+          } catch (dashErr) {
+            console.error('[AffiliateDashboard] loadDashboard error:', dashErr);
+          } finally {
+            if (!cancelled) setPageState('approved');
+          }
+          // Show password prompt if they signed in via magic link / invite (no password set)
+          if (!cancelled) {
+            const identities = (user as any)?.identities ?? [];
+            const hasEmailPassword = identities.some(
+              (i: any) => i.provider === 'email' && i.identity_data?.email_verified
+            );
+            const lastSignIn = (user as any)?.last_sign_in_at;
+            const createdAt = (user as any)?.created_at;
+            const isFirstLogin = lastSignIn && createdAt &&
+              Math.abs(new Date(lastSignIn).getTime() - new Date(createdAt).getTime()) < 60000;
+            if (isFirstLogin || !hasEmailPassword) setNeedsPassword(true);
+          }
+          return;
+        }
+        setPageState('no-record');
+      } catch (err) {
+        console.error('[AffiliateDashboard] Load error:', err);
+        if (!cancelled) setPageState('no-auth');
       }
-
-      if (cancelled) return;
-      if (error || !data) { setPageState('no-record'); return; }
-
-      const record = data as Affiliate;
-      setAffiliate(record);
-      setPayoutMethod(record.payout_method ?? '');
-      setPayoutDetails(record.payout_details ?? '');
-
-      if (record.status === 'pending') setPageState('pending');
-      else if (record.status === 'rejected' || record.status === 'suspended') setPageState('rejected');
-      else if (record.status === 'approved') {
-        await loadDashboard(record);
-        setPageState('approved');
-        // Show password prompt if they signed in via magic link / invite (no password set)
-        const identities = (user as any)?.identities ?? [];
-        const hasEmailPassword = identities.some(
-          (i: any) => i.provider === 'email' && i.identity_data?.email_verified
-        );
-        // Simpler check: if user was just invited they have no confirmed_at before this session
-        // Use app_metadata — invite flow sets provider to 'email' but no password
-        const lastSignIn = (user as any)?.last_sign_in_at;
-        const createdAt = (user as any)?.created_at;
-        const isFirstLogin = lastSignIn && createdAt &&
-          Math.abs(new Date(lastSignIn).getTime() - new Date(createdAt).getTime()) < 60000;
-        if (isFirstLogin || !hasEmailPassword) setNeedsPassword(true);
-      }
-      else setPageState('no-record');
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      clearTimeout(failsafeTimer);
+    };
   }, [user, authLoading, loadDashboard]);
 
   useEffect(() => {
@@ -491,20 +555,57 @@ export default function AffiliateDashboard() {
                 Here's how your referrals are performing
               </p>
             </div>
-            <div className="flex items-center gap-3 bg-white/15 border border-white/25 rounded-2xl px-5 py-3">
-              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 bg-white/15 border border-white/25 rounded-2xl px-5 py-3">
+                <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+                  <DollarSign className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-white/70 text-xs font-medium">Your Commission</p>
+                  <p className="text-white text-xl font-bold">{commissionRate}%</p>
+                </div>
               </div>
-              <div>
-                <p className="text-white/70 text-xs font-medium">Your Commission</p>
-                <p className="text-white text-xl font-bold">{commissionRate}%</p>
-              </div>
+              {milestones.length > 0 && commissionRate < Math.max(...milestones.map(m => m.commission_rate)) && (
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="flex items-center gap-1.5 bg-yellow-400 hover:bg-yellow-300 text-yellow-900 font-bold text-xs px-3 py-2 rounded-xl transition-colors shadow-sm"
+                >
+                  <ArrowUp className="h-3.5 w-3.5" />
+                  Increase your Commission
+                </button>
+              )}
             </div>
           </div>
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex gap-1">
+          {[
+            { key: 'overview', label: 'Overview' },
+            { key: 'milestones', label: '🏆 Milestones' },
+            { key: 'payouts', label: 'Payouts' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as typeof activeTab)}
+              className={`px-5 py-3.5 text-sm font-semibold border-b-2 transition-colors ${
+                activeTab === tab.key
+                  ? 'border-[#1677FF] text-[#1677FF]'
+                  : 'border-transparent text-gray-500 hover:text-[#0D1B2A]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+        {/* ── OVERVIEW TAB ── */}
+        {activeTab === 'overview' && <>
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -772,7 +873,270 @@ export default function AffiliateDashboard() {
           </p>
         </div>
 
+        </> /* end overview tab */}
+
+        {/* ── MILESTONES TAB ── */}
+        {activeTab === 'milestones' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Trophy className="h-6 w-6 text-yellow-500" />
+                <h2 className="text-lg font-bold text-[#0D1B2A]">Commission Milestones</h2>
+              </div>
+              <p className="text-sm text-gray-500 mb-6">
+                Earn more by referring more orders. Each milestone unlocks a higher commission rate — permanently.
+              </p>
+
+              <div className="space-y-4">
+                {milestones.map((tier, i) => {
+                  const completedConversions = conversions.filter(c => c.status !== 'reversed').length;
+                  const isUnlocked = completedConversions >= tier.conversions_required;
+                  const isCurrent = commissionRate === tier.commission_rate;
+                  const isNext = !isUnlocked && milestones.slice(0, i).every(t => completedConversions >= t.conversions_required);
+                  const progress = tier.conversions_required === 0
+                    ? 100
+                    : Math.min(100, Math.round((completedConversions / tier.conversions_required) * 100));
+                  const prevRequired = i > 0 ? milestones[i - 1].conversions_required : 0;
+                  const segmentProgress = tier.conversions_required === 0
+                    ? 100
+                    : Math.min(100, Math.round(((completedConversions - prevRequired) / (tier.conversions_required - prevRequired)) * 100));
+
+                  return (
+                    <div
+                      key={tier.id}
+                      className={`rounded-2xl border p-5 transition-all ${
+                        isCurrent
+                          ? 'border-[#1677FF] bg-blue-50'
+                          : isUnlocked
+                          ? 'border-green-200 bg-green-50'
+                          : 'border-gray-200 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                            isUnlocked ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
+                          }`}>
+                            {isUnlocked ? <Check className="h-5 w-5" /> : <Lock className="h-4 w-4" />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-[#0D1B2A]">{tier.label}</span>
+                              {isCurrent && (
+                                <span className="text-xs bg-[#1677FF] text-white px-2 py-0.5 rounded-full font-semibold">Current</span>
+                              )}
+                              {isNext && (
+                                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-semibold border border-yellow-200">Next</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">{tier.description}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-extrabold text-[#1677FF]">{tier.commission_rate}%</p>
+                          <p className="text-xs text-gray-400">commission</p>
+                        </div>
+                      </div>
+
+                      {tier.conversions_required > 0 && (
+                        <>
+                          <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                            <span>{isUnlocked ? '✓ Unlocked' : `${completedConversions} / ${tier.conversions_required} orders`}</span>
+                            <span>{isUnlocked ? '' : `${tier.conversions_required - completedConversions} to go`}</span>
+                          </div>
+                          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${isUnlocked ? 'bg-green-500' : 'bg-[#1677FF]'}`}
+                              style={{ width: `${isUnlocked ? 100 : Math.max(0, segmentProgress)}%` }}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="text-xs text-gray-400 mt-6 text-center">
+                Commission upgrades are applied automatically when you reach the required referrals.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── PAYOUTS TAB ── */}
+        {activeTab === 'payouts' && (
+          <div className="space-y-6">
+            {/* Payout History */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h2 className="text-base font-bold text-[#0D1B2A]">Payout History</h2>
+                <p className="text-xs text-gray-400 mt-0.5">All payouts processed to you</p>
+              </div>
+              {payouts.length === 0 ? (
+                <div className="px-6 py-14 text-center">
+                  <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <DollarSign className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <p className="text-[#0D1B2A] font-medium">No payouts yet</p>
+                  <p className="text-sm text-gray-400 mt-1">Payouts are processed during the first week of each month.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100">
+                        <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                        <th className="text-right px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Amount</th>
+                        <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Method</th>
+                        <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Reference</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {payouts.map((payout) => (
+                        <tr key={payout.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 text-gray-500">{formatDate(payout.created_at)}</td>
+                          <td className="px-6 py-4 text-right font-bold text-[#1677FF]">{formatCurrency(payout.amount)}</td>
+                          <td className="px-6 py-4 text-[#0D1B2A] capitalize">{payout.method}</td>
+                          <td className="px-6 py-4 text-gray-500">{payout.reference ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Payout Info */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+              <h2 className="text-base font-bold text-[#0D1B2A] mb-1">Payout Information</h2>
+              <p className="text-xs text-gray-400 mb-5">Tell us how you want to be paid so we can send your commissions.</p>
+              <div className="grid sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Payout Method</label>
+                  <select
+                    value={payoutMethod}
+                    onChange={e => setPayoutMethod(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-[#0D1B2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#1677FF] focus:border-transparent"
+                  >
+                    <option value="">Select method…</option>
+                    <option value="cash_app">Cash App</option>
+                    <option value="venmo">Venmo</option>
+                    <option value="paypal">PayPal</option>
+                    <option value="zelle">Zelle</option>
+                    <option value="check">Check</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                    {payoutMethod === 'cash_app' ? 'Your $Cashtag' :
+                     payoutMethod === 'venmo' ? 'Your @handle' :
+                     payoutMethod === 'paypal' ? 'Your PayPal email' :
+                     payoutMethod === 'zelle' ? 'Your phone or email' :
+                     payoutMethod === 'check' ? 'Name on check' :
+                     payoutMethod === 'bank_transfer' ? 'Account details' :
+                     'Your details'}
+                  </label>
+                  <input
+                    type="text"
+                    value={payoutDetails}
+                    onChange={e => setPayoutDetails(e.target.value)}
+                    placeholder={
+                      payoutMethod === 'cash_app' ? '$YourCashtag' :
+                      payoutMethod === 'venmo' ? '@yourhandle' :
+                      payoutMethod === 'paypal' ? 'email@example.com' :
+                      payoutMethod === 'zelle' ? 'phone or email' :
+                      'Enter details'
+                    }
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-[#0D1B2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#1677FF] focus:border-transparent"
+                  />
+                </div>
+              </div>
+              {payoutError && <p className="text-red-500 text-sm mb-3">{payoutError}</p>}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSavePayoutInfo}
+                  disabled={savingPayout}
+                  className="px-5 py-2.5 bg-[#1677FF] hover:bg-[#1060d0] text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50"
+                >
+                  {savingPayout ? 'Saving…' : 'Save Payout Info'}
+                </button>
+                {payoutSaved && (
+                  <span className="text-green-600 text-sm font-medium flex items-center gap-1">
+                    <Check className="h-4 w-4" /> Saved!
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 border-t border-gray-100 pt-4 mt-4">
+                Payouts are processed during the first week of each month for approved balances. Questions?{' '}
+                <a href="mailto:NexalonCreations@gmail.com" className="text-[#1677FF] hover:underline font-medium">
+                  NexalonCreations@gmail.com
+                </a>
+              </p>
+            </div>
+          </div>
+        )}
+
       </div>
+
+      {/* ── UPGRADE MODAL ── */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-gradient-to-r from-[#1677FF] to-[#0D3B8C] px-6 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Trophy className="h-6 w-6 text-yellow-300" />
+                <h2 className="text-white font-bold text-lg">Increase Your Commission</h2>
+              </div>
+              <button
+                onClick={() => { setShowUpgradeModal(false); setActiveTab('milestones'); }}
+                className="text-white/70 hover:text-white transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-600 text-sm mb-5 leading-relaxed">
+                Your commission rate grows as you refer more orders. Hit each milestone to permanently unlock a higher rate — automatically applied the moment you qualify.
+              </p>
+              <div className="space-y-3 mb-6">
+                {milestones.map((tier) => {
+                  const completedConversions = conversions.filter(c => c.status !== 'reversed').length;
+                  const isUnlocked = completedConversions >= tier.conversions_required;
+                  const isCurrent = commissionRate === tier.commission_rate;
+                  return (
+                    <div key={tier.id} className={`flex items-center gap-4 p-3 rounded-xl border ${
+                      isCurrent ? 'border-[#1677FF] bg-blue-50' : isUnlocked ? 'border-green-200 bg-green-50' : 'border-gray-100'
+                    }`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        isUnlocked ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
+                      }`}>
+                        {isUnlocked ? <Check className="h-4 w-4" /> : <Lock className="h-3.5 w-3.5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-[#0D1B2A] text-sm">{tier.label}</span>
+                          {isCurrent && <span className="text-xs bg-[#1677FF] text-white px-1.5 py-0.5 rounded-full">Current</span>}
+                        </div>
+                        <p className="text-xs text-gray-400">{tier.conversions_required === 0 ? 'Starting rate' : `${tier.conversions_required} referred orders`}</p>
+                      </div>
+                      <span className="text-xl font-extrabold text-[#1677FF] flex-shrink-0">{tier.commission_rate}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => { setShowUpgradeModal(false); setActiveTab('milestones'); }}
+                className="w-full py-3 bg-[#1677FF] hover:bg-[#1060d0] text-white font-bold rounded-xl transition-colors"
+              >
+                View My Progress →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

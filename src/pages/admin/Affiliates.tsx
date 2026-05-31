@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, ChevronRight, RefreshCw, Settings, Save, Trash2 } from 'lucide-react';
+import { Users, ChevronRight, RefreshCw, Settings, Save, Trash2, Trophy, Plus, Check, X } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -9,6 +9,16 @@ import Input from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
 import { formatDate, formatPrice } from '../../lib/utils';
 import type { Affiliate, AffiliateStatus, AffiliateConversion, AffiliateSettings } from '../../types';
+
+interface MilestoneTier {
+  id: string;
+  conversions_required: number;
+  commission_rate: number;
+  label: string;
+  description: string | null;
+  display_order: number;
+  is_active: boolean;
+}
 
 type StatusFilter = 'all' | AffiliateStatus;
 
@@ -55,6 +65,95 @@ export default function AdminAffiliates() {
   const [minPayout, setMinPayout] = useState('');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Milestone tiers state
+  const [tiers, setTiers] = useState<MilestoneTier[]>([]);
+  const [tierEdits, setTierEdits] = useState<Record<string, Partial<MilestoneTier>>>({});
+  const [savingTier, setSavingTier] = useState<string | null>(null);
+  const [deletingTier, setDeletingTier] = useState<string | null>(null);
+  const [addingTier, setAddingTier] = useState(false);
+  const [newTier, setNewTier] = useState({ label: '', conversions_required: '', commission_rate: '', description: '' });
+  const [savingNewTier, setSavingNewTier] = useState(false);
+
+  const fetchTiers = async () => {
+    const { data } = await supabase
+      .from('affiliate_milestone_tiers')
+      .select('*')
+      .order('display_order', { ascending: true });
+    if (data) setTiers(data as MilestoneTier[]);
+  };
+
+  const handleSaveTier = async (tier: MilestoneTier) => {
+    const edits = tierEdits[tier.id] ?? {};
+    const updated = { ...tier, ...edits };
+    setSavingTier(tier.id);
+    try {
+      const { error } = await supabase
+        .from('affiliate_milestone_tiers')
+        .update({
+          label: updated.label,
+          description: updated.description,
+          conversions_required: Number(updated.conversions_required),
+          commission_rate: Number(updated.commission_rate),
+          is_active: updated.is_active,
+        })
+        .eq('id', tier.id);
+      if (error) throw error;
+      setTiers(prev => prev.map(t => t.id === tier.id ? { ...t, ...edits } : t));
+      setTierEdits(prev => { const next = { ...prev }; delete next[tier.id]; return next; });
+    } catch (err) {
+      console.error('Error saving tier:', err);
+      alert('Failed to save tier');
+    } finally {
+      setSavingTier(null);
+    }
+  };
+
+  const handleDeleteTier = async (tierId: string) => {
+    if (!window.confirm('Delete this milestone tier? Affiliates who already unlocked it will keep their rate.')) return;
+    setDeletingTier(tierId);
+    try {
+      const { error } = await supabase.from('affiliate_milestone_tiers').delete().eq('id', tierId);
+      if (error) throw error;
+      setTiers(prev => prev.filter(t => t.id !== tierId));
+    } catch (err) {
+      console.error('Error deleting tier:', err);
+      alert('Failed to delete tier');
+    } finally {
+      setDeletingTier(null);
+    }
+  };
+
+  const handleAddTier = async () => {
+    if (!newTier.label.trim() || !newTier.conversions_required || !newTier.commission_rate) {
+      alert('Label, conversions required, and commission rate are all required.');
+      return;
+    }
+    setSavingNewTier(true);
+    try {
+      const { data, error } = await supabase
+        .from('affiliate_milestone_tiers')
+        .insert({
+          label: newTier.label.trim(),
+          description: newTier.description.trim() || null,
+          conversions_required: Number(newTier.conversions_required),
+          commission_rate: Number(newTier.commission_rate),
+          display_order: tiers.length,
+          is_active: true,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      setTiers(prev => [...prev, data as MilestoneTier]);
+      setNewTier({ label: '', conversions_required: '', commission_rate: '', description: '' });
+      setAddingTier(false);
+    } catch (err) {
+      console.error('Error adding tier:', err);
+      alert('Failed to add tier');
+    } finally {
+      setSavingNewTier(false);
+    }
+  };
 
   const fetchSettings = async () => {
     const { data } = await supabase
@@ -152,6 +251,7 @@ export default function AdminAffiliates() {
   useEffect(() => {
     fetchData();
     fetchSettings();
+    fetchTiers();
   }, []);
 
   const handleApprove = async (affiliate: Affiliate) => {
@@ -346,6 +446,199 @@ export default function AdminAffiliates() {
                 <Save className="h-4 w-4 mr-1.5" />
                 Save Settings
               </Button>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Milestone Tiers Panel */}
+      <Card className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-yellow-500" />
+            <span className="text-[#0D1B2A] font-semibold">Commission Milestone Tiers</span>
+            <span className="text-xs text-gray-500 ml-1">Affiliates auto-unlock higher rates as they hit these thresholds</span>
+          </div>
+          <button
+            onClick={() => setAddingTier(!addingTier)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-50 text-[#1677FF] hover:bg-blue-100 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Add Tier
+          </button>
+        </div>
+
+        {/* Tier rows */}
+        <div className="space-y-3">
+          {tiers.map((tier) => {
+            const edits = tierEdits[tier.id] ?? {};
+            const current = { ...tier, ...edits };
+            const isDirty = Object.keys(edits).length > 0;
+
+            return (
+              <div key={tier.id} className={`border rounded-xl p-4 ${current.is_active ? 'border-gray-200 bg-gray-50' : 'border-dashed border-gray-300 bg-gray-100 opacity-60'}`}>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Label</label>
+                    <input
+                      type="text"
+                      value={current.label}
+                      onChange={(e) => setTierEdits(prev => ({ ...prev, [tier.id]: { ...prev[tier.id], label: e.target.value } }))}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-blue-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Conversions Required</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={current.conversions_required}
+                      onChange={(e) => setTierEdits(prev => ({ ...prev, [tier.id]: { ...prev[tier.id], conversions_required: Number(e.target.value) } }))}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-blue-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Commission Rate (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      value={current.commission_rate}
+                      onChange={(e) => setTierEdits(prev => ({ ...prev, [tier.id]: { ...prev[tier.id], commission_rate: Number(e.target.value) } }))}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-blue-300"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 justify-end">
+                    <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={current.is_active}
+                        onChange={(e) => setTierEdits(prev => ({ ...prev, [tier.id]: { ...prev[tier.id], is_active: e.target.checked } }))}
+                        className="rounded"
+                      />
+                      Active
+                    </label>
+                    {isDirty && (
+                      <button
+                        onClick={() => handleSaveTier(tier)}
+                        disabled={savingTier === tier.id}
+                        className="p-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors disabled:opacity-50"
+                        title="Save changes"
+                      >
+                        {savingTier === tier.id ? <span className="text-xs px-1">...</span> : <Check className="h-4 w-4" />}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteTier(tier.id)}
+                      disabled={deletingTier === tier.id}
+                      className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-50"
+                      title="Delete tier"
+                    >
+                      {deletingTier === tier.id ? <span className="text-xs">...</span> : <Trash2 className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <label className="block text-xs text-gray-500 mb-1">Description (shown to affiliates)</label>
+                  <input
+                    type="text"
+                    value={current.description ?? ''}
+                    onChange={(e) => setTierEdits(prev => ({ ...prev, [tier.id]: { ...prev[tier.id], description: e.target.value } }))}
+                    placeholder="e.g. Refer 20 orders to unlock 7% commission!"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+                {isDirty && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <button
+                      onClick={() => handleSaveTier(tier)}
+                      disabled={savingTier === tier.id}
+                      className="px-4 py-1.5 text-xs font-medium rounded-lg bg-[#1677FF] text-white hover:bg-blue-600 transition-colors disabled:opacity-50"
+                    >
+                      {savingTier === tier.id ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    <button
+                      onClick={() => setTierEdits(prev => { const next = { ...prev }; delete next[tier.id]; return next; })}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                    >
+                      Discard
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {tiers.length === 0 && !addingTier && (
+            <p className="text-center text-gray-400 text-sm py-4">No milestone tiers configured. Run the SQL migration first, or add one manually above.</p>
+          )}
+        </div>
+
+        {/* Add new tier form */}
+        {addingTier && (
+          <div className="mt-4 border-2 border-dashed border-blue-200 rounded-xl p-4 bg-blue-50">
+            <p className="text-sm font-medium text-[#0D1B2A] mb-3">New Milestone Tier</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Label *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Rising Star"
+                  value={newTier.label}
+                  onChange={(e) => setNewTier(prev => ({ ...prev, label: e.target.value }))}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Conversions Required *</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="20"
+                  value={newTier.conversions_required}
+                  onChange={(e) => setNewTier(prev => ({ ...prev, conversions_required: e.target.value }))}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Commission Rate (%) *</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  placeholder="7"
+                  value={newTier.commission_rate}
+                  onChange={(e) => setNewTier(prev => ({ ...prev, commission_rate: e.target.value }))}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-blue-300"
+                />
+              </div>
+            </div>
+            <div className="mb-3">
+              <label className="block text-xs text-gray-500 mb-1">Description (optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. Refer 20 orders to unlock 7% commission!"
+                value={newTier.description}
+                onChange={(e) => setNewTier(prev => ({ ...prev, description: e.target.value }))}
+                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleAddTier}
+                disabled={savingNewTier}
+                className="px-4 py-1.5 text-sm font-medium rounded-lg bg-[#1677FF] text-white hover:bg-blue-600 transition-colors disabled:opacity-50"
+              >
+                {savingNewTier ? 'Adding...' : 'Add Tier'}
+              </button>
+              <button
+                onClick={() => { setAddingTier(false); setNewTier({ label: '', conversions_required: '', commission_rate: '', description: '' }); }}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         )}
