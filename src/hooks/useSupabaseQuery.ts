@@ -63,9 +63,9 @@ export function useSupabaseQuery<T>(
         if (currentFetchId !== fetchIdRef.current) return;
 
         // Don't retry if this request was intentionally aborted (unmount/re-fetch)
-        if (err.name === 'AbortError' && currentFetchId !== fetchIdRef.current) return;
+        if (err.name === 'AbortError') return;
 
-        const isRetryable = err.name === 'AbortError' ||
+        const isRetryable =
           err.message?.includes('network') ||
           err.message?.includes('fetch');
 
