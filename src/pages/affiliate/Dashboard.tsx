@@ -264,11 +264,35 @@ export default function AffiliateDashboard() {
 
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
+      // First try matching by user_id (returning affiliates)
+      let { data, error } = await supabase
         .from('affiliates')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
+
+      // Fallback: match by email for newly registered affiliates whose
+      // user_id hasn't been linked yet, then link them now
+      if (!data && user.email) {
+        const { data: byEmail } = await supabase
+          .from('affiliates')
+          .select('*')
+          .eq('email', user.email.toLowerCase())
+          .maybeSingle();
+
+        if (byEmail && !byEmail.user_id) {
+          // Link the user_id now that they've registered
+          await supabase
+            .from('affiliates')
+            .update({ user_id: user.id })
+            .eq('id', byEmail.id);
+          data = { ...byEmail, user_id: user.id };
+          error = null;
+        } else if (byEmail) {
+          data = byEmail;
+          error = null;
+        }
+      }
 
       if (cancelled) return;
       if (error || !data) { setPageState('no-record'); return; }
