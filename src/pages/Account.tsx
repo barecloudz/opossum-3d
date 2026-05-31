@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Package, LogOut, Settings, ChevronRight, MapPin, Clock, Handshake, KeyRound } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
@@ -34,6 +34,7 @@ export default function Account() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
+  const passwordChangedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [formData, setFormData] = useState({
     firstName: profile?.first_name || '',
@@ -119,7 +120,8 @@ export default function Account() {
     setNewPassword('');
     setConfirmPassword('');
     setPasswordChanged(true);
-    setTimeout(() => setPasswordChanged(false), 4000);
+    if (passwordChangedTimerRef.current) clearTimeout(passwordChangedTimerRef.current);
+    passwordChangedTimerRef.current = setTimeout(() => setPasswordChanged(false), 4000);
   };
 
   const handleSignOut = async () => {

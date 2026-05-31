@@ -25,6 +25,7 @@ export default function ProductDetail() {
   const [imageLoading, setImageLoading] = useState(true);
   const [customizationImageUrl, setCustomizationImageUrl] = useState('');
   const [customizationUploading, setCustomizationUploading] = useState(false);
+  const [quantityInput, setQuantityInput] = useState('1');
   const { addItem, openCart } = useCartStore();
 
   // Swipe support for main image
@@ -348,6 +349,7 @@ export default function ProductDetail() {
                         const newVariant = selectedVariant?.id === variant.id ? undefined : variant;
                         setSelectedVariant(newVariant);
                         setQuantity(1);
+                        setQuantityInput('1');
                         setUserSelectedImage(false); // Reset so variant image shows
                         if (newVariant?.image_url) {
                           setImageLoading(true);
@@ -486,16 +488,43 @@ export default function ProductDetail() {
               </label>
               <div className="inline-flex items-center bg-gray-100 rounded-xl border border-gray-200">
                 <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  onClick={() => {
+                    const next = Math.max(1, quantity - 1);
+                    setQuantity(next);
+                    setQuantityInput(String(next));
+                  }}
                   className="p-3 text-gray-500 hover:text-[#0D1B2A] transition-colors btn-press"
                 >
                   <Minus className="h-5 w-5" />
                 </button>
-                <span className="text-[#0D1B2A] text-lg font-semibold w-12 text-center">
-                  {quantity}
-                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={quantityInput}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    setQuantityInput(raw);
+                    const parsed = parseInt(raw, 10);
+                    if (!isNaN(parsed) && parsed >= 1) {
+                      setQuantity(Math.min(maxQuantity, parsed));
+                    }
+                  }}
+                  onBlur={() => {
+                    const parsed = parseInt(quantityInput, 10);
+                    const clamped = isNaN(parsed) ? 1 : Math.min(maxQuantity, Math.max(1, parsed));
+                    setQuantity(clamped);
+                    setQuantityInput(String(clamped));
+                  }}
+                  onFocus={(e) => e.target.select()}
+                  className="text-[#0D1B2A] text-lg font-semibold w-16 text-center bg-transparent focus:outline-none"
+                />
                 <button
-                  onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+                  onClick={() => {
+                    const next = Math.min(maxQuantity, quantity + 1);
+                    setQuantity(next);
+                    setQuantityInput(String(next));
+                  }}
                   disabled={quantity >= maxQuantity}
                   className="p-3 text-gray-500 hover:text-[#0D1B2A] transition-colors btn-press disabled:opacity-30 disabled:cursor-not-allowed"
                 >
