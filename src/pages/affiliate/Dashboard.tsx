@@ -893,9 +893,6 @@ export default function AffiliateDashboard() {
                   const isUnlocked = completedConversions >= tier.conversions_required;
                   const isCurrent = commissionRate === tier.commission_rate;
                   const isNext = !isUnlocked && milestones.slice(0, i).every(t => completedConversions >= t.conversions_required);
-                  const progress = tier.conversions_required === 0
-                    ? 100
-                    : Math.min(100, Math.round((completedConversions / tier.conversions_required) * 100));
                   const prevRequired = i > 0 ? milestones[i - 1].conversions_required : 0;
                   const segmentProgress = tier.conversions_required === 0
                     ? 100
