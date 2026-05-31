@@ -829,6 +829,49 @@ export default function Checkout() {
         }
       }
 
+      // Record affiliate conversion
+      if (appliedAffiliate) {
+        const { data: affSettings } = await supabase
+          .from('affiliate_settings')
+          .select('commission_rate')
+          .eq('id', 1)
+          .single();
+        const globalRate = affSettings?.commission_rate ?? 10;
+        const commissionRate = appliedAffiliate.commission_rate ?? globalRate;
+        const commissionAmount = total * (commissionRate / 100);
+
+        const storedClickId = sessionStorage.getItem('nexalon_click_id');
+        const storedClickAt = sessionStorage.getItem('nexalon_click_at');
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+        const clickId =
+          storedClickId && storedClickAt && Date.now() - parseInt(storedClickAt) <= THIRTY_DAYS_MS
+            ? storedClickId : null;
+
+        await supabase.from('affiliate_conversions').insert({
+          affiliate_id: appliedAffiliate.id,
+          order_id: order.id,
+          order_total: total,
+          commission_amount: commissionAmount,
+          status: 'pending',
+          click_id: clickId,
+        });
+
+        sessionStorage.removeItem('nexalon_click_id');
+        sessionStorage.removeItem('nexalon_click_at');
+        clearAffiliateCookie();
+
+        fetch('/.netlify/functions/send-affiliate-sale-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            affiliateId: appliedAffiliate.id,
+            orderNumber: order.order_number,
+            commissionAmount,
+            orderTotal: total,
+          }),
+        }).catch(() => {});
+      }
+
       setPaymentComplete(true);
       clearCart();
       navigate(`/order-confirmation/${order.id}`);
