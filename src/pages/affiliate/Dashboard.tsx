@@ -509,9 +509,25 @@ export default function AffiliateDashboard() {
     setTimeout(() => setShareSaved(false), 3000);
   };
 
+  // Only delete images the affiliate themselves uploaded (affiliate-share folder), never the site default banner
+  const deleteShareImageFromCloudinary = async (url: string) => {
+    if (!url || !url.includes('cloudinary.com') || !url.includes('affiliate-share')) return;
+    try {
+      await fetch('/.netlify/functions/delete-cloudinary-images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+    } catch (err) {
+      console.warn('[ShareImage] Cloudinary delete failed (non-blocking):', err);
+    }
+  };
+
   const handleShareImageUpload = async (file: File) => {
     setShareImageUploading(true);
     try {
+      // Delete previous custom image before uploading new one
+      if (shareImageUrl) await deleteShareImageFromCloudinary(shareImageUrl);
       const { uploadToCloudinary } = await import('../../lib/cloudinary');
       const url = await uploadToCloudinary(file, 'affiliate-share');
       setShareImageUrl(url);
@@ -520,6 +536,18 @@ export default function AffiliateDashboard() {
     } finally {
       setShareImageUploading(false);
     }
+  };
+
+  const handleRemoveShareImage = async () => {
+    await deleteShareImageFromCloudinary(shareImageUrl);
+    setShareImageUrl('');
+  };
+
+  const handleResetShareToDefault = async () => {
+    await deleteShareImageFromCloudinary(shareImageUrl);
+    setShareTitle('');
+    setShareDescription('');
+    setShareImageUrl('');
   };
 
   if (pageState === 'loading' || pageState === 'no-record') return <LoadingScreen />;
@@ -825,7 +853,7 @@ export default function AffiliateDashboard() {
                   <div className="mb-2 relative w-full max-w-xs">
                     <img src={shareImageUrl} alt="Share preview" className="w-full h-32 object-cover rounded-xl border border-gray-200" />
                     <button
-                      onClick={() => setShareImageUrl('')}
+                      onClick={handleRemoveShareImage}
                       className="absolute top-2 right-2 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center text-xs hover:bg-black/80"
                     >x</button>
                   </div>
@@ -851,7 +879,7 @@ export default function AffiliateDashboard() {
                 </button>
                 {(shareTitle || shareDescription || shareImageUrl) && (
                   <button
-                    onClick={() => { setShareTitle(''); setShareDescription(''); setShareImageUrl(''); }}
+                    onClick={handleResetShareToDefault}
                     className="px-4 py-2.5 text-sm text-gray-500 hover:text-red-500 transition-colors"
                   >
                     Reset to default
