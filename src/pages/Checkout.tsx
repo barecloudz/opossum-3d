@@ -72,6 +72,8 @@ export default function Checkout() {
       .single()
       .then(async ({ data }) => {
         if (!data) return;
+        // Self-referral prevention: don't apply if this is the affiliate's own account
+        if (data.user_id && user?.id && data.user_id === user.id) return;
         const { data: settings } = await supabase
           .from('affiliate_settings')
           .select('customer_discount_rate')
@@ -328,6 +330,11 @@ export default function Checkout() {
           .single();
 
         if (affiliateData) {
+          // Self-referral prevention: don't let affiliates use their own code
+          if (affiliateData.user_id && user?.id && affiliateData.user_id === user.id) {
+            setPromoError("You can't use your own affiliate code");
+            return;
+          }
           // Fetch customer discount rate from settings
           const { data: settings } = await supabase
             .from('affiliate_settings')
@@ -454,13 +461,28 @@ export default function Checkout() {
         const globalRate = affiliateSettings.data?.commission_rate ?? 10;
         const commissionRate = appliedAffiliate.commission_rate ?? globalRate;
         const commissionAmount = total * (commissionRate / 100);
+
+        // Link to the originating click if within 30 days
+        const storedClickId = sessionStorage.getItem('nexalon_click_id');
+        const storedClickAt = sessionStorage.getItem('nexalon_click_at');
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+        const clickId =
+          storedClickId && storedClickAt && Date.now() - parseInt(storedClickAt) <= THIRTY_DAYS_MS
+            ? storedClickId
+            : null;
+
         await supabase.from('affiliate_conversions').insert({
           affiliate_id: appliedAffiliate.id,
           order_id: order.id,
           order_total: total,
           commission_amount: commissionAmount,
           status: 'pending',
+          click_id: clickId,
         });
+
+        // Clear click tracking data
+        sessionStorage.removeItem('nexalon_click_id');
+        sessionStorage.removeItem('nexalon_click_at');
         clearAffiliateCookie();
 
         // Notify affiliate of their sale — fire and forget

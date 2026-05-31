@@ -53,9 +53,17 @@ export default function AffiliateTracker() {
 
         setAffiliateCookie(code);
 
-        await supabase
+        const { data: clickRow } = await supabase
           .from('affiliate_clicks')
-          .insert({ affiliate_id: affiliate.id, sub_id: subId });
+          .insert({ affiliate_id: affiliate.id, sub_id: subId })
+          .select('id')
+          .single();
+
+        // Store click ID + timestamp so checkout can link conversion and enforce 30-day window
+        if (clickRow?.id) {
+          sessionStorage.setItem('nexalon_click_id', clickRow.id);
+          sessionStorage.setItem('nexalon_click_at', Date.now().toString());
+        }
       } catch {
         // silently fail — don't interrupt user experience
       }

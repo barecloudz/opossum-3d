@@ -164,8 +164,17 @@ export default function AdminAffiliates() {
         .eq('email', affiliate.email)
         .maybeSingle();
 
-      const updates: Partial<Affiliate> & { status: AffiliateStatus; user_id?: string } = {
+      // Stamp current global commission rate so future rate changes don't affect this affiliate
+      const { data: settingsData } = await supabase
+        .from('affiliate_settings')
+        .select('commission_rate')
+        .eq('id', 1)
+        .single();
+      const globalRate = settingsData?.commission_rate ?? 10;
+
+      const updates: Partial<Affiliate> & { status: AffiliateStatus; user_id?: string; commission_rate?: number } = {
         status: 'approved',
+        commission_rate: affiliate.commission_rate ?? globalRate,
       };
       if (profileData?.id) {
         updates.user_id = profileData.id;
@@ -181,7 +190,7 @@ export default function AdminAffiliates() {
       setAffiliates((prev) =>
         prev.map((a) =>
           a.id === affiliate.id
-            ? { ...a, status: 'approved', user_id: updates.user_id ?? a.user_id }
+            ? { ...a, status: 'approved', user_id: updates.user_id ?? a.user_id, commission_rate: updates.commission_rate ?? a.commission_rate }
             : a
         )
       );
@@ -342,6 +351,30 @@ export default function AdminAffiliates() {
         )}
       </Card>
 
+      {/* Program summary stats */}
+      {affiliates.length > 0 && (() => {
+        const allConvs = Object.values(statsMap);
+        const totalPending = allConvs.reduce((s, a) => s + (a.earnings ?? 0), 0);
+        const activeCount = affiliates.filter(a => a.status === 'approved').length;
+        const totalClicks = Object.values(clicksMap).reduce((s, n) => s + n, 0);
+        const totalConversions = allConvs.reduce((s, a) => s + a.conversions, 0);
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            {[
+              { label: 'Active Affiliates', value: activeCount },
+              { label: 'Total Clicks', value: totalClicks },
+              { label: 'Total Conversions', value: totalConversions },
+              { label: 'Commissions Owed', value: `$${totalPending.toFixed(2)}` },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-white border border-gray-200 rounded-xl p-4 text-center">
+                <p className="text-2xl font-bold text-[#0D1B2A]">{value}</p>
+                <p className="text-xs text-gray-400 mt-1">{label}</p>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Status filter tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
         {STATUS_TABS.map((tab) => {
@@ -384,6 +417,7 @@ export default function AdminAffiliates() {
                   <th className="text-left py-3 px-4 text-gray-500 font-medium">Business</th>
                   <th className="text-left py-3 px-4 text-gray-500 font-medium">Applied</th>
                   <th className="text-left py-3 px-4 text-gray-500 font-medium">Status</th>
+                  <th className="text-right py-3 px-4 text-gray-500 font-medium">Rate</th>
                   <th className="text-right py-3 px-4 text-gray-500 font-medium">Clicks</th>
                   <th className="text-right py-3 px-4 text-gray-500 font-medium">Conv.</th>
                   <th className="text-right py-3 px-4 text-gray-500 font-medium">Earnings</th>
@@ -423,6 +457,11 @@ export default function AdminAffiliates() {
                         <Badge variant={statusBadgeVariant(affiliate.status)}>
                           {affiliate.status.charAt(0).toUpperCase() + affiliate.status.slice(1)}
                         </Badge>
+                      </td>
+                      <td className="py-3 px-4 text-right text-sm">
+                        {affiliate.commission_rate != null
+                          ? <span className="text-brand-neon font-medium">{affiliate.commission_rate}%</span>
+                          : <span className="text-gray-500">global</span>}
                       </td>
                       <td className="py-3 px-4 text-right text-gray-300 text-sm">{clicks}</td>
                       <td className="py-3 px-4 text-right text-gray-300 text-sm">

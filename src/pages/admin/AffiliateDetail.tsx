@@ -68,6 +68,7 @@ export default function AdminAffiliateDetail() {
 
   // Conversion status update
   const [convStatusLoading, setConvStatusLoading] = useState<string | null>(null);
+  const [bulkApproving, setBulkApproving] = useState(false);
 
   // Payout modal
   const [showPayoutModal, setShowPayoutModal] = useState(false);
@@ -132,19 +133,28 @@ export default function AdminAffiliateDetail() {
     if (!affiliate) return;
     setStatusLoading(newStatus);
     try {
-      const updates: Partial<Affiliate> & { status: AffiliateStatus; user_id?: string } = {
+      const updates: Partial<Affiliate> & { status: AffiliateStatus; user_id?: string; commission_rate?: number } = {
         status: newStatus,
       };
 
-      // On approve: try to link user_id
-      if (newStatus === 'approved' && !affiliate.user_id) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', affiliate.email)
-          .maybeSingle();
-        if (profileData?.id) {
-          updates.user_id = profileData.id;
+      // On approve: link user_id and stamp commission rate
+      if (newStatus === 'approved') {
+        if (!affiliate.user_id) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('email', affiliate.email)
+            .maybeSingle();
+          if (profileData?.id) updates.user_id = profileData.id;
+        }
+        // Stamp current global rate so future global changes don't affect this affiliate
+        if (affiliate.commission_rate == null) {
+          const { data: settingsData } = await supabase
+            .from('affiliate_settings')
+            .select('commission_rate')
+            .eq('id', 1)
+            .single();
+          updates.commission_rate = settingsData?.commission_rate ?? 10;
         }
       }
 
@@ -157,7 +167,7 @@ export default function AdminAffiliateDetail() {
 
       setAffiliate((prev) =>
         prev
-          ? { ...prev, status: newStatus, user_id: updates.user_id ?? prev.user_id }
+          ? { ...prev, status: newStatus, user_id: updates.user_id ?? prev.user_id, commission_rate: updates.commission_rate ?? prev.commission_rate }
           : prev
       );
     } catch (err) {
@@ -209,6 +219,25 @@ export default function AdminAffiliateDetail() {
       alert('Failed to save commission rate');
     } finally {
       setIsSavingRate(false);
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    const pendingIds = conversions.filter(c => c.status === 'pending').map(c => c.id);
+    if (pendingIds.length === 0) return;
+    setBulkApproving(true);
+    try {
+      const { error } = await supabase
+        .from('affiliate_conversions')
+        .update({ status: 'approved' })
+        .in('id', pendingIds);
+      if (error) throw error;
+      setConversions(prev => prev.map(c => pendingIds.includes(c.id) ? { ...c, status: 'approved' as AffiliateConversionStatus } : c));
+    } catch (err) {
+      console.error('Error bulk approving:', err);
+      alert('Failed to bulk approve');
+    } finally {
+      setBulkApproving(false);
     }
   };
 
@@ -481,12 +510,19 @@ export default function AdminAffiliateDetail() {
       <Card padding="none" className="mb-6">
         <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-[#0D1B2A]">Conversions</h2>
-          {pendingBalance > 0 && (
-            <Button size="sm" onClick={handleOpenPayoutModal}>
-              <DollarSign className="h-4 w-4 mr-1.5" />
-              Record Payout
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {conversions.some(c => c.status === 'pending') && (
+              <Button size="sm" variant="outline" onClick={handleBulkApprove} isLoading={bulkApproving}>
+                Approve All Pending
+              </Button>
+            )}
+            {pendingBalance > 0 && (
+              <Button size="sm" onClick={handleOpenPayoutModal}>
+                <DollarSign className="h-4 w-4 mr-1.5" />
+                Record Payout
+              </Button>
+            )}
+          </div>
         </div>
         {conversions.length === 0 ? (
           <div className="text-center py-10">
