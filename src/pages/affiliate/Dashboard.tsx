@@ -123,20 +123,30 @@ function CopyButton({ value, label }: { value: string; label: string }) {
 function NotLoggedIn() {
   return (
     <div className="min-h-screen bg-[#F4F6F9] flex items-center justify-center px-4 py-12">
-      <div className="max-w-sm w-full text-center bg-white rounded-2xl border border-gray-200 shadow-sm p-10">
-        <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
-          <AlertCircle className="h-8 w-8 text-[#1677FF]" />
+      <div className="max-w-sm w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-10">
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Handshake className="h-8 w-8 text-[#1677FF]" />
+          </div>
+          <h1 className="text-xl font-bold text-[#0D1B2A] mb-2">Affiliate Dashboard</h1>
+          <p className="text-gray-500 text-sm">
+            Sign in with the email you used to apply. If you just got approved, use the link in your approval email.
+          </p>
         </div>
-        <h1 className="text-xl font-bold text-[#0D1B2A] mb-2">Sign in required</h1>
-        <p className="text-gray-500 mb-6 text-sm">
-          Please sign in to access your affiliate dashboard.
-        </p>
-        <Link
-          to="/login"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1677FF] text-white font-semibold rounded-xl hover:bg-[#1060d0] transition-colors text-sm"
-        >
-          Go to Login <ExternalLink className="h-4 w-4" />
-        </Link>
+        <div className="flex flex-col gap-3">
+          <Link
+            to="/login"
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#1677FF] text-white font-semibold rounded-xl hover:bg-[#1060d0] transition-colors text-sm"
+          >
+            Sign In to Dashboard
+          </Link>
+          <Link
+            to="/affiliate/apply"
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 border border-gray-200 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
+          >
+            Apply to Become an Affiliate
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -204,6 +214,14 @@ export default function AffiliateDashboard() {
 
   const [affiliate, setAffiliate] = useState<Affiliate | null>(null);
   const [globalCommissionRate, setGlobalCommissionRate] = useState<number>(10);
+
+  // Password setup state (shown when affiliate has no password yet)
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordSaved, setPasswordSaved] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
   const [stats, setStats] = useState({
     totalClicks: 0,
     totalConversions: 0,
@@ -302,7 +320,22 @@ export default function AffiliateDashboard() {
 
       if (record.status === 'pending') setPageState('pending');
       else if (record.status === 'rejected' || record.status === 'suspended') setPageState('rejected');
-      else if (record.status === 'approved') { await loadDashboard(record); setPageState('approved'); }
+      else if (record.status === 'approved') {
+        await loadDashboard(record);
+        setPageState('approved');
+        // Show password prompt if they signed in via magic link / invite (no password set)
+        const identities = (user as any)?.identities ?? [];
+        const hasEmailPassword = identities.some(
+          (i: any) => i.provider === 'email' && i.identity_data?.email_verified
+        );
+        // Simpler check: if user was just invited they have no confirmed_at before this session
+        // Use app_metadata — invite flow sets provider to 'email' but no password
+        const lastSignIn = (user as any)?.last_sign_in_at;
+        const createdAt = (user as any)?.created_at;
+        const isFirstLogin = lastSignIn && createdAt &&
+          Math.abs(new Date(lastSignIn).getTime() - new Date(createdAt).getTime()) < 60000;
+        if (isFirstLogin || !hasEmailPassword) setNeedsPassword(true);
+      }
       else setPageState('no-record');
     })();
 
@@ -312,6 +345,20 @@ export default function AffiliateDashboard() {
   useEffect(() => {
     if (pageState === 'no-record') navigate('/affiliate/apply', { replace: true });
   }, [pageState, navigate]);
+
+  const handleSetPassword = async () => {
+    setPasswordError('');
+    if (newPassword.length < 6) { setPasswordError('Password must be at least 6 characters'); return; }
+    if (newPassword !== confirmPassword) { setPasswordError('Passwords do not match'); return; }
+    setPasswordSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPasswordSaving(false);
+    if (error) { setPasswordError(error.message); return; }
+    setPasswordSaved(true);
+    setNeedsPassword(false);
+    setNewPassword('');
+    setConfirmPassword('');
+  };
 
   if (pageState === 'loading' || pageState === 'no-record') return <LoadingScreen />;
   if (pageState === 'no-auth') return <NotLoggedIn />;
@@ -324,6 +371,63 @@ export default function AffiliateDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F4F6F9]">
+
+      {/* Set Password Banner */}
+      {needsPassword && (
+        <div className="bg-amber-50 border-b border-amber-200">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
+            <p className="font-semibold text-amber-800 mb-1">Set a password to log back in anytime</p>
+            <p className="text-amber-700 text-sm mb-3">You logged in with a one-time link. Set a password now so you can sign in whenever you want.</p>
+            <div className="flex flex-wrap gap-2 items-end">
+              <div>
+                <label className="block text-xs font-medium text-amber-700 mb-1">Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Min 6 characters"
+                  className="px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-amber-700 mb-1">Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat password"
+                  className="px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                />
+              </div>
+              <button
+                onClick={handleSetPassword}
+                disabled={passwordSaving}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg text-sm transition-colors disabled:opacity-50"
+              >
+                {passwordSaving ? 'Saving...' : 'Save Password'}
+              </button>
+              <button
+                onClick={() => setNeedsPassword(false)}
+                className="px-4 py-2 text-amber-700 hover:text-amber-900 text-sm transition-colors"
+              >
+                Remind me later
+              </button>
+            </div>
+            {passwordError && <p className="text-red-600 text-sm mt-2">{passwordError}</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Password saved toast */}
+      {passwordSaved && (
+        <div className="bg-green-50 border-b border-green-200">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <p className="text-green-700 font-medium text-sm">✓ Password saved! You can now log in at any time with your email and password.</p>
+            <button onClick={() => setPasswordSaved(false)} className="text-green-500 hover:text-green-700 text-lg leading-none">×</button>
+          </div>
+        </div>
+      )}
+
       {/* Hero Banner */}
       <div className="bg-gradient-to-r from-[#1677FF] to-[#0D3B8C]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
