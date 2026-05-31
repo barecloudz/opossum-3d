@@ -503,7 +503,7 @@ export default function AffiliateDashboard() {
       })
       .eq('id', affiliate.id);
     setSavingShare(false);
-    if (error) { alert('Failed to save. Please try again.'); return; }
+    if (error) { console.error('[ShareSave]', error); alert(`Failed to save: ${error.message}`); return; }
     setAffiliate(prev => prev ? { ...prev, share_title: shareTitle.trim() || null, share_description: shareDescription.trim() || null, share_image_url: shareImageUrl.trim() || null } : prev);
     setShareSaved(true);
     setTimeout(() => setShareSaved(false), 3000);
