@@ -15,6 +15,7 @@ import {
   Trophy,
   Lock,
   X,
+  Tag,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
@@ -226,6 +227,7 @@ export default function AffiliateDashboard() {
 
   const [affiliate, setAffiliate] = useState<Affiliate | null>(null);
   const [globalCommissionRate, setGlobalCommissionRate] = useState<number>(10);
+  const [customerDiscountRate, setCustomerDiscountRate] = useState<number>(0);
 
   // Password setup state (shown when affiliate has no password yet)
   const [needsPassword, setNeedsPassword] = useState(false);
@@ -264,10 +266,13 @@ export default function AffiliateDashboard() {
 
     const { data: settingsData } = await supabase
       .from('affiliate_settings')
-      .select('commission_rate')
+      .select('commission_rate, customer_discount_rate')
       .eq('id', 1)
       .single();
-    if (settingsData) setGlobalCommissionRate(settingsData.commission_rate);
+    if (settingsData) {
+      setGlobalCommissionRate(settingsData.commission_rate);
+      setCustomerDiscountRate(settingsData.customer_discount_rate ?? 0);
+    }
 
     // Fetch milestone tiers
     const { data: tierData } = await supabase
@@ -316,7 +321,7 @@ export default function AffiliateDashboard() {
     const allConversions = (conversionsRes.data ?? []) as unknown as AffiliateConversion[];
 
     const totalEarned = allConversions
-      .filter((c) => c.status !== 'pending')
+      .filter((c) => c.status !== 'pending' && c.status !== 'reversed')
       .reduce((sum, c) => sum + c.commission_amount, 0);
 
     const pendingBalance = allConversions
@@ -555,33 +560,23 @@ export default function AffiliateDashboard() {
                 Here's how your referrals are performing
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <div className="flex items-center gap-3 bg-white/15 border border-white/25 rounded-2xl px-5 py-3">
                 <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
                   <DollarSign className="h-5 w-5 text-white" />
                 </div>
                 <div>
                   <p className="text-white/70 text-xs font-medium">Your Commission</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-white text-xl font-bold">{commissionRate}%</p>
-                    <button
-                      onClick={() => setActiveTab('milestones')}
-                      className="text-white/70 hover:text-white text-xs underline underline-offset-2 transition-colors"
-                    >
-                      View Milestones
-                    </button>
-                  </div>
+                  <p className="text-white text-xl font-bold">{commissionRate}%</p>
                 </div>
               </div>
-              {milestones.length > 0 && commissionRate < Math.max(...milestones.map(m => m.commission_rate)) && (
-                <button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="flex items-center gap-1.5 bg-yellow-400 hover:bg-yellow-300 text-yellow-900 font-bold text-xs px-3 py-2 rounded-xl transition-colors shadow-sm"
-                >
-                  <ArrowUp className="h-3.5 w-3.5" />
-                  Increase your Commission
-                </button>
-              )}
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="flex items-center gap-1.5 bg-yellow-400 hover:bg-yellow-300 text-yellow-900 font-bold text-sm px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+              >
+                <ArrowUp className="h-4 w-4" />
+                Increase your Commission
+              </button>
             </div>
           </div>
         </div>
@@ -668,9 +663,24 @@ export default function AffiliateDashboard() {
               <CopyButton value={referralLink} label="Copy Link" />
             </div>
           </div>
-          <p className="text-xs text-gray-400 mt-4">
-            Customers who use your code or link get a discount. You earn {commissionRate}% on every order they place.
-          </p>
+          <div className="flex flex-wrap gap-3 mt-4">
+            <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
+              <DollarSign className="h-4 w-4 text-[#1677FF]" />
+              <div>
+                <p className="text-[10px] text-blue-400 font-semibold uppercase tracking-wide">Your Commission</p>
+                <p className="text-sm font-bold text-[#1677FF]">{commissionRate}% per sale</p>
+              </div>
+            </div>
+            {customerDiscountRate > 0 && (
+              <div className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl px-3 py-2">
+                <Tag className="h-4 w-4 text-green-600" />
+                <div>
+                  <p className="text-[10px] text-green-500 font-semibold uppercase tracking-wide">Customer Discount</p>
+                  <p className="text-sm font-bold text-green-700">{customerDiscountRate}% off their order</p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Campaign breakdown — only show if sub_id data exists */}
           {campaignStats.length > 1 && (
@@ -1197,61 +1207,120 @@ export default function AffiliateDashboard() {
       </div>
 
       {/* ── UPGRADE MODAL ── */}
-      {showUpgradeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="bg-gradient-to-r from-[#1677FF] to-[#0D3B8C] px-6 py-5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Trophy className="h-6 w-6 text-yellow-300" />
-                <h2 className="text-white font-bold text-lg">Increase Your Commission</h2>
-              </div>
-              <button
-                onClick={() => { setShowUpgradeModal(false); setActiveTab('milestones'); }}
-                className="text-white/70 hover:text-white transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-600 text-sm mb-5 leading-relaxed">
-                Your commission rate grows as you refer more orders. Hit each milestone to permanently unlock a higher rate, automatically applied the moment you qualify.
-              </p>
-              <div className="space-y-3 mb-6">
-                {milestones.map((tier) => {
-                  const completedConversions = conversions.filter(c => c.status !== 'reversed').length;
-                  const isUnlocked = completedConversions >= tier.conversions_required;
-                  const isCurrent = commissionRate === tier.commission_rate;
-                  return (
-                    <div key={tier.id} className={`flex items-center gap-4 p-3 rounded-xl border ${
-                      isCurrent ? 'border-[#1677FF] bg-blue-50' : isUnlocked ? 'border-green-200 bg-green-50' : 'border-gray-100'
-                    }`}>
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        isUnlocked ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
-                      }`}>
-                        {isUnlocked ? <Check className="h-4 w-4" /> : <Lock className="h-3.5 w-3.5" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-[#0D1B2A] text-sm">{tier.label}</span>
-                          {isCurrent && <span className="text-xs bg-[#1677FF] text-white px-1.5 py-0.5 rounded-full">Current</span>}
-                        </div>
-                        <p className="text-xs text-gray-400">{tier.conversions_required === 0 ? 'Starting rate' : `${tier.conversions_required} referred orders`}</p>
-                      </div>
-                      <span className="text-xl font-extrabold text-[#1677FF] flex-shrink-0">{tier.commission_rate}%</span>
+      {showUpgradeModal && (() => {
+        const completedConversions = conversions.filter(c => c.status !== 'reversed').length;
+        const maxRate = milestones.length > 0 ? Math.max(...milestones.map(m => m.commission_rate)) : commissionRate;
+        const isMaxed = commissionRate >= maxRate;
+        const nextTier = milestones.find(t => completedConversions < t.conversions_required);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowUpgradeModal(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="bg-gradient-to-r from-[#1677FF] to-[#0D3B8C] px-6 py-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Trophy className="h-6 w-6 text-yellow-300" />
+                    <h2 className="text-white font-bold text-lg">Commission Milestones</h2>
+                  </div>
+                  <button onClick={() => setShowUpgradeModal(false)} className="text-white/70 hover:text-white transition-colors">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                {/* Current rate big display */}
+                <div className="bg-white/15 rounded-xl px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-white/70 text-xs">Your current rate</p>
+                    <p className="text-white text-3xl font-black">{commissionRate}%</p>
+                  </div>
+                  {isMaxed ? (
+                    <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1.5 rounded-full">Max Rate Achieved!</span>
+                  ) : nextTier ? (
+                    <div className="text-right">
+                      <p className="text-white/70 text-xs">Next tier</p>
+                      <p className="text-yellow-300 text-xl font-black">{nextTier.commission_rate}%</p>
+                      <p className="text-white/60 text-xs">{nextTier.conversions_required - completedConversions} orders away</p>
                     </div>
-                  );
-                })}
+                  ) : null}
+                </div>
               </div>
-              <button
-                onClick={() => { setShowUpgradeModal(false); setActiveTab('milestones'); }}
-                className="w-full py-3 bg-[#1677FF] hover:bg-[#1060d0] text-white font-bold rounded-xl transition-colors"
-              >
-                View My Progress →
-              </button>
+
+              <div className="p-6">
+                {isMaxed ? (
+                  <div className="text-center mb-5 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                    <p className="text-yellow-800 font-bold text-base">You've reached the top!</p>
+                    <p className="text-yellow-700 text-sm mt-1">You're already earning the maximum commission rate. Keep referring to grow your earnings.</p>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm mb-5 leading-relaxed">
+                    Refer more orders and unlock higher commission rates permanently. Each milestone you hit upgrades your rate automatically.
+                  </p>
+                )}
+
+                {/* Tier list */}
+                {milestones.length > 0 ? (
+                  <div className="space-y-2 mb-6">
+                    {milestones.map((tier, i) => {
+                      const isUnlocked = completedConversions >= tier.conversions_required;
+                      const isCurrent = commissionRate === tier.commission_rate;
+                      const isNext = !isUnlocked && milestones.slice(0, i).every(t => completedConversions >= t.conversions_required);
+                      return (
+                        <div key={tier.id} className={`flex items-center gap-4 p-3.5 rounded-xl border transition-all ${
+                          isCurrent ? 'border-[#1677FF] bg-blue-50' :
+                          isUnlocked ? 'border-green-200 bg-green-50' :
+                          isNext ? 'border-yellow-200 bg-yellow-50' :
+                          'border-gray-100 bg-gray-50'
+                        }`}>
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                            isUnlocked ? 'bg-green-500 text-white' :
+                            isNext ? 'bg-yellow-400 text-yellow-900' :
+                            'bg-gray-200 text-gray-400'
+                          }`}>
+                            {isUnlocked ? <Check className="h-4 w-4" /> : isNext ? <Trophy className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-[#0D1B2A] text-sm">{tier.label}</span>
+                              {isCurrent && <span className="text-xs bg-[#1677FF] text-white px-2 py-0.5 rounded-full font-semibold">Current</span>}
+                              {isNext && <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-semibold border border-yellow-200">Up Next</span>}
+                            </div>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {tier.conversions_required === 0 ? 'Starting rate — no orders required' : `Requires ${tier.conversions_required} referred orders`}
+                              {isUnlocked && !isCurrent ? ' (completed)' : ''}
+                            </p>
+                            {isNext && (
+                              <div className="mt-1.5 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-yellow-400 rounded-full"
+                                  style={{ width: `${Math.min(100, Math.max(2, Math.round((completedConversions / tier.conversions_required) * 100)))}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <span className={`text-2xl font-black flex-shrink-0 ${isUnlocked || isCurrent ? 'text-[#1677FF]' : 'text-gray-300'}`}>
+                            {tier.commission_rate}%
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 rounded-xl p-4 mb-6 text-center">
+                    <p className="text-gray-400 text-sm">Milestone tiers are being set up. Check back soon.</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => { setShowUpgradeModal(false); setActiveTab('milestones'); }}
+                  className="w-full py-3 bg-[#1677FF] hover:bg-[#1060d0] text-white font-bold rounded-xl transition-colors"
+                >
+                  {isMaxed ? 'View My Milestones' : 'See My Full Progress →'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </div>
   );

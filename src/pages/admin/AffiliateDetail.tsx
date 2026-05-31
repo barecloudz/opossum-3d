@@ -504,6 +504,29 @@ export default function AdminAffiliateDetail() {
             </Button>
           </div>
         </Card>
+
+        {/* Payout Preference */}
+        <Card>
+          <h2 className="text-base font-semibold text-[#0D1B2A] mb-3">Payout Preference</h2>
+          {affiliate.payout_method ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide w-20">Method</span>
+                <span className="text-sm font-semibold text-[#0D1B2A] capitalize bg-gray-100 px-3 py-1 rounded-lg">
+                  {affiliate.payout_method.replace('_', ' ')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide w-20">Details</span>
+                <span className="text-sm text-[#0D1B2A] font-mono bg-gray-100 px-3 py-1 rounded-lg">
+                  {affiliate.payout_details || '-'}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">This affiliate has not set their payout preference yet.</p>
+          )}
+        </Card>
       </div>
 
       {/* Conversions table */}
