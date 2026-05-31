@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Package, LogOut, Settings, ChevronRight, MapPin, Clock } from 'lucide-react';
+import { User, Package, LogOut, Settings, ChevronRight, MapPin, Clock, Handshake } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
 import Button from '../components/ui/Button';
@@ -24,6 +24,7 @@ export default function Account() {
   const [activeTab, setActiveTab] = useState<'orders' | 'settings'>('orders');
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAffiliate, setIsAffiliate] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -69,6 +70,17 @@ export default function Account() {
     };
 
     fetchOrders();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('affiliates')
+      .select('id')
+      .eq('status', 'approved')
+      .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+      .maybeSingle()
+      .then(({ data }) => { if (data) setIsAffiliate(true); });
   }, [user]);
 
   const handleSignOut = async () => {
@@ -190,6 +202,15 @@ export default function Account() {
           <Settings className="h-5 w-5" />
           Settings
         </button>
+        {isAffiliate && (
+          <button
+            onClick={() => navigate('/affiliate/dashboard')}
+            className="pb-3 px-1 font-medium transition-colors flex items-center gap-2 text-theme opacity-60 hover:opacity-100"
+          >
+            <Handshake className="h-5 w-5" />
+            Affiliate
+          </button>
+        )}
       </div>
 
       {/* Content */}
