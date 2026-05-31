@@ -7,8 +7,6 @@ import {
   Clock,
   Copy,
   Check,
-  ExternalLink,
-  AlertCircle,
   XCircle,
   TrendingUp,
   Handshake,
