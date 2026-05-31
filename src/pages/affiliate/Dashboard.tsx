@@ -562,7 +562,15 @@ export default function AffiliateDashboard() {
                 </div>
                 <div>
                   <p className="text-white/70 text-xs font-medium">Your Commission</p>
-                  <p className="text-white text-xl font-bold">{commissionRate}%</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-white text-xl font-bold">{commissionRate}%</p>
+                    <button
+                      onClick={() => setActiveTab('milestones')}
+                      className="text-white/70 hover:text-white text-xs underline underline-offset-2 transition-colors"
+                    >
+                      View Milestones
+                    </button>
+                  </div>
                 </div>
               </div>
               {milestones.length > 0 && commissionRate < Math.max(...milestones.map(m => m.commission_rate)) && (
@@ -661,7 +669,7 @@ export default function AffiliateDashboard() {
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-4">
-            Customers who use your code or link get a discount — you earn {commissionRate}% on every order they place.
+            Customers who use your code or link get a discount. You earn {commissionRate}% on every order they place.
           </p>
 
           {/* Campaign breakdown — only show if sub_id data exists */}
@@ -728,7 +736,7 @@ export default function AffiliateDashboard() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {conversions.map((conv) => {
-                    const name = conv.order?.guest_name || conv.order?.guest_email || '—';
+                    const name = conv.order?.guest_name || conv.order?.guest_email || '-';
                     const initials = conv.order?.guest_name
                       ? conv.order.guest_name.trim().split(/\s+/).map((w: string) => w[0].toUpperCase()).slice(0, 2).join('. ') + '.'
                       : name;
@@ -737,11 +745,11 @@ export default function AffiliateDashboard() {
                       ? items.map((i: { product_name: string; quantity: number }) =>
                           `${i.quantity}x ${i.product_name}`
                         ).join(', ')
-                      : '—';
+                      : '-';
                     return (
                       <tr key={conv.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 font-semibold text-[#0D1B2A]">
-                          {conv.order ? `#${conv.order.order_number}` : '—'}
+                          {conv.order ? `#${conv.order.order_number}` : '-'}
                         </td>
                         <td className="px-6 py-4 text-gray-600">{initials}</td>
                         <td className="px-6 py-4 text-gray-500 max-w-[180px] truncate" title={itemSummary}>{itemSummary}</td>
@@ -789,7 +797,7 @@ export default function AffiliateDashboard() {
                       <td className="px-6 py-4 text-gray-500">{formatDate(payout.created_at)}</td>
                       <td className="px-6 py-4 text-right font-bold text-[#1677FF]">{formatCurrency(payout.amount)}</td>
                       <td className="px-6 py-4 text-[#0D1B2A] capitalize">{payout.method}</td>
-                      <td className="px-6 py-4 text-gray-500">{payout.reference ?? '—'}</td>
+                      <td className="px-6 py-4 text-gray-500">{payout.reference ?? '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -876,90 +884,201 @@ export default function AffiliateDashboard() {
         </> /* end overview tab */}
 
         {/* ── MILESTONES TAB ── */}
-        {activeTab === 'milestones' && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Trophy className="h-6 w-6 text-yellow-500" />
-                <h2 className="text-lg font-bold text-[#0D1B2A]">Commission Milestones</h2>
+        {activeTab === 'milestones' && (() => {
+          const completedConversions = conversions.filter(c => c.status !== 'reversed').length;
+          const maxRate = milestones.length > 0 ? Math.max(...milestones.map(m => m.commission_rate)) : commissionRate;
+          const isMaxed = commissionRate >= maxRate;
+          const nextTier = milestones.find(t => completedConversions < t.conversions_required);
+          const ordersToNext = nextTier ? nextTier.conversions_required - completedConversions : 0;
+
+          return (
+            <div className="space-y-6">
+              {/* Header card */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <Trophy className="h-6 w-6 text-yellow-500" />
+                      <h2 className="text-xl font-bold text-[#0D1B2A]">Commission Milestones</h2>
+                    </div>
+                    <p className="text-sm text-gray-500 max-w-lg">
+                      Every order you refer counts. Reach each milestone to permanently unlock a higher commission rate. Upgrades apply automatically the moment you qualify.
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-400 mb-0.5">Your current rate</p>
+                    <p className="text-4xl font-black text-[#1677FF]">{commissionRate}%</p>
+                    {isMaxed
+                      ? <p className="text-xs text-green-600 font-semibold mt-0.5">Max rate achieved!</p>
+                      : <p className="text-xs text-gray-400 mt-0.5">{ordersToNext} more order{ordersToNext !== 1 ? 's' : ''} to next tier</p>
+                    }
+                  </div>
+                </div>
+
+                {/* Overall progress bar */}
+                {!isMaxed && nextTier && (
+                  <div className="mt-5">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                      <span className="font-medium">{completedConversions} referrals completed</span>
+                      <span>{nextTier.conversions_required} needed for {nextTier.label}</span>
+                    </div>
+                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#1677FF] to-[#0D3B8C] transition-all"
+                        style={{ width: `${Math.min(100, Math.round((completedConversions / nextTier.conversions_required) * 100))}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-gray-500 mb-6">
-                Earn more by referring more orders. Each milestone unlocks a higher commission rate — permanently.
-              </p>
 
-              <div className="space-y-4">
-                {milestones.map((tier, i) => {
-                  const completedConversions = conversions.filter(c => c.status !== 'reversed').length;
-                  const isUnlocked = completedConversions >= tier.conversions_required;
-                  const isCurrent = commissionRate === tier.commission_rate;
-                  const isNext = !isUnlocked && milestones.slice(0, i).every(t => completedConversions >= t.conversions_required);
-                  const prevRequired = i > 0 ? milestones[i - 1].conversions_required : 0;
-                  const segmentProgress = tier.conversions_required === 0
-                    ? 100
-                    : Math.min(100, Math.round(((completedConversions - prevRequired) / (tier.conversions_required - prevRequired)) * 100));
+              {/* Timeline */}
+              {milestones.length > 0 && (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-8">Your Progress Path</p>
 
-                  return (
+                  <div className="relative">
+                    {/* Vertical connector line */}
+                    <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gray-200" />
+                    {/* Filled portion of connector line */}
                     <div
-                      key={tier.id}
-                      className={`rounded-2xl border p-5 transition-all ${
-                        isCurrent
-                          ? 'border-[#1677FF] bg-blue-50'
-                          : isUnlocked
-                          ? 'border-green-200 bg-green-50'
-                          : 'border-gray-200 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
-                            isUnlocked ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
-                          }`}>
-                            {isUnlocked ? <Check className="h-5 w-5" /> : <Lock className="h-4 w-4" />}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-[#0D1B2A]">{tier.label}</span>
-                              {isCurrent && (
-                                <span className="text-xs bg-[#1677FF] text-white px-2 py-0.5 rounded-full font-semibold">Current</span>
+                      className="absolute left-6 top-6 w-0.5 bg-gradient-to-b from-green-400 to-[#1677FF] transition-all"
+                      style={{
+                        height: (() => {
+                          const unlockedCount = milestones.filter(t => completedConversions >= t.conversions_required).length;
+                          if (unlockedCount === 0) return '0%';
+                          if (unlockedCount >= milestones.length) return 'calc(100% - 48px)';
+                          const pct = ((unlockedCount - 0.5) / (milestones.length - 1)) * 100;
+                          return `${pct}%`;
+                        })()
+                      }}
+                    />
+
+                    <div className="space-y-6">
+                      {milestones.map((tier, i) => {
+                        const isUnlocked = completedConversions >= tier.conversions_required;
+                        const isCurrent = commissionRate === tier.commission_rate;
+                        const isNext = !isUnlocked && milestones.slice(0, i).every(t => completedConversions >= t.conversions_required);
+                        const prevRequired = i > 0 ? milestones[i - 1].conversions_required : 0;
+                        const segmentProgress = tier.conversions_required === 0
+                          ? 100
+                          : Math.min(100, Math.max(0, Math.round(((completedConversions - prevRequired) / (tier.conversions_required - prevRequired)) * 100)));
+
+                        return (
+                          <div key={tier.id} className="relative flex gap-5 items-start">
+                            {/* Circle node */}
+                            <div className={`relative z-10 w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center border-4 transition-all shadow-sm ${
+                              isUnlocked
+                                ? 'bg-green-500 border-green-500 text-white'
+                                : isCurrent
+                                ? 'bg-[#1677FF] border-[#1677FF] text-white'
+                                : isNext
+                                ? 'bg-white border-yellow-400 text-yellow-500'
+                                : 'bg-white border-gray-200 text-gray-300'
+                            }`}>
+                              {isUnlocked
+                                ? <Check className="h-5 w-5" />
+                                : isNext
+                                ? <Trophy className="h-5 w-5" />
+                                : <Lock className="h-4 w-4" />
+                              }
+                            </div>
+
+                            {/* Content card */}
+                            <div className={`flex-1 rounded-2xl border p-5 pb-4 transition-all ${
+                              isCurrent
+                                ? 'border-[#1677FF] bg-blue-50'
+                                : isUnlocked
+                                ? 'border-green-200 bg-green-50'
+                                : isNext
+                                ? 'border-yellow-200 bg-yellow-50'
+                                : 'border-gray-100 bg-gray-50'
+                            }`}>
+                              <div className="flex items-start justify-between gap-3 mb-2">
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-bold text-[#0D1B2A] text-base">{tier.label}</span>
+                                    {isUnlocked && !isCurrent && (
+                                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold border border-green-200">Unlocked</span>
+                                    )}
+                                    {isCurrent && (
+                                      <span className="text-xs bg-[#1677FF] text-white px-2 py-0.5 rounded-full font-semibold">Current Tier</span>
+                                    )}
+                                    {isNext && (
+                                      <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-semibold border border-yellow-200">Up Next</span>
+                                    )}
+                                  </div>
+                                  {tier.description && (
+                                    <p className="text-sm text-gray-500 mt-1">{tier.description}</p>
+                                  )}
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                  <p className={`text-3xl font-black ${isUnlocked || isCurrent ? 'text-[#1677FF]' : 'text-gray-300'}`}>
+                                    {tier.commission_rate}%
+                                  </p>
+                                  <p className="text-xs text-gray-400">commission</p>
+                                </div>
+                              </div>
+
+                              {/* Stats row */}
+                              <div className="flex items-center gap-4 text-xs text-gray-500 mb-3 flex-wrap">
+                                <span className="flex items-center gap-1">
+                                  <span className="font-semibold text-[#0D1B2A]">{tier.conversions_required}</span> orders required
+                                </span>
+                                {isUnlocked ? (
+                                  <span className="flex items-center gap-1 text-green-600 font-semibold">
+                                    <Check className="h-3.5 w-3.5" /> Completed
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1">
+                                    <span className="font-semibold text-[#0D1B2A]">{completedConversions}</span> / {tier.conversions_required} done
+                                    {isNext && <span className="text-yellow-600 font-semibold ml-1">({tier.conversions_required - completedConversions} to go)</span>}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Progress bar — only for locked/next tiers */}
+                              {!isUnlocked && tier.conversions_required > 0 && (
+                                <div>
+                                  <div className="h-2 bg-white/60 rounded-full overflow-hidden border border-gray-200">
+                                    <div
+                                      className={`h-full rounded-full transition-all ${isNext ? 'bg-yellow-400' : 'bg-gray-200'}`}
+                                      style={{ width: `${isNext ? Math.max(2, segmentProgress) : 0}%` }}
+                                    />
+                                  </div>
+                                  {isNext && segmentProgress > 0 && (
+                                    <p className="text-xs text-yellow-600 font-medium mt-1">{segmentProgress}% of the way there</p>
+                                  )}
+                                </div>
                               )}
-                              {isNext && (
-                                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full font-semibold border border-yellow-200">Next</span>
+
+                              {isUnlocked && (
+                                <p className="text-xs text-green-600 font-semibold">
+                                  {isCurrent ? 'This is your active commission rate.' : 'You passed this milestone.'}
+                                </p>
                               )}
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5">{tier.description}</p>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-extrabold text-[#1677FF]">{tier.commission_rate}%</p>
-                          <p className="text-xs text-gray-400">commission</p>
-                        </div>
-                      </div>
-
-                      {tier.conversions_required > 0 && (
-                        <>
-                          <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-                            <span>{isUnlocked ? '✓ Unlocked' : `${completedConversions} / ${tier.conversions_required} orders`}</span>
-                            <span>{isUnlocked ? '' : `${tier.conversions_required - completedConversions} to go`}</span>
-                          </div>
-                          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${isUnlocked ? 'bg-green-500' : 'bg-[#1677FF]'}`}
-                              style={{ width: `${isUnlocked ? 100 : Math.max(0, segmentProgress)}%` }}
-                            />
-                          </div>
-                        </>
-                      )}
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
 
-              <p className="text-xs text-gray-400 mt-6 text-center">
-                Commission upgrades are applied automatically when you reach the required referrals.
-              </p>
+                  <p className="text-xs text-gray-400 mt-8 text-center border-t border-gray-100 pt-4">
+                    Commission upgrades are applied automatically when you reach the required referrals. Keep sharing your link!
+                  </p>
+                </div>
+              )}
+
+              {milestones.length === 0 && (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-12 text-center">
+                  <Trophy className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-400 text-sm">No milestone tiers configured yet. Check back soon.</p>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── PAYOUTS TAB ── */}
         {activeTab === 'payouts' && (
@@ -995,7 +1114,7 @@ export default function AffiliateDashboard() {
                           <td className="px-6 py-4 text-gray-500">{formatDate(payout.created_at)}</td>
                           <td className="px-6 py-4 text-right font-bold text-[#1677FF]">{formatCurrency(payout.amount)}</td>
                           <td className="px-6 py-4 text-[#0D1B2A] capitalize">{payout.method}</td>
-                          <td className="px-6 py-4 text-gray-500">{payout.reference ?? '—'}</td>
+                          <td className="px-6 py-4 text-gray-500">{payout.reference ?? '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1095,7 +1214,7 @@ export default function AffiliateDashboard() {
             </div>
             <div className="p-6">
               <p className="text-gray-600 text-sm mb-5 leading-relaxed">
-                Your commission rate grows as you refer more orders. Hit each milestone to permanently unlock a higher rate — automatically applied the moment you qualify.
+                Your commission rate grows as you refer more orders. Hit each milestone to permanently unlock a higher rate, automatically applied the moment you qualify.
               </p>
               <div className="space-y-3 mb-6">
                 {milestones.map((tier) => {

@@ -549,7 +549,7 @@ export default function AdminAffiliateDetail() {
                     className="border-b border-gray-200 hover:bg-blue-50"
                   >
                     <td className="py-3 px-4 text-[#0D1B2A] font-medium">
-                      {conv.order?.order_number ? `#${conv.order.order_number}` : '—'}
+                      {conv.order?.order_number ? `#${conv.order.order_number}` : '-'}
                     </td>
                     <td className="py-3 px-4 text-gray-400 text-sm">
                       {formatDate(conv.created_at)}
@@ -644,7 +644,7 @@ export default function AdminAffiliateDetail() {
                       {payout.method}
                     </td>
                     <td className="py-3 px-4 text-gray-400 text-sm">
-                      {payout.reference || <span className="text-gray-600">—</span>}
+                      {payout.reference || <span className="text-gray-600">-</span>}
                     </td>
                   </tr>
                 ))}

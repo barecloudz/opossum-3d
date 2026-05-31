@@ -394,7 +394,7 @@ export default function Home() {
             Have a custom idea?
           </h2>
           <p className="text-white/60 text-base mb-8 max-w-md mx-auto">
-            Tell us what you need. We'll design, print, and engrave it — exactly how you imagined it.
+            Tell us what you need. We'll design, print, and engrave it exactly how you imagined it.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link

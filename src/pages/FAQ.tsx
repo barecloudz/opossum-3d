@@ -9,7 +9,7 @@ interface FAQItem {
 const faqs: FAQItem[] = [
   {
     question: 'Is there a minimum order?',
-    answer: 'There is no minimum order. However, orders under $50 will have shipping charges applied. Pricing on custom pieces is determined by quantity — the more you order, the better the per-unit cost.',
+    answer: 'There is no minimum order. However, orders under $50 will have shipping charges applied. Pricing on custom pieces is determined by quantity; the more you order, the better the per-unit cost.',
   },
   {
     question: 'What materials do you work with?',
@@ -21,7 +21,7 @@ const faqs: FAQItem[] = [
   },
   {
     question: 'How long does production take?',
-    answer: 'Turnaround time depends on the complexity and quantity of your order. Standard orders typically ship within 5–10 business days. Bulk or highly custom orders may take longer — we\'ll give you a timeline when you receive your quote.',
+    answer: 'Turnaround time depends on the complexity and quantity of your order. Standard orders typically ship within 5-10 business days. Bulk or highly custom orders may take longer. We\'ll give you a timeline when you receive your quote.',
   },
   {
     question: 'What file formats do you accept for custom designs?',

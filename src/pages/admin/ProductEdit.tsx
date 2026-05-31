@@ -658,7 +658,7 @@ export default function AdminProductEdit() {
 
               {priceTiers.length === 0 ? (
                 <div className="text-center py-6 border border-dashed border-gray-300 rounded-lg">
-                  <p className="text-gray-400 text-sm">No tiers configured — affiliate customers pay base price</p>
+                  <p className="text-gray-400 text-sm">No tiers configured. Affiliate customers pay base price.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -998,7 +998,7 @@ export default function AdminProductEdit() {
                 maxImages={20}
               />
               {isImageUploading && (
-                <p className="text-amber-500 text-xs mt-2">Images are still uploading — save will be available when complete.</p>
+                <p className="text-amber-500 text-xs mt-2">Images are still uploading. Save will be available when complete.</p>
               )}
             </Card>
 

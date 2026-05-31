@@ -741,7 +741,7 @@ export default function AdminAffiliates() {
                         </span>
                       </td>
                       <td className="py-3 px-4 text-gray-400 text-sm">
-                        {affiliate.business_name || <span className="text-gray-600">—</span>}
+                        {affiliate.business_name || <span className="text-gray-600">-</span>}
                       </td>
                       <td className="py-3 px-4 text-gray-400 text-sm">
                         {formatDate(affiliate.created_at)}
