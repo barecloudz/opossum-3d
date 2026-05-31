@@ -41,26 +41,25 @@ export const useProductStore = create<ProductStore>((set, get) => ({
       return inFlightPromise;
     }
 
-    const doFetch = async (attempt = 1): Promise<void> => {
+    const doFetch = async (): Promise<void> => {
       set({ isLoading: true, error: null });
 
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        // Use Promise.race for a reliable timeout that doesn't depend on library support
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), 10000)
+        );
 
-        const { data, error: fetchError } = await supabase
+        const query = supabase
           .from('products')
           .select(`
             *,
-            category:categories(*),
-            images:product_images(*),
-            variants:product_variants(*)
+            images:product_images(*)
           `)
           .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .abortSignal(controller.signal);
+          .order('created_at', { ascending: false });
 
-        clearTimeout(timeoutId);
+        const { data, error: fetchError } = await Promise.race([query, timeout]);
 
         if (fetchError) throw fetchError;
 
@@ -71,21 +70,9 @@ export const useProductStore = create<ProductStore>((set, get) => ({
           lastFetched: Date.now(),
         });
       } catch (err: any) {
-        console.error(`[ProductStore] Fetch error (attempt ${attempt}):`, err.message);
-
-        // Retry up to 2 times on timeout or network errors
-        if (attempt < 3 && (err.name === 'AbortError' || err.message?.includes('network') || err.message?.includes('fetch'))) {
-          console.log(`[ProductStore] Retrying in ${attempt}s...`);
-          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
-          return doFetch(attempt + 1);
-        }
-
-        const errorMessage = err.name === 'AbortError'
-          ? 'Request timed out. Please check your connection and try again.'
-          : err.message || 'Failed to load products';
-
+        console.error('[ProductStore] Fetch error:', err.message);
         set({
-          error: new Error(errorMessage),
+          error: new Error(err.message || 'Failed to load products'),
           isLoading: false,
         });
       }
