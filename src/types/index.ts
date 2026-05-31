@@ -298,7 +298,7 @@ export interface AffiliateConversion {
   status: AffiliateConversionStatus;
   payout_id: string | null;
   created_at: string;
-  order?: Pick<Order, 'order_number' | 'created_at' | 'total'>;
+  order?: Pick<Order, 'order_number' | 'created_at' | 'total' | 'guest_name' | 'guest_email'> & { items?: Pick<OrderItem, 'product_name' | 'quantity'>[] };
 }
 
 export interface AffiliatePayout {
