@@ -87,53 +87,50 @@ export default function Home() {
               <span className="text-white/80 text-sm font-medium">Custom 3D Printing & Laser Engraving</span>
             </div>
             <h1 className="text-4xl sm:text-5xl font-extrabold text-white leading-tight tracking-tight mb-4">
-              Your Vision.<br />
-              <span className="text-[#1677FF]">Made Real.</span>
+              Have an idea you want<br />
+              <span className="text-[#1677FF]">brought to life?</span>
             </h1>
-            <p className="text-white/60 text-base mb-8 max-w-md leading-relaxed">
-              Precision 3D printed products built to your exact specifications. Custom and bulk orders welcome.
+            <p className="text-white/60 text-base mb-3 max-w-md leading-relaxed">
+              Click the Creativity button to get started. Tell us exactly what you want, add your details, and submit your request directly to our team.
+            </p>
+            <p className="text-white/40 text-sm mb-8 max-w-md leading-relaxed">
+              We'll get back to you as soon as possible.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
-              <Link
-                to="/products"
+              <a
+                href="mailto:nexaloncreations@gmail.com?subject=Custom%20Request"
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#1677FF] hover:bg-[#1060d0] text-white font-bold rounded-2xl transition-colors btn-press text-base"
               >
-                Shop Now <ArrowRight className="h-4 w-4" />
-              </Link>
+                Send Your Idea <ArrowRight className="h-4 w-4" />
+              </a>
               <Link
-                to="/custom-quote"
+                to="/products"
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-2xl transition-colors btn-press text-base"
               >
-                Custom Quote
+                Browse Products
               </Link>
             </div>
           </div>
 
-          {/* Right — product showcase */}
+          {/* Right — creativity button */}
           <div className="flex-1 order-1 md:order-2 flex justify-center md:justify-end">
             <div className="relative">
-              {/* Glow */}
-              <div className="absolute inset-0 bg-[#1677FF]/20 rounded-3xl blur-3xl scale-110" />
-              {/* Product card */}
-              <Link to="/products/shake-maker-spoons" className="relative block">
-                <div className="relative bg-gradient-to-br from-white/10 to-white/5 border border-white/10 rounded-3xl p-3 backdrop-blur-sm">
+              <div className="absolute inset-0 bg-[#1677FF]/20 rounded-full blur-3xl scale-110" />
+              <a href="mailto:nexaloncreations@gmail.com?subject=Custom%20Request" className="relative block group">
+                <div className="relative w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 rounded-full overflow-hidden ring-4 ring-[#1677FF]/30 group-hover:ring-[#1677FF]/60 transition-all duration-300 group-hover:scale-105 shadow-2xl">
                   <img
-                    src="https://res.cloudinary.com/dblvtidrh/image/upload/v1779975289/opossum/products/1000018893_ynfaqo.png"
-                    alt="Shake Maker Spoons"
-                    className="w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 object-contain rounded-2xl"
+                    src="https://res.cloudinary.com/dblvtidrh/image/upload/v1780197742/nexalon/misc/scnjp9js3tybrv4is50j.jpg"
+                    alt="Submit a creative idea"
+                    className="w-full h-full object-cover"
                   />
-                  {/* Label */}
-                  <div className="mt-2 px-3 pb-2 flex items-center justify-between">
-                    <div>
-                      <p className="text-white font-bold text-sm">Shake Maker Spoons</p>
-                      <p className="text-[#1677FF] font-extrabold">$5.00</p>
-                    </div>
-                    <div className="bg-[#1677FF] text-white text-xs font-bold px-3 py-1.5 rounded-xl">
-                      Shop →
-                    </div>
+                  <div className="absolute inset-0 bg-[#1677FF]/0 group-hover:bg-[#1677FF]/15 transition-colors duration-300 flex items-end justify-center pb-7">
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[#1677FF] text-white text-sm font-bold px-5 py-2 rounded-full shadow-lg">
+                      Send Your Idea →
+                    </span>
                   </div>
                 </div>
-              </Link>
+                <p className="mt-3 text-center text-[#1677FF] text-sm font-semibold group-hover:underline">Creativity Button</p>
+              </a>
             </div>
           </div>
 
@@ -388,35 +385,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* ── CREATIVITY BUTTON ────────────────────────────────── */}
-      <div className="px-4 py-14 bg-[#F8FAFC]">
-        <div className="max-w-2xl mx-auto text-center">
-          <p className="text-[#1677FF] text-sm font-semibold uppercase tracking-widest mb-2">Custom Requests</p>
-          <h2 className="text-2xl md:text-3xl font-extrabold text-[#0D1B2A] mb-3">Have an idea you want brought to life?</h2>
-          <p className="text-gray-500 text-sm mb-8 max-w-lg mx-auto leading-relaxed">
-            Click the Creativity button below to get started. You'll be taken to a quick form where you can tell us exactly what you want, add your details, and submit your request directly to our team. Once submitted, your request will be sent to nexaloncreations@gmail.com and we'll get back to you as soon as possible.
-          </p>
-          <a
-            href="mailto:nexaloncreations@gmail.com?subject=Custom%20Request"
-            className="inline-block group"
-          >
-            <div className="relative mx-auto w-52 h-52 md:w-64 md:h-64 rounded-full overflow-hidden shadow-2xl ring-4 ring-[#1677FF]/20 hover:ring-[#1677FF]/50 transition-all duration-300 hover:scale-105 cursor-pointer">
-              <img
-                src="https://res.cloudinary.com/dblvtidrh/image/upload/v1780197742/nexalon/misc/scnjp9js3tybrv4is50j.jpg"
-                alt="Submit a creative idea"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-[#1677FF]/0 group-hover:bg-[#1677FF]/10 transition-colors duration-300 flex items-end justify-center pb-5">
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[#1677FF] text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">
-                  Send Your Idea →
-                </span>
-              </div>
-            </div>
-            <p className="mt-4 text-sm font-semibold text-[#1677FF] group-hover:underline">Creativity Button</p>
-          </a>
         </div>
       </div>
 
