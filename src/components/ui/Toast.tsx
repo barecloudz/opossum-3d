@@ -17,9 +17,9 @@ const icons = {
 };
 
 const styles = {
-  success: 'bg-brand-charcoal border-brand-neon/50 text-brand-neon',
-  error: 'bg-brand-charcoal border-red-500/50 text-red-400',
-  info: 'bg-brand-charcoal border-blue-500/50 text-blue-400',
+  success: 'bg-gray-900 border-green-500/60 text-green-400',
+  error: 'bg-gray-900 border-red-500/60 text-red-400',
+  info: 'bg-gray-900 border-blue-500/60 text-blue-400',
 };
 
 export default function Toast({ message, type = 'success', duration = 3000, onClose }: ToastProps) {

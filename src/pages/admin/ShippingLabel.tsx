@@ -71,9 +71,13 @@ export default function AdminShippingLabel() {
     setRates([]);
     setGeneratedLabel(null);
 
+    const controller = new AbortController();
+    const ratesTimeout = setTimeout(() => controller.abort(), 20000);
+
     try {
       const res = await fetch('/.netlify/functions/get-shipping-rate', {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           destinationAddress: {
@@ -94,9 +98,11 @@ export default function AdminShippingLabel() {
       } else {
         addToast('No rates returned. Check the address and try again.', 'error');
       }
-    } catch {
-      addToast('Failed to fetch rates. Check your connection.', 'error');
+    } catch (err: any) {
+      const msg = err.name === 'AbortError' ? 'Request timed out. Try again.' : 'Failed to fetch rates. Check your connection.';
+      addToast(msg, 'error');
     } finally {
+      clearTimeout(ratesTimeout);
       setRatesLoading(false);
     }
   };
@@ -220,8 +226,8 @@ export default function AdminShippingLabel() {
               </div>
               <Input label="Street Address" name="address" value={form.address} onChange={handleChange} required />
               <Input label="Apt, Suite, etc. (optional)" name="apartment" value={form.apartment} onChange={handleChange} />
-              <div className="grid grid-cols-3 gap-3">
-                <Input label="City" name="city" value={form.city} onChange={handleChange} required />
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <Input label="City" name="city" value={form.city} onChange={handleChange} required className="col-span-2 sm:col-span-1" />
                 <Input label="State" name="state" value={form.state} onChange={handleChange} required maxLength={2} placeholder="NC" />
                 <Input label="ZIP" name="zip" value={form.zip} onChange={handleChange} required maxLength={10} placeholder="28792" />
               </div>
