@@ -105,10 +105,17 @@ export default function AdminShippingLabel() {
     if (!rates[selectedRateIndex]) return;
     setLabelLoading(true);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const sessionTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Session timeout. Please refresh and try again.')), 5000)
+      );
+      const { data: { session } } = await Promise.race([supabase.auth.getSession(), sessionTimeout]);
       const res = await fetch('/.netlify/functions/create-shipping-label', {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
@@ -140,8 +147,10 @@ export default function AdminShippingLabel() {
       });
       addToast('Label generated successfully!', 'success');
     } catch (err: any) {
-      addToast(err.message || 'Failed to generate label', 'error');
+      const msg = err.name === 'AbortError' ? 'Request timed out. Try again.' : (err.message || 'Failed to generate label');
+      addToast(msg, 'error');
     } finally {
+      clearTimeout(timeout);
       setLabelLoading(false);
     }
   };

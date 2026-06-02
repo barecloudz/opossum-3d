@@ -7,6 +7,9 @@
 [functions]
   node_bundler = "esbuild"
 
+[functions."create-shipping-label"]
+  timeout = 26
+
 [build.environment]
   # Skip secrets scanning for public Supabase keys
   # These are client-side keys protected by Row Level Security, not secrets
