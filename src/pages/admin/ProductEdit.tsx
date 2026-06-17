@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Plus, Trash2, AlertCircle, X, Image as ImageIcon, Upload, FolderPlus } from 'lucide-react';
 import Button from '../../components/ui/Button';
@@ -45,6 +45,7 @@ export default function AdminProductEdit() {
   const [images, setImages] = useState<string[]>([]);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [priceTiers, setPriceTiers] = useState<PriceTier[]>([]);
+  const variantsEndRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
 
   // Category modal state
@@ -71,6 +72,8 @@ export default function AdminProductEdit() {
     is_active: true,
     is_featured: false,
     is_customizable: false,
+    allow_color_selection: false,
+    show_description_prompt: false,
     track_inventory: true,
     continue_selling_when_out_of_stock: false,
     print_time_hours: '',
@@ -115,6 +118,8 @@ export default function AdminProductEdit() {
           is_active: data.is_active,
           is_featured: data.is_featured,
           is_customizable: data.is_customizable ?? false,
+          allow_color_selection: data.allow_color_selection ?? false,
+          show_description_prompt: data.show_description_prompt ?? false,
           track_inventory: data.track_inventory,
           continue_selling_when_out_of_stock: data.continue_selling_when_out_of_stock,
           print_time_hours: data.print_time_hours?.toString() || '',
@@ -196,6 +201,9 @@ export default function AdminProductEdit() {
 
   const addVariant = () => {
     setVariants([...variants, { name: '', sku: '', price_adjustment: '0', stock_quantity: '0', image_url: '' }]);
+    setTimeout(() => {
+      variantsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 50);
   };
 
   const updateVariant = (index: number, field: keyof Variant, value: string) => {
@@ -328,6 +336,8 @@ export default function AdminProductEdit() {
         is_active: formData.is_active,
         is_featured: formData.is_featured,
         is_customizable: formData.is_customizable,
+        allow_color_selection: formData.allow_color_selection,
+        show_description_prompt: formData.show_description_prompt,
         track_inventory: formData.track_inventory,
         continue_selling_when_out_of_stock: formData.continue_selling_when_out_of_stock,
         print_time_hours: formData.print_time_hours ? parseInt(formData.print_time_hours) : null,
@@ -820,6 +830,7 @@ export default function AdminProductEdit() {
                     <div
                       key={index}
                       className="p-4 bg-gray-50 rounded-lg border border-gray-200"
+                      ref={index === variants.length - 1 ? variantsEndRef : undefined}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <span className="text-gray-400 text-sm">Option {index + 1}</span>
@@ -976,6 +987,50 @@ export default function AdminProductEdit() {
                       <span className="text-gray-300 font-medium">Requires logo / artwork upload</span>
                       <p className="text-gray-500 text-xs mt-0.5">
                         Customers must upload their own image (logo, design, etc.) before they can add this product to cart.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Color Selection Toggle */}
+                <div className="pt-2 border-t border-gray-200">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="allow_color_selection"
+                      checked={formData.allow_color_selection}
+                      onChange={handleInputChange}
+                      className="sr-only"
+                    />
+                    <div className={`relative w-10 h-6 rounded-full flex-shrink-0 transition-colors ${formData.allow_color_selection ? 'bg-brand-neon' : 'bg-gray-600'}`}>
+                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.allow_color_selection ? 'translate-x-4' : ''}`} />
+                    </div>
+                    <div>
+                      <span className="text-gray-300 font-medium">Color Selection</span>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        Show a color picker on the product page so customers can choose their preferred colors.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Description Prompt Toggle */}
+                <div className="pt-2 border-t border-gray-200">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="show_description_prompt"
+                      checked={formData.show_description_prompt}
+                      onChange={handleInputChange}
+                      className="sr-only"
+                    />
+                    <div className={`relative w-10 h-6 rounded-full flex-shrink-0 transition-colors ${formData.show_description_prompt ? 'bg-brand-neon' : 'bg-gray-600'}`}>
+                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.show_description_prompt ? 'translate-x-4' : ''}`} />
+                    </div>
+                    <div>
+                      <span className="text-gray-300 font-medium">Product Description Prompt</span>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        Ask customers to describe how they want their product before adding to cart.
                       </p>
                     </div>
                   </label>

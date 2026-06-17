@@ -30,6 +30,8 @@ export interface Product {
   print_time_hours: number | null;
   weight_oz: number | null;
   is_customizable: boolean;
+  allow_color_selection: boolean;
+  show_description_prompt: boolean;
   created_at: string;
   updated_at: string;
   images?: ProductImage[];
@@ -73,6 +75,8 @@ export interface CartItem {
   variant?: ProductVariant;
   quantity: number;
   customization_image_url?: string;
+  selected_colors?: string[];
+  product_description?: string;
 }
 
 export interface Address {

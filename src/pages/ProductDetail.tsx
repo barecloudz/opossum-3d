@@ -1,6 +1,21 @@
 import { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check, ChevronDown, ChevronUp, Upload, X as XIcon, ImageIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check, ChevronDown, ChevronUp, Upload, X as XIcon, ImageIcon, Palette, MessageSquare } from 'lucide-react';
+
+const COLOR_PRESETS = [
+  { name: 'Black', hex: '#1a1a1a' },
+  { name: 'White', hex: '#ffffff' },
+  { name: 'Red', hex: '#ef4444' },
+  { name: 'Blue', hex: '#3b82f6' },
+  { name: 'Green', hex: '#22c55e' },
+  { name: 'Yellow', hex: '#eab308' },
+  { name: 'Purple', hex: '#a855f7' },
+  { name: 'Orange', hex: '#f97316' },
+  { name: 'Pink', hex: '#ec4899' },
+  { name: 'Gold', hex: '#d4af37' },
+  { name: 'Silver', hex: '#c0c0c0' },
+  { name: 'Wood Brown', hex: '#8B4513' },
+];
 import Button from '../components/ui/Button';
 import { ProductDetailSkeleton } from '../components/ui/Skeleton';
 import RelatedProducts from '../components/product/RelatedProducts';
@@ -26,6 +41,8 @@ export default function ProductDetail() {
   const [customizationImageUrl, setCustomizationImageUrl] = useState('');
   const [customizationUploading, setCustomizationUploading] = useState(false);
   const [quantityInput, setQuantityInput] = useState('1');
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [productDescription, setProductDescription] = useState('');
   const { addItem, openCart } = useCartStore();
 
   // Swipe support for main image
@@ -125,9 +142,22 @@ export default function ProductDetail() {
     }
   };
 
+  const toggleColor = (colorName: string) => {
+    setSelectedColors(prev =>
+      prev.includes(colorName) ? prev.filter(c => c !== colorName) : [...prev, colorName]
+    );
+  };
+
   const handleAddToCart = () => {
     setIsAdding(true);
-    addItem(product, selectedVariant, quantity, customizationImageUrl || undefined);
+    addItem(
+      product,
+      selectedVariant,
+      quantity,
+      customizationImageUrl || undefined,
+      selectedColors.length ? selectedColors : undefined,
+      productDescription.trim() || undefined,
+    );
     setTimeout(() => {
       setIsAdding(false);
       openCart();
@@ -478,6 +508,65 @@ export default function ProductDetail() {
                     <span className="text-xs text-gray-400">PNG, JPG, SVG up to 10MB</span>
                   </label>
                 )}
+              </div>
+            )}
+
+            {/* Color Selection — only when enabled on product */}
+            {product.allow_color_selection && (
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Palette className="h-4 w-4 text-[var(--color-primary)]" />
+                  <p className="text-sm font-semibold text-[#0D1B2A]">Pick Your Colors</p>
+                  {selectedColors.length > 0 && (
+                    <span className="text-xs text-[var(--color-primary)] font-medium ml-auto">
+                      {selectedColors.length} selected
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mb-3">Select one or more colors for your product (optional)</p>
+                <div className="flex flex-wrap gap-2">
+                  {COLOR_PRESETS.map(color => (
+                    <button
+                      key={color.name}
+                      type="button"
+                      onClick={() => toggleColor(color.name)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all btn-press ${
+                        selectedColors.includes(color.name)
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 font-medium'
+                          : 'border-gray-200 hover:border-[var(--color-primary)]/50 text-gray-600'
+                      }`}
+                    >
+                      <span
+                        className="w-4 h-4 rounded-full border border-gray-300 flex-shrink-0"
+                        style={{ backgroundColor: color.hex }}
+                      />
+                      {color.name}
+                      {selectedColors.includes(color.name) && (
+                        <Check className="h-3 w-3 text-[var(--color-primary)]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Description Prompt — only when enabled on product */}
+            {product.show_description_prompt && (
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <MessageSquare className="h-4 w-4 text-[var(--color-primary)]" />
+                  <p className="text-sm font-semibold text-[#0D1B2A]">Tell Us How You Want Your Product</p>
+                </div>
+                <p className="text-xs text-gray-500 mb-3">
+                  Describe any specific details, text, dimensions, or special requests for your order.
+                </p>
+                <textarea
+                  value={productDescription}
+                  onChange={e => setProductDescription(e.target.value)}
+                  rows={4}
+                  placeholder="e.g., Name to engrave, specific text, size preferences, finish style..."
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#0D1B2A] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-none text-sm"
+                />
               </div>
             )}
 

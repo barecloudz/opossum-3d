@@ -83,6 +83,31 @@ export default function CartDrawer() {
                           </span>
                         </div>
                       )}
+                      {item.selected_colors && item.selected_colors.length > 0 && (
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          {item.selected_colors.map(c => {
+                            const preset = [
+                              { name: 'Black', hex: '#1a1a1a' }, { name: 'White', hex: '#ffffff' },
+                              { name: 'Red', hex: '#ef4444' }, { name: 'Blue', hex: '#3b82f6' },
+                              { name: 'Green', hex: '#22c55e' }, { name: 'Yellow', hex: '#eab308' },
+                              { name: 'Purple', hex: '#a855f7' }, { name: 'Orange', hex: '#f97316' },
+                              { name: 'Pink', hex: '#ec4899' }, { name: 'Gold', hex: '#d4af37' },
+                              { name: 'Silver', hex: '#c0c0c0' }, { name: 'Wood Brown', hex: '#8B4513' },
+                            ].find(p => p.name === c);
+                            return (
+                              <span key={c} className="flex items-center gap-1 text-xs text-theme opacity-60">
+                                <span className="w-3 h-3 rounded-full border border-white/30 flex-shrink-0" style={{ backgroundColor: preset?.hex ?? '#ccc' }} />
+                                {c}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {item.product_description && (
+                        <p className="text-theme opacity-50 text-xs mt-1 line-clamp-2 italic">
+                          "{item.product_description}"
+                        </p>
+                      )}
                       <p className="text-[var(--color-primary)] font-semibold mt-1">
                         {formatPrice(itemPrice)}
                       </p>
