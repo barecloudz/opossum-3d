@@ -11,6 +11,7 @@ import AdminLayout from './components/layout/AdminLayout';
 // Public Pages
 import Home from './pages/Home';
 import Products from './pages/Products';
+import Shop from './pages/Shop';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
@@ -113,6 +114,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
+          <Route path="shop" element={<Shop />} />
           <Route path="products" element={<Products />} />
           <Route path="products/:slug" element={<ProductDetail />} />
           <Route path="cart" element={<Cart />} />

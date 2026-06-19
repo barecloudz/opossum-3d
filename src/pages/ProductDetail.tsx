@@ -471,10 +471,10 @@ export default function ProductDetail() {
                 <div className="flex items-center gap-2 mb-1">
                   <ImageIcon className="h-4 w-4 text-[var(--color-primary)]" />
                   <p className="text-sm font-semibold text-[#0D1B2A]">Upload Your Logo / Artwork</p>
-                  <span className="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">Required</span>
+                  <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">Optional</span>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
-                  This product is custom-engraved or printed with your design. Upload a high-quality PNG, JPG, or SVG file.
+                  This product can be custom-engraved or printed with your design. Upload a PNG, JPG, or SVG file if you have one.
                 </p>
 
                 {customizationImageUrl ? (
@@ -630,7 +630,6 @@ export default function ProductDetail() {
                 className={`flex-1 btn-press ${isAdding ? 'animate-cart-bounce' : ''}`}
                 disabled={
                   (stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock) ||
-                  (product.is_customizable && !customizationImageUrl) ||
                   customizationUploading
                 }
               >
@@ -638,11 +637,6 @@ export default function ProductDetail() {
                   <>
                     <Check className="h-5 w-5 mr-2" />
                     Added!
-                  </>
-                ) : product.is_customizable && !customizationImageUrl ? (
-                  <>
-                    <Upload className="h-5 w-5 mr-2" />
-                    Upload Artwork to Continue
                   </>
                 ) : (
                   <>
