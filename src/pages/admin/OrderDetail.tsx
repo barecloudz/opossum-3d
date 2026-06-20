@@ -169,6 +169,9 @@ export default function AdminOrderDetail() {
     setIsGeneratingLabel(true);
     setLabelError(null);
 
+    const controller = new AbortController();
+    const labelTimeout = setTimeout(() => controller.abort(), 25000);
+
     try {
       const totalWeight = await calculateOrderWeight();
 
@@ -178,9 +181,16 @@ export default function AdminOrderDetail() {
       const firstName = nameParts[0] || 'Customer';
       const lastName = nameParts.slice(1).join(' ') || firstName;
 
-      const { data: { session: labelSession } } = await supabase.auth.getSession();
+      const sessionPromise = supabase.auth.getSession();
+      const sessionTimeout = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error('Session timeout')), 10000)
+      );
+      const sessionResult = await Promise.race([sessionPromise, sessionTimeout]).catch(() => null);
+      const labelSession = sessionResult && 'data' in sessionResult ? sessionResult.data.session : null;
+
       const response = await fetch('/.netlify/functions/create-shipping-label', {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           ...(labelSession?.access_token ? { 'Authorization': `Bearer ${labelSession.access_token}` } : {}),
@@ -258,8 +268,13 @@ export default function AdminOrderDetail() {
 
     } catch (error: any) {
       console.error('Label generation error:', error);
-      setLabelError(error.message || 'Failed to generate shipping label');
+      if (error.name === 'AbortError') {
+        setLabelError('Request timed out. Shippo may be slow — please try again.');
+      } else {
+        setLabelError(error.message || 'Failed to generate shipping label');
+      }
     } finally {
+      clearTimeout(labelTimeout);
       setIsGeneratingLabel(false);
     }
   };
@@ -634,27 +649,21 @@ export default function AdminOrderDetail() {
                       </div>
                     </div>
                   )}
-                  {(order.status === 'paid' || order.status === 'pending' || order.status === 'processing') ? (
-                    <>
-                      <p className="text-gray-400 text-sm">
-                        {order.shipping_label_refunded_at
-                          ? 'Generate a new shipping label if needed.'
-                          : 'Generate a shipping label for this order.'}
-                      </p>
-                      <Button
-                        onClick={handleGenerateLabel}
-                        className="w-full"
-                        isLoading={isGeneratingLabel}
-                      >
-                        <Truck className="h-5 w-5 mr-2" />
-                        Generate Shipping Label
-                      </Button>
-                    </>
-                  ) : !order.shipping_label_refunded_at && (
-                    <p className="text-gray-500 text-sm">
-                      No shipping label generated for this order.
+                  <>
+                    <p className="text-gray-400 text-sm">
+                      {order.shipping_label_refunded_at
+                        ? 'Generate a new shipping label if needed.'
+                        : 'Generate a shipping label for this order.'}
                     </p>
-                  )}
+                    <Button
+                      onClick={handleGenerateLabel}
+                      className="w-full"
+                      isLoading={isGeneratingLabel}
+                    >
+                      <Truck className="h-5 w-5 mr-2" />
+                      Generate Shipping Label
+                    </Button>
+                  </>
                 </div>
               )}
             </Card>
