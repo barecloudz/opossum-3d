@@ -94,6 +94,7 @@ const handler: Handler = async (event) => {
         state: recipientAddress.state,
         zip: destZip,
         country: 'US',
+        validate: false,
       },
       parcels: [{
         ...DEFAULT_PARCEL,
