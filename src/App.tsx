@@ -51,6 +51,7 @@ import AdminTeam from './pages/admin/Team';
 import AdminBanners from './pages/admin/Banners';
 import AdminExampleWorks from './pages/admin/ExampleWorks';
 import AdminShippingLabel from './pages/admin/ShippingLabel';
+import AdminProductionQueue from './pages/admin/ProductionQueue';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -179,6 +180,7 @@ function App() {
           <Route path="affiliates" element={<AdminAffiliates />} />
           <Route path="affiliates/:id" element={<AdminAffiliateDetail />} />
           <Route path="shipping-label" element={<AdminShippingLabel />} />
+          <Route path="production-queue" element={<AdminProductionQueue />} />
         </Route>
       </Routes>
 

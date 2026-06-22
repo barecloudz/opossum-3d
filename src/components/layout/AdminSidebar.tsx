@@ -25,6 +25,7 @@ import {
   Handshake,
   BarChart2,
   Printer,
+  Hammer,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -38,6 +39,7 @@ export const storeSubItems = [
   { href: '/admin/products', icon: Package, label: 'Products' },
   { href: '/admin/categories', icon: FolderOpen, label: 'Categories' },
   { href: '/admin/orders', icon: ShoppingBag, label: 'Orders' },
+  { href: '/admin/production-queue', icon: Hammer, label: 'Production Queue' },
   { href: '/admin/shipping-label', icon: Printer, label: 'Shipping Label' },
 ];
 

@@ -13,7 +13,7 @@ export function useSupabaseQuery<T>(
   deps: any[] = [],
   options: QueryOptions = {}
 ) {
-  const { timeout = 20000, fetchOnMount = true } = options;
+  const { timeout = 10000, fetchOnMount = true } = options;
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(fetchOnMount);
   const [error, setError] = useState<Error | null>(null);
@@ -21,35 +21,38 @@ export function useSupabaseQuery<T>(
   const queryFnRef = useRef(queryFn);
   queryFnRef.current = queryFn;
 
+  const cancelledRef = useRef(false);
+
   const fetchData = useCallback(async () => {
+    cancelledRef.current = false;
     setIsLoading(true);
     setError(null);
 
-    let cancelled = false;
+    const timeoutId = { current: 0 };
 
     try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out. Please try again.')), timeout)
-      );
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId.current = window.setTimeout(() => reject(new Error('Request timed out. Please try again.')), timeout);
+      });
 
       const { data: result, error: queryError } = await Promise.race([
         queryFnRef.current(),
         timeoutPromise,
       ]);
 
-      if (cancelled) return;
+      clearTimeout(timeoutId.current);
+      if (cancelledRef.current) return;
       if (queryError) throw queryError;
 
       setData(result);
       setError(null);
       setIsLoading(false);
     } catch (err: any) {
-      if (cancelled) return;
+      clearTimeout(timeoutId.current);
+      if (cancelledRef.current) return;
       setError(new Error(err.message || 'Failed to load data'));
       setIsLoading(false);
     }
-
-    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
@@ -57,21 +60,23 @@ export function useSupabaseQuery<T>(
     if (!fetchOnMount) return;
 
     let cancelled = false;
+    let timeoutId = 0;
 
     const run = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Request timed out. Please try again.')), timeout)
-        );
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = window.setTimeout(() => reject(new Error('Request timed out. Please try again.')), timeout);
+        });
 
         const { data: result, error: queryError } = await Promise.race([
           queryFnRef.current(),
           timeoutPromise,
         ]);
 
+        clearTimeout(timeoutId);
         if (cancelled) return;
         if (queryError) throw queryError;
 
@@ -79,6 +84,7 @@ export function useSupabaseQuery<T>(
         setError(null);
         setIsLoading(false);
       } catch (err: any) {
+        clearTimeout(timeoutId);
         if (cancelled) return;
         setError(new Error(err.message || 'Failed to load data'));
         setIsLoading(false);
@@ -87,7 +93,10 @@ export function useSupabaseQuery<T>(
 
     run();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchData]);
 

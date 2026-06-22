@@ -30,7 +30,7 @@ import type { ProductVariant } from '../types';
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { product, isLoading } = useProduct(slug || '');
+  const { product, isLoading, error, refetch } = useProduct(slug || '');
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [userSelectedImage, setUserSelectedImage] = useState(false); // Track if user clicked a thumbnail
@@ -82,6 +82,19 @@ export default function ProductDetail() {
 
   if (isLoading) {
     return <ProductDetailSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-400 mb-4">Failed to load product. Please try again.</p>
+          <button onClick={refetch} className="px-4 py-2 bg-brand-neon text-black font-medium rounded-lg">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!product) {

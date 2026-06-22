@@ -127,6 +127,14 @@ const handler: Handler = async (event) => {
         magicLink = 'https://nexaloncreations.com/register';
       } else {
         magicLink = linkData.properties.action_link;
+        // generateLink with type:'invite' creates the auth user immediately —
+        // link their user_id now so the dashboard works as soon as they click
+        if (linkData.user?.id) {
+          await supabase
+            .from('affiliates')
+            .update({ user_id: linkData.user.id })
+            .eq('id', affiliateId);
+        }
       }
     }
 

@@ -471,14 +471,38 @@ export default function Checkout() {
             ? storedClickId
             : null;
 
-        await supabase.from('affiliate_conversions').insert({
+        const conversionPayload: Record<string, unknown> = {
           affiliate_id: appliedAffiliate.id,
           order_id: order.id,
           order_total: total,
           commission_amount: commissionAmount,
           status: 'pending',
-          click_id: clickId,
-        });
+        };
+        if (clickId) conversionPayload.click_id = clickId;
+
+        const { error: conversionError } = await supabase
+          .from('affiliate_conversions')
+          .insert(conversionPayload);
+
+        if (conversionError) {
+          // If click_id column doesn't exist yet, retry without it
+          if (conversionError.message?.includes('click_id')) {
+            const { error: retryError } = await supabase
+              .from('affiliate_conversions')
+              .insert({
+                affiliate_id: appliedAffiliate.id,
+                order_id: order.id,
+                order_total: total,
+                commission_amount: commissionAmount,
+                status: 'pending',
+              });
+            if (retryError) {
+              console.error('[Affiliate] Conversion insert failed (retry):', retryError);
+            }
+          } else {
+            console.error('[Affiliate] Conversion insert failed:', conversionError);
+          }
+        }
 
         // Clear click tracking data
         sessionStorage.removeItem('nexalon_click_id');
