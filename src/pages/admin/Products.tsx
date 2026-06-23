@@ -411,10 +411,10 @@ export default function AdminProducts() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border)]">
-                  <th className="text-left py-3 px-4">
+                  <th className="py-2 px-3 w-8">
                     <input
                       type="checkbox"
                       checked={selectedProducts.size === sortedProducts.length && sortedProducts.length > 0}
@@ -422,14 +422,14 @@ export default function AdminProducts() {
                       className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)]"
                     />
                   </th>
-                  <th className="text-left py-3 px-2 text-gray-500 font-medium text-sm">Order</th>
-                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Product</th>
-                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Category</th>
-                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Price</th>
-                  <th className="text-left py-3 px-4 text-gray-500 font-medium">Stock</th>
-                  <th className="text-center py-3 px-2 text-gray-500 font-medium">Featured</th>
-                  <th className="text-center py-3 px-2 text-gray-500 font-medium">Visible</th>
-                  <th className="text-right py-3 px-4 text-gray-500 font-medium">Actions</th>
+                  <th className="py-2 px-1 w-8 text-gray-500 font-medium"></th>
+                  <th className="text-left py-2 px-3 text-gray-500 font-medium">Product</th>
+                  <th className="text-left py-2 px-2 text-gray-500 font-medium">Category</th>
+                  <th className="text-left py-2 px-2 text-gray-500 font-medium">Price</th>
+                  <th className="text-left py-2 px-2 text-gray-500 font-medium">Stock</th>
+                  <th className="text-center py-2 px-1 text-gray-500 font-medium w-10" title="Featured">★</th>
+                  <th className="text-center py-2 px-1 text-gray-500 font-medium w-10" title="Visible">👁</th>
+                  <th className="text-right py-2 px-3 text-gray-500 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -437,7 +437,7 @@ export default function AdminProducts() {
                   const stockStatus = getStockStatus(product.stock_quantity, product.low_stock_threshold);
                   return (
                     <tr key={product.id} className="border-b border-[var(--color-border)]/50 hover:bg-[var(--color-surface)]/50">
-                      <td className="py-3 px-4">
+                      <td className="py-2 px-3">
                         <input
                           type="checkbox"
                           checked={selectedProducts.has(product.id)}
@@ -445,48 +445,45 @@ export default function AdminProducts() {
                           className="w-4 h-4 rounded border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-primary)]"
                         />
                       </td>
-                      <td className="py-3 px-2">
-                        <div className="flex flex-col gap-0.5">
+                      <td className="py-2 px-1">
+                        <div className="flex flex-col">
                           <button
                             onClick={() => reorderProduct(product.id, 'up')}
                             disabled={index === 0}
-                            className="p-0.5 text-gray-500 hover:text-[#0D1B2A] disabled:opacity-30 disabled:cursor-not-allowed"
+                            className="text-gray-500 hover:text-[#0D1B2A] disabled:opacity-30 disabled:cursor-not-allowed leading-none"
                           >
-                            <ChevronUp className="h-4 w-4" />
+                            <ChevronUp className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => reorderProduct(product.id, 'down')}
                             disabled={index === sortedProducts.length - 1}
-                            className="p-0.5 text-gray-500 hover:text-[#0D1B2A] disabled:opacity-30 disabled:cursor-not-allowed"
+                            className="text-gray-500 hover:text-[#0D1B2A] disabled:opacity-30 disabled:cursor-not-allowed leading-none"
                           >
-                            <ChevronDown className="h-4 w-4" />
+                            <ChevronDown className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-[var(--color-border)] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <td className="py-2 px-3 max-w-[220px]">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-[var(--color-border)] rounded flex items-center justify-center flex-shrink-0">
                             {product.images?.[0]?.image_url ? (
                               <img
                                 src={product.images[0].image_url}
                                 alt={product.name}
-                                className="w-full h-full object-cover rounded-lg"
+                                className="w-full h-full object-cover rounded"
                               />
                             ) : (
-                              <Package className="h-5 w-5 text-gray-500" />
+                              <Package className="h-4 w-4 text-gray-500" />
                             )}
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-[#0D1B2A] font-medium truncate">{product.name}</p>
-                            <p className="text-gray-500 text-sm truncate">{product.sku || 'No SKU'}</p>
-                          </div>
+                          <p className="text-[#0D1B2A] font-medium truncate">{product.name}</p>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-2 px-2">
                         <select
                           value={product.category_id || ''}
                           onChange={(e) => changeCategory(product.id, e.target.value || null)}
-                          className="text-sm px-2 py-1 rounded bg-[var(--color-surface)] border border-[var(--color-border)] text-gray-300 focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] max-w-[140px]"
+                          className="text-xs px-1.5 py-1 rounded bg-[var(--color-surface)] border border-[var(--color-border)] text-gray-300 focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] max-w-[120px]"
                         >
                           <option value="">Uncategorized</option>
                           {categories.map((cat) => (
@@ -494,58 +491,58 @@ export default function AdminProducts() {
                           ))}
                         </select>
                       </td>
-                      <td className="py-3 px-4 text-[var(--color-primary)] font-medium">
+                      <td className="py-2 px-2 text-[var(--color-primary)] font-medium whitespace-nowrap">
                         {formatPrice(product.price)}
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col gap-1">
+                      <td className="py-2 px-2">
+                        <div className="flex items-center gap-1.5">
                           <span className="text-gray-400">{product.stock_quantity}</span>
                           {stockStatus !== 'in_stock' && (
-                            <Badge variant={stockStatus === 'low_stock' ? 'warning' : 'danger'} className="text-xs">
+                            <Badge variant={stockStatus === 'low_stock' ? 'warning' : 'danger'} className="text-xs py-0">
                               {stockStatus === 'low_stock' ? 'Low' : 'Out'}
                             </Badge>
                           )}
                         </div>
                       </td>
-                      <td className="py-3 px-2 text-center">
+                      <td className="py-2 px-1 text-center">
                         <button
                           onClick={() => toggleFeatured(product.id, product.is_featured)}
-                          className={`p-1.5 rounded-lg transition-colors ${
+                          className={`p-1 rounded transition-colors ${
                             product.is_featured
                               ? 'text-yellow-400 bg-yellow-400/20 hover:bg-yellow-400/30'
                               : 'text-gray-500 hover:text-yellow-400 hover:bg-yellow-400/10'
                           }`}
                           title={product.is_featured ? 'Remove from featured' : 'Add to featured'}
                         >
-                          <Star className={`h-5 w-5 ${product.is_featured ? 'fill-current' : ''}`} />
+                          <Star className={`h-4 w-4 ${product.is_featured ? 'fill-current' : ''}`} />
                         </button>
                       </td>
-                      <td className="py-3 px-2 text-center">
+                      <td className="py-2 px-1 text-center">
                         <button
                           onClick={() => toggleActive(product.id, product.is_active)}
-                          className={`p-1.5 rounded-lg transition-colors ${
+                          className={`p-1 rounded transition-colors ${
                             product.is_active
                               ? 'text-green-400 bg-green-400/20 hover:bg-green-400/30'
                               : 'text-gray-500 hover:text-green-400 hover:bg-green-400/10'
                           }`}
                           title={product.is_active ? 'Hide product' : 'Show product'}
                         >
-                          {product.is_active ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                          {product.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                         </button>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="py-2 px-3">
+                        <div className="flex items-center justify-end gap-1">
                           <Link
                             to={`/admin/products/${product.id}/edit`}
-                            className="p-2 text-gray-400 hover:text-[var(--color-primary)] transition-colors"
+                            className="p-1.5 text-gray-400 hover:text-[var(--color-primary)] transition-colors"
                           >
-                            <Edit className="h-5 w-5" />
+                            <Edit className="h-4 w-4" />
                           </Link>
                           <button
                             onClick={() => setDeleteId(product.id)}
-                            className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                            className="p-1.5 text-gray-400 hover:text-red-400 transition-colors"
                           >
-                            <Trash2 className="h-5 w-5" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
