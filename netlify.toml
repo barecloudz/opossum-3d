@@ -15,6 +15,13 @@
   # These are client-side keys protected by Row Level Security, not secrets
   SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY,VITE_STRIPE_PUBLISHABLE_KEY"
 
+# Stripe webhook — must come before SPA catch-all
+[[redirects]]
+  from = "/stripe-webhook"
+  to = "/.netlify/functions/stripe-webhook"
+  status = 200
+  force = true
+
 # Affiliate share links with custom OG meta tags — must come before SPA catch-all
 [[redirects]]
   from = "/share/*"
