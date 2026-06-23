@@ -9,6 +9,7 @@ interface AuthState {
   profile: Profile | null;
   session: Session | null;
   isLoading: boolean;
+  isProfileLoading: boolean;
   isAdmin: boolean;
 
   // Actions
@@ -31,6 +32,7 @@ export const useAuthStore = create<AuthState>()(
       profile: null,
       session: null,
       isLoading: true,
+      isProfileLoading: false,
       isAdmin: false,
 
       setUser: (user) => set({ user }),
@@ -42,6 +44,8 @@ export const useAuthStore = create<AuthState>()(
         const { user } = get();
         if (!user) return;
 
+        set({ isProfileLoading: true });
+
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -50,10 +54,11 @@ export const useAuthStore = create<AuthState>()(
 
         if (error) {
           console.error('Error fetching profile:', error);
+          set({ isProfileLoading: false });
           return;
         }
 
-        set({ profile: data, isAdmin: data?.role === 'admin' });
+        set({ profile: data, isAdmin: data?.role === 'admin', isProfileLoading: false });
       },
 
       updateProfile: async (updates) => {
@@ -105,7 +110,6 @@ export const useAuthStore = create<AuthState>()(
 
         set({ user: data.user, session: data.session });
 
-        // Update profile with the registration data
         if (data.user && metadata) {
           try {
             await supabase
@@ -117,7 +121,6 @@ export const useAuthStore = create<AuthState>()(
               })
               .eq('id', data.user.id);
 
-            // Fetch the updated profile
             await get().fetchProfile();
           } catch (err) {
             console.error('Error updating profile after signup:', err);
@@ -143,29 +146,25 @@ export const useAuthStore = create<AuthState>()(
           set({ user: session?.user ?? null, session });
 
           if (event === 'INITIAL_SESSION') {
-            // Definitive answer from Supabase — clear loading regardless of login state
             set({ isLoading: false });
             if (session?.user) {
               get().fetchProfile().catch(console.error);
             } else {
-              set({ profile: null, isAdmin: false });
+              set({ profile: null, isAdmin: false, isProfileLoading: false });
             }
           } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
             if (session?.user) {
               get().fetchProfile().catch(console.error);
             }
           } else if (event === 'SIGNED_OUT') {
-            set({ profile: null, isAdmin: false });
+            set({ profile: null, isAdmin: false, isProfileLoading: false });
           }
         });
 
-        // Safety net for Supabase issue #41968 where onAuthStateChange can hang
-        // indefinitely in certain browser states — clear loading after 5s max.
         const safetyTimeout = setTimeout(() => {
-          set(state => state.isLoading ? { isLoading: false } : {});
+          set(state => state.isLoading ? { isLoading: false, isProfileLoading: false } : {});
         }, 5000);
 
-        // Return cleanup so the caller can unsubscribe on unmount
         return () => {
           subscription.unsubscribe();
           clearTimeout(safetyTimeout);
