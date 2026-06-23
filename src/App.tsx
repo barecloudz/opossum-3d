@@ -70,8 +70,9 @@ function App() {
   useEffect(() => {
     // Skip auth initialization on reset-password — the PKCE code in the URL
     // is single-use and will be consumed by the ResetPassword page itself.
+    let cleanup: (() => void) | undefined;
     if (!window.location.pathname.startsWith('/reset-password')) {
-      initialize();
+      cleanup = initialize();
     } else {
       setLoading(false);
     }
@@ -79,13 +80,17 @@ function App() {
     // Pre-fetch products so they're ready when user navigates
     fetchProducts();
 
-    // Failsafe: proceed after 3 seconds even if auth hangs
+    // Last-resort failsafe: if INITIAL_SESSION and the 5s safety net inside
+    // initialize() both fail, force-clear the splash after 6s.
     const timeout = setTimeout(() => {
       setLoading(false);
       setReady(true);
-    }, 3000);
+    }, 6000);
 
-    return () => clearTimeout(timeout);
+    return () => {
+      cleanup?.();
+      clearTimeout(timeout);
+    };
   }, [initialize, fetchSettings, fetchProducts, setLoading]);
 
   // Update ready state when loading finishes normally
@@ -95,7 +100,7 @@ function App() {
     }
   }, [isLoading]);
 
-  // Show loading screen while auth initializes (max 3 seconds)
+  // Show loading screen while auth initializes
   if (!ready) {
     return (
       <div className="min-h-screen bg-[#F2F4F7] flex items-center justify-center">

@@ -21,7 +21,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, metadata?: { first_name?: string; last_name?: string; marketing_opt_in?: boolean }) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  initialize: () => Promise<void>;
+  initialize: () => () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -132,32 +132,44 @@ export const useAuthStore = create<AuthState>()(
         set({ user: null, profile: null, session: null, isAdmin: false });
       },
 
-      initialize: async () => {
+      initialize: () => {
         set({ isLoading: true });
 
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
+        // Register the listener FIRST — before any awaits — so INITIAL_SESSION
+        // is never missed if it fires while async work is still in flight.
+        // Supabase docs: do NOT use async callbacks here; it can corrupt their
+        // internal auth state machine. Fire-and-forget fetchProfile instead.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          set({ user: session?.user ?? null, session });
 
-          if (session) {
-            set({ user: session.user, session });
-            await get().fetchProfile();
-          }
-        } catch (err) {
-          console.error('Error initializing auth:', err);
-        } finally {
-          set({ isLoading: false });
-        }
-
-        // Listen for auth changes
-        supabase.auth.onAuthStateChange(async (_event, session) => {
-          set({ user: session?.user || null, session });
-
-          if (session?.user) {
-            await get().fetchProfile();
-          } else {
+          if (event === 'INITIAL_SESSION') {
+            // Definitive answer from Supabase — clear loading regardless of login state
+            set({ isLoading: false });
+            if (session?.user) {
+              get().fetchProfile().catch(console.error);
+            } else {
+              set({ profile: null, isAdmin: false });
+            }
+          } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            if (session?.user) {
+              get().fetchProfile().catch(console.error);
+            }
+          } else if (event === 'SIGNED_OUT') {
             set({ profile: null, isAdmin: false });
           }
         });
+
+        // Safety net for Supabase issue #41968 where onAuthStateChange can hang
+        // indefinitely in certain browser states — clear loading after 5s max.
+        const safetyTimeout = setTimeout(() => {
+          set(state => state.isLoading ? { isLoading: false } : {});
+        }, 5000);
+
+        // Return cleanup so the caller can unsubscribe on unmount
+        return () => {
+          subscription.unsubscribe();
+          clearTimeout(safetyTimeout);
+        };
       },
     }),
     {
