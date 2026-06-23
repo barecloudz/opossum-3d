@@ -95,9 +95,12 @@ export default function AdminDashboard() {
       const lowStockCount = lowStockRes.count || 0;
       const customerCount = customerRes.count || 0;
 
-      // Calculate stats - exclude only cancelled orders from revenue
-      // pending orders are charged in Stripe and count as real revenue
-      const paidOrders = orders.filter((o: Order) => o.status !== 'cancelled');
+      // Revenue = only orders Stripe actually captured (processing/shipped/delivered)
+      // pending = order record created but payment not yet confirmed
+      // cancelled = never charged
+      const paidOrders = orders.filter((o: Order) =>
+        o.status === 'processing' || o.status === 'shipped' || o.status === 'delivered'
+      );
       const todayOrders = paidOrders.filter((o: Order) => o.created_at >= todayStart);
       const weekOrders = paidOrders.filter((o: Order) => o.created_at >= weekStart);
       const monthOrders = paidOrders.filter((o: Order) => o.created_at >= monthStart);
