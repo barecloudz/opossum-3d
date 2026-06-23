@@ -9,6 +9,7 @@ import {
   Users,
   ArrowUpRight,
   ArrowDownRight,
+  RotateCcw,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -33,7 +34,10 @@ interface DashboardStats {
   todayRevenue: number;
   weekRevenue: number;
   monthRevenue: number;
+  totalRefunded: number;
+  netRevenue: number;
   orderCount: number;
+  paidOrderCount: number;
   avgOrderValue: number;
   lowStockCount: number;
   customerCount: number;
@@ -52,7 +56,10 @@ export default function AdminDashboard() {
     todayRevenue: 0,
     weekRevenue: 0,
     monthRevenue: 0,
+    totalRefunded: 0,
+    netRevenue: 0,
     orderCount: 0,
+    paidOrderCount: 0,
     avgOrderValue: 0,
     lowStockCount: 0,
     customerCount: 0,
@@ -106,16 +113,21 @@ export default function AdminDashboard() {
       const monthOrders = paidOrders.filter((o: Order) => o.created_at >= monthStart);
       const pendingOrders = orders.filter((o: Order) => o.status === 'pending' || o.status === 'processing');
 
-      const todayRevenue = todayOrders.reduce((sum: number, o: Order) => sum + o.total, 0);
-      const weekRevenue = weekOrders.reduce((sum: number, o: Order) => sum + o.total, 0);
-      const monthRevenue = monthOrders.reduce((sum: number, o: Order) => sum + o.total, 0);
-      const avgOrderValue = paidOrders.length > 0 ? paidOrders.reduce((sum: number, o: Order) => sum + o.total, 0) / paidOrders.length : 0;
+      const grossRevenue = paidOrders.reduce((sum: number, o: Order) => sum + o.total, 0);
+      const totalRefunded = paidOrders.reduce((sum: number, o: Order) => sum + (o.refund_amount || 0), 0);
+      const todayRevenue = todayOrders.reduce((sum: number, o: Order) => sum + o.total - (o.refund_amount || 0), 0);
+      const weekRevenue = weekOrders.reduce((sum: number, o: Order) => sum + o.total - (o.refund_amount || 0), 0);
+      const monthRevenue = monthOrders.reduce((sum: number, o: Order) => sum + o.total - (o.refund_amount || 0), 0);
+      const avgOrderValue = paidOrders.length > 0 ? grossRevenue / paidOrders.length : 0;
 
       setStats({
         todayRevenue,
         weekRevenue,
         monthRevenue,
+        totalRefunded,
+        netRevenue: grossRevenue - totalRefunded,
         orderCount: orders.length,
+        paidOrderCount: paidOrders.length,
         avgOrderValue,
         lowStockCount,
         customerCount,
@@ -217,7 +229,7 @@ export default function AdminDashboard() {
             </span>
           </div>
           <div className="mt-3 sm:mt-4">
-            <p className="text-gray-400 text-xs sm:text-sm">This Month</p>
+            <p className="text-gray-400 text-xs sm:text-sm">This Month (net)</p>
             <p className="text-xl sm:text-2xl font-bold text-[#0D1B2A]">{formatPrice(stats.monthRevenue)}</p>
           </div>
         </Card>
@@ -266,6 +278,30 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
+      {/* Revenue Breakdown */}
+      <Card className="p-4 sm:p-6">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">All-Time Revenue Breakdown</h2>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <p className="text-xs text-gray-400 mb-1">Gross Collected</p>
+            <p className="text-xl sm:text-2xl font-bold text-[#0D1B2A]">{formatPrice(stats.netRevenue + stats.totalRefunded)}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{stats.paidOrderCount} paid orders</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-1">Refunded</p>
+            <p className="text-xl sm:text-2xl font-bold text-red-400">
+              {stats.totalRefunded > 0 ? `- ${formatPrice(stats.totalRefunded)}` : formatPrice(0)}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">returned to customers</p>
+          </div>
+          <div className="border-l border-gray-200 pl-4">
+            <p className="text-xs text-gray-400 mb-1">Net Revenue</p>
+            <p className="text-xl sm:text-2xl font-bold text-green-500">{formatPrice(stats.netRevenue)}</p>
+            <p className="text-xs text-gray-500 mt-0.5">after refunds</p>
+          </div>
+        </div>
+      </Card>
+
       {/* Secondary Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="group p-4 sm:p-6 hover:border-green-500/50 transition-all">
@@ -298,7 +334,7 @@ export default function AdminDashboard() {
               <DollarSign className="h-5 w-5 text-orange-400" />
             </div>
             <div>
-              <p className="text-gray-400 text-xs sm:text-sm">Week Revenue</p>
+              <p className="text-gray-400 text-xs sm:text-sm">Week Revenue (net)</p>
               <p className="text-lg sm:text-xl font-bold text-[#0D1B2A]">{formatPrice(stats.weekRevenue)}</p>
             </div>
           </div>

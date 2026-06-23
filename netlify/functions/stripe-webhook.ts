@@ -71,6 +71,45 @@ const handler: Handler = async (event) => {
     console.log(`[stripe-webhook] Payment failed for order ${orderId}`);
   }
 
+  // Handle charge.refunded — record refund amount on the order
+  if (stripeEvent.type === 'charge.refunded') {
+    const charge = stripeEvent.data.object as Stripe.Charge;
+    const amountRefunded = charge.amount_refunded / 100; // convert cents to dollars
+    const paymentIntentId = typeof charge.payment_intent === 'string'
+      ? charge.payment_intent
+      : charge.payment_intent?.id;
+
+    if (!paymentIntentId) {
+      console.warn('[stripe-webhook] charge.refunded has no payment_intent');
+      return { statusCode: 200, body: 'OK (no payment_intent)' };
+    }
+
+    // Match order by stripe_payment_intent_id, fall back to stripe_charge_id
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('id, order_number')
+      .or(`stripe_payment_intent_id.eq.${paymentIntentId},stripe_charge_id.eq.${charge.id}`)
+      .limit(1);
+
+    if (!orders || orders.length === 0) {
+      console.warn(`[stripe-webhook] No order found for payment_intent ${paymentIntentId}`);
+      return { statusCode: 200, body: 'OK (order not found)' };
+    }
+
+    const order = orders[0];
+    const { error } = await supabase
+      .from('orders')
+      .update({ refund_amount: amountRefunded })
+      .eq('id', order.id);
+
+    if (error) {
+      console.error('[stripe-webhook] Failed to update refund_amount:', error);
+      return { statusCode: 500, body: 'DB update failed' };
+    }
+
+    console.log(`[stripe-webhook] Order #${order.order_number} refund_amount set to $${amountRefunded}`);
+  }
+
   return { statusCode: 200, body: 'OK' };
 };
 

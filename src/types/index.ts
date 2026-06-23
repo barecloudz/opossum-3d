@@ -120,6 +120,7 @@ export interface Order {
   shipping_label_generated_at?: string | null;
   shippo_transaction_id?: string | null;
   shipping_label_refunded_at?: string | null;
+  refund_amount?: number;
   created_at: string;
   updated_at: string;
   items?: OrderItem[];
