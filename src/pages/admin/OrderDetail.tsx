@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle, Printer, RotateCcw, Tag } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle, Printer, RotateCcw, Tag, Palette } from 'lucide-react';
+import { COLOR_PRESETS } from '../../lib/constants';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -21,9 +22,11 @@ export default function AdminOrderDetail() {
   const [status, setStatus] = useState<OrderStatus>('pending');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [notes, setNotes] = useState('');
-  // Per-item color editing: map of item.id -> comma-separated color string
-  const [itemColors, setItemColors] = useState<Record<string, string>>({});
+  // Per-item color editing: map of item.id -> selected colors array
+  const [itemColors, setItemColors] = useState<Record<string, string[]>>({});
   const [savingColorItemId, setSavingColorItemId] = useState<string | null>(null);
+  // Per-item available colors fetched from their product
+  const [productColors, setProductColors] = useState<Record<string, string[]>>({});
 
   // Shipping label state
   const [isGeneratingLabel, setIsGeneratingLabel] = useState(false);
@@ -62,12 +65,28 @@ export default function AdminOrderDetail() {
       setStatus(orderData.status);
       setTrackingNumber(orderData.tracking_number || '');
       setNotes(orderData.notes || '');
-      // Initialize color inputs from DB
-      const colorMap: Record<string, string> = {};
+      // Initialize color selections from DB
+      const colorMap: Record<string, string[]> = {};
       for (const item of itemsData || []) {
-        colorMap[item.id] = item.selected_colors?.join(', ') ?? '';
+        colorMap[item.id] = item.selected_colors ?? [];
       }
       setItemColors(colorMap);
+
+      // Fetch available colors for each unique product
+      const productIds = [...new Set((itemsData || []).map(i => i.product_id).filter(Boolean))] as string[];
+      if (productIds.length) {
+        const { data: products } = await supabase
+          .from('products')
+          .select('id, available_colors')
+          .in('id', productIds);
+        const pColorMap: Record<string, string[]> = {};
+        for (const p of products ?? []) {
+          pColorMap[p.id] = p.available_colors?.length
+            ? p.available_colors
+            : COLOR_PRESETS.map(c => c.name);
+        }
+        setProductColors(pColorMap);
+      }
 
       // Load stored label if available
       if (orderData.shipping_label_pdf && orderData.tracking_number) {
@@ -153,8 +172,7 @@ export default function AdminOrderDetail() {
   const handleSaveItemColors = async (itemId: string) => {
     setSavingColorItemId(itemId);
     try {
-      const raw = itemColors[itemId] ?? '';
-      const colors = raw.split(',').map(s => s.trim()).filter(Boolean);
+      const colors = itemColors[itemId] ?? [];
       const { error } = await supabase
         .from('order_items')
         .update({ selected_colors: colors.length ? colors : null })
@@ -458,31 +476,50 @@ export default function AdminOrderDetail() {
                         <p className="text-gray-400 text-xs mt-1 italic">"{item.product_description}"</p>
                       )}
                       {/* Color selection — editable by admin */}
-                      <div className="mt-2">
-                        {item.selected_colors && item.selected_colors.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-1">
-                            {item.selected_colors.map(c => (
-                              <span key={c} className="text-xs bg-brand-gray text-[#0D1B2A] px-2 py-0.5 rounded-full">{c}</span>
-                            ))}
+                      {item.product_id && (
+                        <div className="mt-2">
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <Palette className="h-3.5 w-3.5 text-gray-400" />
+                            <span className="text-xs text-gray-400">Colors</span>
                           </div>
-                        )}
-                        <div className="flex items-center gap-2 mt-1">
-                          <input
-                            type="text"
-                            value={itemColors[item.id] ?? ''}
-                            onChange={e => setItemColors(prev => ({ ...prev, [item.id]: e.target.value }))}
-                            placeholder="Colors (comma-separated)"
-                            className="text-xs px-2 py-1 rounded bg-brand-black border border-brand-gray text-[#0D1B2A] placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-neon w-44"
-                          />
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {(productColors[item.product_id] ?? COLOR_PRESETS.map(c => c.name)).map(colorName => {
+                              const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
+                              const selected = (itemColors[item.id] ?? []).includes(colorName);
+                              return (
+                                <button
+                                  key={colorName}
+                                  type="button"
+                                  onClick={() => setItemColors(prev => {
+                                    const cur = prev[item.id] ?? [];
+                                    return {
+                                      ...prev,
+                                      [item.id]: selected
+                                        ? cur.filter(c => c !== colorName)
+                                        : [...cur, colorName],
+                                    };
+                                  })}
+                                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors ${
+                                    selected
+                                      ? 'border-brand-neon bg-brand-neon/10 text-brand-neon font-medium'
+                                      : 'border-gray-300 text-gray-500 hover:border-brand-neon/50'
+                                  }`}
+                                >
+                                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white/20" style={{ backgroundColor: hex }} />
+                                  {colorName}
+                                </button>
+                              );
+                            })}
+                          </div>
                           <button
                             onClick={() => handleSaveItemColors(item.id)}
                             disabled={savingColorItemId === item.id}
-                            className="text-xs px-2 py-1 rounded bg-brand-neon/20 border border-brand-neon/40 text-brand-neon hover:bg-brand-neon/30 transition-colors disabled:opacity-50"
+                            className="text-xs px-3 py-1 rounded bg-brand-neon/20 border border-brand-neon/40 text-brand-neon hover:bg-brand-neon/30 transition-colors disabled:opacity-50"
                           >
-                            {savingColorItemId === item.id ? 'Saving…' : 'Save'}
+                            {savingColorItemId === item.id ? 'Saving…' : 'Save Colors'}
                           </button>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                   <span className="text-brand-neon font-medium">

@@ -32,6 +32,7 @@ export interface Product {
   is_customizable: boolean;
   allow_color_selection: boolean;
   show_description_prompt: boolean;
+  available_colors?: string[] | null;
   created_at: string;
   updated_at: string;
   images?: ProductImage[];

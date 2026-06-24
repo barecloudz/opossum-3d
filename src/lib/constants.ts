@@ -1,5 +1,20 @@
 export const APP_NAME = 'Nexalon Creations';
 
+export const COLOR_PRESETS = [
+  { name: 'Black', hex: '#1a1a1a' },
+  { name: 'White', hex: '#ffffff' },
+  { name: 'Red', hex: '#ef4444' },
+  { name: 'Blue', hex: '#3b82f6' },
+  { name: 'Green', hex: '#22c55e' },
+  { name: 'Yellow', hex: '#eab308' },
+  { name: 'Purple', hex: '#a855f7' },
+  { name: 'Orange', hex: '#f97316' },
+  { name: 'Pink', hex: '#ec4899' },
+  { name: 'Gold', hex: '#d4af37' },
+  { name: 'Silver', hex: '#c0c0c0' },
+  { name: 'Wood Brown', hex: '#8B4513' },
+] as const;
+
 export const ORDER_STATUSES = {
   pending: { label: 'Pending', color: 'bg-yellow-500/20 text-yellow-400' },
   paid: { label: 'Paid', color: 'bg-green-500/20 text-green-400' },

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, AlertCircle, X, Image as ImageIcon, Upload, FolderPlus } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, AlertCircle, X, Image as ImageIcon, Upload, FolderPlus, Palette } from 'lucide-react';
+import { COLOR_PRESETS } from '../../lib/constants';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
@@ -45,6 +46,8 @@ export default function AdminProductEdit() {
   const [images, setImages] = useState<string[]>([]);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [priceTiers, setPriceTiers] = useState<PriceTier[]>([]);
+  const [availableColors, setAvailableColors] = useState<string[]>([]);
+  const [customColorInput, setCustomColorInput] = useState('');
   const variantsEndRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
 
@@ -125,6 +128,7 @@ export default function AdminProductEdit() {
           print_time_hours: data.print_time_hours?.toString() || '',
           weight_oz: data.weight_oz?.toString() || '',
         });
+        setAvailableColors(data.available_colors ?? []);
 
         // Fetch product images
         const { data: imagesData } = await supabase
@@ -337,6 +341,7 @@ export default function AdminProductEdit() {
         is_featured: formData.is_featured,
         is_customizable: formData.is_customizable,
         allow_color_selection: formData.allow_color_selection,
+        available_colors: availableColors.length ? availableColors : null,
         show_description_prompt: formData.show_description_prompt,
         track_inventory: formData.track_inventory,
         continue_selling_when_out_of_stock: formData.continue_selling_when_out_of_stock,
@@ -992,7 +997,7 @@ export default function AdminProductEdit() {
                   </label>
                 </div>
 
-                {/* Color Selection Toggle */}
+                {/* Color Selection Toggle + Manager */}
                 <div className="pt-2 border-t border-gray-200">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -1012,6 +1017,94 @@ export default function AdminProductEdit() {
                       </p>
                     </div>
                   </label>
+
+                  {formData.allow_color_selection && (
+                    <div className="mt-4 p-4 bg-brand-black/40 rounded-xl border border-brand-gray">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Palette className="h-4 w-4 text-brand-neon" />
+                        <span className="text-gray-300 text-sm font-medium">Available Colors for This Product</span>
+                      </div>
+
+                      {/* Active colors — click to remove */}
+                      {availableColors.length > 0 ? (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {availableColors.map(name => {
+                            const preset = COLOR_PRESETS.find(p => p.name === name);
+                            return (
+                              <button
+                                key={name}
+                                type="button"
+                                onClick={() => setAvailableColors(prev => prev.filter(c => c !== name))}
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-brand-neon/40 bg-brand-neon/10 text-brand-neon text-xs font-medium hover:bg-red-500/20 hover:border-red-400/40 hover:text-red-400 transition-colors group"
+                                title="Click to remove"
+                              >
+                                <span
+                                  className="w-3 h-3 rounded-full border border-white/20 flex-shrink-0"
+                                  style={{ backgroundColor: preset?.hex ?? '#888' }}
+                                />
+                                {name}
+                                <X className="h-3 w-3 opacity-60 group-hover:opacity-100" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 text-xs mb-3">No colors set — all 12 presets will show. Add specific colors below to limit the options.</p>
+                      )}
+
+                      {/* Preset quick-add buttons */}
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {COLOR_PRESETS.filter(p => !availableColors.includes(p.name)).map(color => (
+                          <button
+                            key={color.name}
+                            type="button"
+                            onClick={() => setAvailableColors(prev => [...prev, color.name])}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-gray-600 text-gray-400 text-xs hover:border-brand-neon/50 hover:text-brand-neon transition-colors"
+                          >
+                            <span
+                              className="w-3 h-3 rounded-full border border-white/20 flex-shrink-0"
+                              style={{ backgroundColor: color.hex }}
+                            />
+                            + {color.name}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Custom color name */}
+                      <div className="flex gap-2 mt-1">
+                        <input
+                          type="text"
+                          value={customColorInput}
+                          onChange={e => setCustomColorInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const name = customColorInput.trim();
+                              if (name && !availableColors.includes(name)) {
+                                setAvailableColors(prev => [...prev, name]);
+                              }
+                              setCustomColorInput('');
+                            }
+                          }}
+                          placeholder="Custom color name (e.g. Teal, Galaxy Black)"
+                          className="flex-1 text-xs px-3 py-1.5 rounded-lg bg-brand-black border border-brand-gray text-[#0D1B2A] placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-neon"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const name = customColorInput.trim();
+                            if (name && !availableColors.includes(name)) {
+                              setAvailableColors(prev => [...prev, name]);
+                            }
+                            setCustomColorInput('');
+                          }}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-brand-neon/20 border border-brand-neon/40 text-brand-neon hover:bg-brand-neon/30 transition-colors whitespace-nowrap"
+                        >
+                          + Add
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Description Prompt Toggle */}

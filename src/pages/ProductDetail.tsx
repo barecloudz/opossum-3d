@@ -2,21 +2,8 @@ import { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check, ChevronDown, ChevronUp, Upload, X as XIcon, ImageIcon, Palette, MessageSquare } from 'lucide-react';
 
-const COLOR_PRESETS = [
-  { name: 'Black', hex: '#1a1a1a' },
-  { name: 'White', hex: '#ffffff' },
-  { name: 'Red', hex: '#ef4444' },
-  { name: 'Blue', hex: '#3b82f6' },
-  { name: 'Green', hex: '#22c55e' },
-  { name: 'Yellow', hex: '#eab308' },
-  { name: 'Purple', hex: '#a855f7' },
-  { name: 'Orange', hex: '#f97316' },
-  { name: 'Pink', hex: '#ec4899' },
-  { name: 'Gold', hex: '#d4af37' },
-  { name: 'Silver', hex: '#c0c0c0' },
-  { name: 'Wood Brown', hex: '#8B4513' },
-];
 import Button from '../components/ui/Button';
+import { COLOR_PRESETS } from '../lib/constants';
 import { ProductDetailSkeleton } from '../components/ui/Skeleton';
 import RelatedProducts from '../components/product/RelatedProducts';
 import ProductReviews from '../components/product/ProductReviews';
@@ -538,7 +525,13 @@ export default function ProductDetail() {
                 </div>
                 <p className="text-xs text-gray-500 mb-3">Select one or more colors for your product (optional)</p>
                 <div className="flex flex-wrap gap-2">
-                  {COLOR_PRESETS.map(color => (
+                  {(product.available_colors?.length
+                    ? product.available_colors.map(name => ({
+                        name,
+                        hex: COLOR_PRESETS.find(p => p.name === name)?.hex ?? '#888888',
+                      }))
+                    : COLOR_PRESETS
+                  ).map(color => (
                     <button
                       key={color.name}
                       type="button"
