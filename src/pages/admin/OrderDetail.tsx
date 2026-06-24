@@ -21,6 +21,9 @@ export default function AdminOrderDetail() {
   const [status, setStatus] = useState<OrderStatus>('pending');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [notes, setNotes] = useState('');
+  // Per-item color editing: map of item.id -> comma-separated color string
+  const [itemColors, setItemColors] = useState<Record<string, string>>({});
+  const [savingColorItemId, setSavingColorItemId] = useState<string | null>(null);
 
   // Shipping label state
   const [isGeneratingLabel, setIsGeneratingLabel] = useState(false);
@@ -59,6 +62,12 @@ export default function AdminOrderDetail() {
       setStatus(orderData.status);
       setTrackingNumber(orderData.tracking_number || '');
       setNotes(orderData.notes || '');
+      // Initialize color inputs from DB
+      const colorMap: Record<string, string> = {};
+      for (const item of itemsData || []) {
+        colorMap[item.id] = item.selected_colors?.join(', ') ?? '';
+      }
+      setItemColors(colorMap);
 
       // Load stored label if available
       if (orderData.shipping_label_pdf && orderData.tracking_number) {
@@ -138,6 +147,25 @@ export default function AdminOrderDetail() {
       alert('Failed to update order');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveItemColors = async (itemId: string) => {
+    setSavingColorItemId(itemId);
+    try {
+      const raw = itemColors[itemId] ?? '';
+      const colors = raw.split(',').map(s => s.trim()).filter(Boolean);
+      const { error } = await supabase
+        .from('order_items')
+        .update({ selected_colors: colors.length ? colors : null })
+        .eq('id', itemId);
+      if (error) throw error;
+      setItems(prev => prev.map(i => i.id === itemId ? { ...i, selected_colors: colors.length ? colors : null } : i));
+    } catch (err) {
+      console.error('Error saving colors:', err);
+      alert('Failed to save colors');
+    } finally {
+      setSavingColorItemId(null);
     }
   };
 
@@ -426,6 +454,35 @@ export default function AdminOrderDetail() {
                           <span className="text-xs text-blue-500 group-hover:underline">View artwork</span>
                         </a>
                       )}
+                      {item.product_description && (
+                        <p className="text-gray-400 text-xs mt-1 italic">"{item.product_description}"</p>
+                      )}
+                      {/* Color selection — editable by admin */}
+                      <div className="mt-2">
+                        {item.selected_colors && item.selected_colors.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-1">
+                            {item.selected_colors.map(c => (
+                              <span key={c} className="text-xs bg-brand-gray text-[#0D1B2A] px-2 py-0.5 rounded-full">{c}</span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            type="text"
+                            value={itemColors[item.id] ?? ''}
+                            onChange={e => setItemColors(prev => ({ ...prev, [item.id]: e.target.value }))}
+                            placeholder="Colors (comma-separated)"
+                            className="text-xs px-2 py-1 rounded bg-brand-black border border-brand-gray text-[#0D1B2A] placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-neon w-44"
+                          />
+                          <button
+                            onClick={() => handleSaveItemColors(item.id)}
+                            disabled={savingColorItemId === item.id}
+                            className="text-xs px-2 py-1 rounded bg-brand-neon/20 border border-brand-neon/40 text-brand-neon hover:bg-brand-neon/30 transition-colors disabled:opacity-50"
+                          >
+                            {savingColorItemId === item.id ? 'Saving…' : 'Save'}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <span className="text-brand-neon font-medium">

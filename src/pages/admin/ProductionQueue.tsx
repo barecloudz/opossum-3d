@@ -16,6 +16,7 @@ interface OrderRef {
   status: OrderStatus;
   quantity: number;
   customizationImageUrl: string | null;
+  selectedColors: string[] | null;
 }
 
 interface ProductionItem {
@@ -73,6 +74,7 @@ export default function ProductionQueue() {
             status: order.status as OrderStatus,
             quantity: item.quantity,
             customizationImageUrl: item.customization_image_url ?? null,
+            selectedColors: (item.selected_colors as string[] | null) ?? null,
           });
         }
       }
@@ -258,6 +260,15 @@ export default function ProductionQueue() {
                         >
                           {ORDER_STATUSES[o.status].label}
                         </Badge>
+
+                        {/* Color swatches */}
+                        {o.selectedColors && o.selectedColors.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {o.selectedColors.map(c => (
+                              <span key={c} className="text-xs bg-brand-gray text-[#0D1B2A] px-2 py-0.5 rounded-full whitespace-nowrap">{c}</span>
+                            ))}
+                          </div>
+                        )}
 
                         {/* Customization image thumbnail */}
                         {o.customizationImageUrl && (

@@ -139,6 +139,8 @@ export interface OrderItem {
   unit_price: number;
   total_price: number;
   customization_image_url: string | null;
+  selected_colors?: string[] | null;
+  product_description?: string | null;
   created_at: string;
 }
 

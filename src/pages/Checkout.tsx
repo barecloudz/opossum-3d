@@ -547,6 +547,8 @@ export default function Checkout() {
           unit_price: unitPrice,
           total_price: unitPrice * item.quantity,
           customization_image_url: item.customization_image_url || null,
+          selected_colors: item.selected_colors?.length ? item.selected_colors : null,
+          product_description: item.product_description || null,
         };
       });
 
@@ -810,6 +812,8 @@ export default function Checkout() {
           unit_price: unitPrice,
           total_price: unitPrice * item.quantity,
           customization_image_url: item.customization_image_url || null,
+          selected_colors: item.selected_colors?.length ? item.selected_colors : null,
+          product_description: item.product_description || null,
         };
       });
 
