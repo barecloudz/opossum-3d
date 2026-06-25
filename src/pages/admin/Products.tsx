@@ -331,7 +331,7 @@ export default function AdminProducts() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-4 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+          className="px-4 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)] text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
         >
           <option value="all">All Categories</option>
           <option value="uncategorized">Uncategorized</option>
