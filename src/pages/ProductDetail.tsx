@@ -144,55 +144,55 @@ export default function ProductDetail() {
     }
   };
 
+  // Auto-distribute units evenly across colors
+  const distributeUnits = (colors: string[], qty: number): Record<string, number> => {
+    if (colors.length === 0) return {};
+    const base = Math.floor(qty / colors.length);
+    const remainder = qty - base * colors.length;
+    const result: Record<string, number> = {};
+    colors.forEach((c, i) => { result[c] = base + (i < remainder ? 1 : 0); });
+    return result;
+  };
+
   const toggleColor = (colorName: string) => {
     setSelectedColors(prev => {
       const next = prev.includes(colorName)
         ? prev.filter(c => c !== colorName)
         : [...prev, colorName];
-      // Auto-balance ratios to equal split
-      if (next.length > 0) {
-        const equal = Math.floor(100 / next.length);
-        const remainder = 100 - equal * next.length;
-        const ratios: Record<string, number> = {};
-        next.forEach((c, i) => { ratios[c] = equal + (i === 0 ? remainder : 0); });
-        setColorRatios(ratios);
-      } else {
-        setColorRatios({});
-      }
+      setColorRatios(distributeUnits(next, quantity));
       setColorSplitError(null);
       return next;
     });
   };
 
-  const updateColorRatio = (colorName: string, value: number) => {
-    setColorRatios(prev => ({ ...prev, [colorName]: value }));
+  const updateColorUnits = (colorName: string, value: number) => {
+    setColorRatios(prev => ({ ...prev, [colorName]: Math.max(0, value) }));
     setColorSplitError(null);
   };
 
-  const handleAddToCart = () => {
-    // Validate color split if multiple colors selected
+  // When quantity changes, redistribute units proportionally
+  const handleQuantityChange = (newQty: number) => {
+    setQuantity(newQty);
+    setQuantityInput(String(newQty));
     if (selectedColors.length > 1) {
-      const total = selectedColors.reduce((sum, c) => sum + (colorRatios[c] ?? 0), 0);
-      if (total !== 100) {
-        setColorSplitError(`Color percentages must add up to 100% (currently ${total}%). Please adjust the split.`);
+      setColorRatios(distributeUnits(selectedColors, newQty));
+      setColorSplitError(null);
+    }
+  };
+
+  const handleAddToCart = () => {
+    // Validate color units if multiple colors selected
+    if (selectedColors.length > 1) {
+      const totalUnits = selectedColors.reduce((sum, c) => sum + (colorRatios[c] ?? 0), 0);
+      if (totalUnits !== quantity) {
+        setColorSplitError(`Color units must add up to ${quantity} (your order quantity). Currently: ${totalUnits}. Adjust the amounts so they equal your total.`);
         return;
-      }
-      if (quantity > 1) {
-        const nonWhole = selectedColors.filter(c => (quantity * (colorRatios[c] ?? 0) / 100) % 1 !== 0);
-        if (nonWhole.length > 0) {
-          const breakdown = selectedColors.map(c => {
-            const units = quantity * (colorRatios[c] ?? 0) / 100;
-            return `${colorRatios[c]}% = ${units} units`;
-          }).join(', ');
-          setColorSplitError(`This split doesn't divide evenly into ${quantity} units (${breakdown}). Adjust the percentages or quantity so each color results in a whole number of units.`);
-          return;
-        }
       }
     }
     setColorSplitError(null);
     setIsAdding(true);
 
-    // Encode ratios into color strings: "Red:75", "Blue:25"
+    // Encode as "Color:units" when multiple colors, plain "Color" for single
     const encodedColors = selectedColors.length > 1
       ? selectedColors.map(c => `${c}:${colorRatios[c] ?? 0}`)
       : selectedColors;
@@ -412,6 +412,47 @@ export default function ProductDetail() {
               )}
             </div>
 
+            {/* Quantity (top) */}
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center bg-gray-100 rounded-xl border border-gray-200">
+                <button
+                  onClick={() => handleQuantityChange(Math.max(1, quantity - 1))}
+                  className="p-2.5 text-gray-500 hover:text-[#0D1B2A] transition-colors btn-press"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={quantityInput}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    setQuantityInput(raw);
+                    const parsed = parseInt(raw, 10);
+                    if (!isNaN(parsed) && parsed >= 1) {
+                      handleQuantityChange(Math.min(maxQuantity, parsed));
+                    }
+                  }}
+                  onBlur={() => {
+                    const parsed = parseInt(quantityInput, 10);
+                    const clamped = isNaN(parsed) ? 1 : Math.min(maxQuantity, Math.max(1, parsed));
+                    handleQuantityChange(clamped);
+                  }}
+                  onFocus={(e) => e.target.select()}
+                  className="text-[#0D1B2A] text-base font-semibold w-12 text-center bg-transparent focus:outline-none"
+                />
+                <button
+                  onClick={() => handleQuantityChange(Math.min(maxQuantity, quantity + 1))}
+                  disabled={quantity >= maxQuantity}
+                  className="p-2.5 text-gray-500 hover:text-[#0D1B2A] transition-colors btn-press disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              <span className="text-sm text-gray-400">qty</span>
+            </div>
+
             {/* Variants */}
             {product.variants && product.variants.length > 0 && (
               <div>
@@ -601,55 +642,52 @@ export default function ProductDetail() {
                   ))}
                 </div>
 
-                {/* Color ratio sliders — shown when 2+ colors selected */}
+                {/* Color unit split — shown when 2+ colors selected */}
                 {selectedColors.length > 1 && (
-                  <div className="mt-4 space-y-3">
-                    <p className="text-xs font-medium text-[#0D1B2A]">Color split</p>
+                  <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+                    <p className="text-xs font-medium text-[#0D1B2A]">How many of each color? <span className="text-gray-400 font-normal">(must add up to {quantity})</span></p>
                     {selectedColors.map(colorName => {
                       const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
-                      const pct = colorRatios[colorName] ?? 0;
-                      const units = quantity > 1 ? (quantity * pct / 100) : null;
-                      const isWholeUnit = units === null || units % 1 === 0;
+                      const units = colorRatios[colorName] ?? 0;
                       return (
-                        <div key={colorName} className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="w-3 h-3 rounded-full flex-shrink-0 border border-gray-300" style={{ backgroundColor: hex }} />
-                              <span className="text-sm text-[#0D1B2A]">{colorName}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {units !== null && (
-                                <span className={`text-xs ${isWholeUnit ? 'text-gray-400' : 'text-orange-500 font-medium'}`}>
-                                  {isWholeUnit ? `${units} unit${units !== 1 ? 's' : ''}` : `${units} units`}
-                                </span>
-                              )}
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={100}
-                                  value={pct}
-                                  onChange={e => updateColorRatio(colorName, Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
-                                  className="w-14 text-center text-sm px-1 py-0.5 rounded border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
-                                />
-                                <span className="text-sm text-gray-400">%</span>
-                              </div>
-                            </div>
+                        <div key={colorName} className="flex items-center gap-3">
+                          <span className="w-3 h-3 rounded-full flex-shrink-0 border border-gray-300" style={{ backgroundColor: hex }} />
+                          <span className="text-sm text-[#0D1B2A] flex-1">{colorName}</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => updateColorUnits(colorName, units - 1)}
+                              className="w-7 h-7 rounded-lg bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 transition-colors"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={units}
+                              onChange={e => updateColorUnits(colorName, parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                              onFocus={e => e.target.select()}
+                              className="w-10 text-center text-sm font-semibold border border-gray-200 rounded-lg py-1 focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => updateColorUnits(colorName, units + 1)}
+                              className="w-7 h-7 rounded-lg bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 transition-colors"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </button>
                           </div>
-                          <input
-                            type="range"
-                            min={0}
-                            max={100}
-                            value={pct}
-                            onChange={e => updateColorRatio(colorName, parseInt(e.target.value))}
-                            className="w-full accent-[var(--color-primary)]"
-                          />
                         </div>
                       );
                     })}
-                    <div className={`text-xs font-medium ${selectedColors.reduce((s, c) => s + (colorRatios[c] ?? 0), 0) === 100 ? 'text-green-500' : 'text-orange-500'}`}>
-                      Total: {selectedColors.reduce((s, c) => s + (colorRatios[c] ?? 0), 0)}% {selectedColors.reduce((s, c) => s + (colorRatios[c] ?? 0), 0) === 100 ? '✓' : '— must equal 100%'}
-                    </div>
+                    {(() => {
+                      const total = selectedColors.reduce((s, c) => s + (colorRatios[c] ?? 0), 0);
+                      return (
+                        <div className={`text-xs font-medium pt-1 border-t border-gray-200 ${total === quantity ? 'text-green-600' : 'text-orange-500'}`}>
+                          Total: {total} / {quantity} {total === quantity ? '✓' : `— need ${quantity - total > 0 ? `${quantity - total} more` : `${total - quantity} less`}`}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -682,18 +720,14 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* Quantity */}
+            {/* Quantity (bottom) */}
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-3">
                 Quantity
               </label>
               <div className="inline-flex items-center bg-gray-100 rounded-xl border border-gray-200">
                 <button
-                  onClick={() => {
-                    const next = Math.max(1, quantity - 1);
-                    setQuantity(next);
-                    setQuantityInput(String(next));
-                  }}
+                  onClick={() => handleQuantityChange(Math.max(1, quantity - 1))}
                   className="p-3 text-gray-500 hover:text-[#0D1B2A] transition-colors btn-press"
                 >
                   <Minus className="h-5 w-5" />
@@ -708,24 +742,19 @@ export default function ProductDetail() {
                     setQuantityInput(raw);
                     const parsed = parseInt(raw, 10);
                     if (!isNaN(parsed) && parsed >= 1) {
-                      setQuantity(Math.min(maxQuantity, parsed));
+                      handleQuantityChange(Math.min(maxQuantity, parsed));
                     }
                   }}
                   onBlur={() => {
                     const parsed = parseInt(quantityInput, 10);
                     const clamped = isNaN(parsed) ? 1 : Math.min(maxQuantity, Math.max(1, parsed));
-                    setQuantity(clamped);
-                    setQuantityInput(String(clamped));
+                    handleQuantityChange(clamped);
                   }}
                   onFocus={(e) => e.target.select()}
                   className="text-[#0D1B2A] text-lg font-semibold w-16 text-center bg-transparent focus:outline-none"
                 />
                 <button
-                  onClick={() => {
-                    const next = Math.min(maxQuantity, quantity + 1);
-                    setQuantity(next);
-                    setQuantityInput(String(next));
-                  }}
+                  onClick={() => handleQuantityChange(Math.min(maxQuantity, quantity + 1))}
                   disabled={quantity >= maxQuantity}
                   className="p-3 text-gray-500 hover:text-[#0D1B2A] transition-colors btn-press disabled:opacity-30 disabled:cursor-not-allowed"
                 >

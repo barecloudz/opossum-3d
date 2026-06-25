@@ -47,7 +47,7 @@ const generateEmailHtml = (order: OrderConfirmationRequest) => {
         <div style="font-weight: 600; color: #111827; font-size: 15px;">${item.product_name}</div>
         ${item.variant_name ? `<div style="font-size: 13px; color: #6b7280; margin-top: 3px;">${item.variant_name}</div>` : ''}
         <div style="font-size: 13px; color: #9ca3af; margin-top: 3px;">Qty: ${item.quantity} &times; ${formatPrice(item.unit_price)}</div>
-        ${item.selected_colors?.length ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Colors: ${item.selected_colors.map(e => { const [c, p] = e.includes(':') ? e.split(':') : [e, null]; return p ? `${c} ${p}%` : c; }).join(', ')}</div>` : ''}
+        ${item.selected_colors?.length ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Colors: ${item.selected_colors.map(e => { const [c, p] = e.includes(':') ? e.split(':') : [e, null]; return p ? `${c} (${p})` : c; }).join(', ')}</div>` : ''}
         ${item.product_description ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px; font-style: italic;">"${item.product_description}"</div>` : ''}
       </td>
       <td style="padding: 16px 20px; border-bottom: 1px solid #e5e7eb; text-align: right; vertical-align: top; color: #111827; font-weight: 600; font-size: 15px;">

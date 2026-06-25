@@ -492,10 +492,7 @@ export default function AdminOrderDetail() {
                                     return (
                                       <span key={entry} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-gray text-xs text-[#0D1B2A]">
                                         <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
-                                        {colorName}{pct ? ` ${pct}%` : ''}
-                                        {pct && item.quantity > 1 && (
-                                          <span className="text-gray-400 ml-0.5">({Math.round(item.quantity * parseInt(pct) / 100)} units)</span>
-                                        )}
+                                        {colorName}{pct ? ` ×${pct}` : ''}
                                       </span>
                                     );
                                   })}

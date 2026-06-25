@@ -39,7 +39,7 @@ const generateAdminEmailHtml = (order: AdminNotificationRequest) => {
     <tr>
       <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; color: #111827;">
         ${item.product_name}${item.variant_name ? ` - ${item.variant_name}` : ''}
-        ${item.selected_colors?.length ? `<div style="font-size: 11px; color: #6b7280; margin-top: 3px;">Colors: ${item.selected_colors.map(e => { const [c, p] = e.includes(':') ? e.split(':') : [e, null]; return p ? `${c} ${p}%` : c; }).join(', ')}</div>` : ''}
+        ${item.selected_colors?.length ? `<div style="font-size: 11px; color: #6b7280; margin-top: 3px;">Colors: ${item.selected_colors.map(e => { const [c, p] = e.includes(':') ? e.split(':') : [e, null]; return p ? `${c} (${p})` : c; }).join(', ')}</div>` : ''}
         ${item.product_description ? `<div style="font-size: 11px; color: #6b7280; margin-top: 2px; font-style: italic;">"${item.product_description}"</div>` : ''}
       </td>
       <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; color: #111827;">${item.quantity}</td>

@@ -267,11 +267,10 @@ export default function ProductionQueue() {
                             {o.selectedColors.map(entry => {
                               const [colorName, pct] = entry.includes(':') ? entry.split(':') : [entry, null];
                               const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
-                              const units = pct && o.quantity > 1 ? Math.round(o.quantity * parseInt(pct) / 100) : null;
                               return (
                                 <span key={entry} className="flex items-center gap-1 text-xs bg-brand-gray text-[#0D1B2A] px-2 py-0.5 rounded-full whitespace-nowrap">
                                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
-                                  {colorName}{pct ? ` ${pct}%` : ''}{units ? ` (${units})` : ''}
+                                  {colorName}{pct ? ` ×${pct}` : ''}
                                 </span>
                               );
                             })}
