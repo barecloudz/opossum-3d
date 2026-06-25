@@ -181,8 +181,8 @@ export default function ProductDetail() {
   };
 
   const handleAddToCart = () => {
-    // Validate color units if multiple colors selected
-    if (selectedColors.length > 1) {
+    // Validate color units if multiple colors selected and qty > 1
+    if (selectedColors.length > 1 && quantity > 1) {
       const totalUnits = selectedColors.reduce((sum, c) => sum + (colorRatios[c] ?? 0), 0);
       if (totalUnits !== quantity) {
         setColorSplitError(`Color units must add up to ${quantity} (your order quantity). Currently: ${totalUnits}. Adjust the amounts so they equal your total.`);
@@ -192,10 +192,11 @@ export default function ProductDetail() {
     setColorSplitError(null);
     setIsAdding(true);
 
-    // Encode as "Color:units" when multiple colors, plain "Color" for single
-    const encodedColors = selectedColors.length > 1
+    // qty=1 with multiple colors selected: just use whichever single color has units=1, or first selected
+    // qty>1 with multiple colors: encode as "Color:units"
+    const encodedColors = selectedColors.length > 1 && quantity > 1
       ? selectedColors.map(c => `${c}:${colorRatios[c] ?? 0}`)
-      : selectedColors;
+      : selectedColors.slice(0, quantity === 1 ? 1 : undefined);
 
     addItem(
       product,
@@ -642,8 +643,23 @@ export default function ProductDetail() {
                   ))}
                 </div>
 
-                {/* Color unit split — shown when 2+ colors selected */}
-                {selectedColors.length > 1 && (
+                {/* Qty nudge — shown when 2+ colors picked but qty is 1 */}
+                {selectedColors.length > 1 && quantity === 1 && (
+                  <div className="mt-3 flex items-center gap-3 p-3 bg-[var(--color-primary)]/5 border border-[var(--color-primary)]/20 rounded-xl">
+                    <span className="text-sm text-[#0D1B2A] flex-1">Want multiple colors? Increase your quantity.</span>
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityChange(2)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Set qty to 2
+                    </button>
+                  </div>
+                )}
+
+                {/* Color unit split — shown when 2+ colors selected AND qty > 1 */}
+                {selectedColors.length > 1 && quantity > 1 && (
                   <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
                     <p className="text-xs font-medium text-[#0D1B2A]">How many of each color? <span className="text-gray-400 font-normal">(must add up to {quantity})</span></p>
                     {selectedColors.map(colorName => {
