@@ -9,7 +9,6 @@ import {
   Users,
   ArrowUpRight,
   ArrowDownRight,
-  RotateCcw,
 } from 'lucide-react';
 import {
   AreaChart,
