@@ -31,6 +31,7 @@ export default function ProductDetail() {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [colorRatios, setColorRatios] = useState<Record<string, number>>({});
   const [colorSplitError, setColorSplitError] = useState<string | null>(null);
+  const colorErrorRef = useRef<HTMLDivElement>(null);
   const [productDescription, setProductDescription] = useState('');
   const { addItem, openCart } = useCartStore();
 
@@ -159,7 +160,9 @@ export default function ProductDetail() {
       const isRemoving = prev.includes(colorName);
       // Block adding a color if already at the quantity limit
       if (!isRemoving && prev.length >= quantity) {
-        setColorSplitError(`You can only pick up to ${quantity} color${quantity !== 1 ? 's' : ''} for a quantity of ${quantity}. Increase your quantity or remove a color first.`);
+        const msg = `You can only pick up to ${quantity} color${quantity !== 1 ? 's' : ''} for a quantity of ${quantity}. Increase your quantity or remove a color first.`;
+        setColorSplitError(msg);
+        setTimeout(() => colorErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
         return prev;
       }
       const next = isRemoving
@@ -195,7 +198,9 @@ export default function ProductDetail() {
     if (selectedColors.length > 1 && quantity > 1) {
       const totalUnits = selectedColors.reduce((sum, c) => sum + (colorRatios[c] ?? 0), 0);
       if (totalUnits !== quantity) {
-        setColorSplitError(`Color units must add up to ${quantity} (your order quantity). Currently: ${totalUnits}. Adjust the amounts so they equal your total.`);
+        const msg = `Color units must add up to ${quantity} (your order quantity). Currently: ${totalUnits}. Adjust the amounts so they equal your total.`;
+        setColorSplitError(msg);
+        setTimeout(() => colorErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
         return;
       }
     }
@@ -719,7 +724,7 @@ export default function ProductDetail() {
 
                 {/* Color split error */}
                 {colorSplitError && (
-                  <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-xl text-orange-700 text-xs">
+                  <div ref={colorErrorRef} className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-xl text-orange-700 text-xs">
                     {colorSplitError}
                   </div>
                 )}
@@ -745,49 +750,6 @@ export default function ProductDetail() {
                 />
               </div>
             )}
-
-            {/* Quantity (bottom) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-3">
-                Quantity
-              </label>
-              <div className="inline-flex items-center bg-gray-100 rounded-xl border border-gray-200">
-                <button
-                  onClick={() => handleQuantityChange(Math.max(1, quantity - 1))}
-                  className="p-3 text-gray-500 hover:text-[#0D1B2A] transition-colors btn-press"
-                >
-                  <Minus className="h-5 w-5" />
-                </button>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={quantityInput}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/[^0-9]/g, '');
-                    setQuantityInput(raw);
-                    const parsed = parseInt(raw, 10);
-                    if (!isNaN(parsed) && parsed >= 1) {
-                      handleQuantityChange(Math.min(maxQuantity, parsed));
-                    }
-                  }}
-                  onBlur={() => {
-                    const parsed = parseInt(quantityInput, 10);
-                    const clamped = isNaN(parsed) ? 1 : Math.min(maxQuantity, Math.max(1, parsed));
-                    handleQuantityChange(clamped);
-                  }}
-                  onFocus={(e) => e.target.select()}
-                  className="text-[#0D1B2A] text-lg font-semibold w-16 text-center bg-transparent focus:outline-none"
-                />
-                <button
-                  onClick={() => handleQuantityChange(Math.min(maxQuantity, quantity + 1))}
-                  disabled={quantity >= maxQuantity}
-                  className="p-3 text-gray-500 hover:text-[#0D1B2A] transition-colors btn-press disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
 
             {/* Add to cart */}
             <div className="flex gap-3 pt-4">
