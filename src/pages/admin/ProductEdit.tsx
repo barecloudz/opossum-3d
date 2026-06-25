@@ -1025,50 +1025,40 @@ export default function AdminProductEdit() {
                         <span className="text-gray-300 text-sm font-medium">Available Colors for This Product</span>
                       </div>
 
-                      {/* Active colors — click to remove */}
-                      {availableColors.length > 0 ? (
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {availableColors.map(name => {
-                            const preset = COLOR_PRESETS.find(p => p.name === name);
-                            return (
-                              <button
-                                key={name}
-                                type="button"
-                                onClick={() => setAvailableColors(prev => prev.filter(c => c !== name))}
-                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-brand-neon/40 bg-brand-neon/10 text-brand-neon text-xs font-medium hover:bg-red-500/20 hover:border-red-400/40 hover:text-red-400 transition-colors group"
-                                title="Click to remove"
-                              >
-                                <span
-                                  className="w-3 h-3 rounded-full border border-white/20 flex-shrink-0"
-                                  style={{ backgroundColor: preset?.hex ?? '#888' }}
-                                />
-                                {name}
-                                <X className="h-3 w-3 opacity-60 group-hover:opacity-100" />
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-gray-500 text-xs mb-3">No colors set — all 12 presets will show. Add specific colors below to limit the options.</p>
-                      )}
-
-                      {/* Preset quick-add buttons */}
-                      <div className="flex flex-wrap gap-1.5 mb-3">
-                        {COLOR_PRESETS.filter(p => !availableColors.includes(p.name)).map(color => (
-                          <button
-                            key={color.name}
-                            type="button"
-                            onClick={() => setAvailableColors(prev => [...prev, color.name])}
-                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-gray-600 text-gray-400 text-xs hover:border-brand-neon/50 hover:text-brand-neon transition-colors"
-                          >
-                            <span
-                              className="w-3 h-3 rounded-full border border-white/20 flex-shrink-0"
-                              style={{ backgroundColor: color.hex }}
-                            />
-                            + {color.name}
-                          </button>
-                        ))}
+                      {/* All colors as toggle grid */}
+                      <p className="text-gray-400 text-xs mb-2">Click to toggle colors on/off. Selected colors = what customers see.</p>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {COLOR_PRESETS.map(color => {
+                          const active = availableColors.includes(color.name);
+                          return (
+                            <button
+                              key={color.name}
+                              type="button"
+                              onClick={() => setAvailableColors(prev =>
+                                active ? prev.filter(c => c !== color.name) : [...prev, color.name]
+                              )}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                                active
+                                  ? 'border-brand-neon bg-brand-neon/20 text-brand-neon'
+                                  : 'border-gray-600 bg-transparent text-gray-400 hover:border-gray-400'
+                              }`}
+                            >
+                              <span
+                                className="w-3 h-3 rounded-full flex-shrink-0 border border-white/30"
+                                style={{ backgroundColor: color.hex }}
+                              />
+                              {color.name}
+                              {active && <X className="h-2.5 w-2.5 ml-0.5 opacity-70" />}
+                            </button>
+                          );
+                        })}
                       </div>
+                      {availableColors.length === 0 && (
+                        <p className="text-yellow-500/80 text-xs mb-2">⚠ No colors selected — all 12 will show to customers.</p>
+                      )}
+                      {availableColors.length > 0 && (
+                        <p className="text-brand-neon text-xs mb-2">✓ {availableColors.length} color{availableColors.length !== 1 ? 's' : ''} selected — only these will show to customers.</p>
+                      )}
 
                       {/* Custom color name */}
                       <div className="flex gap-2 mt-1">
