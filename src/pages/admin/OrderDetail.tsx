@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle, Printer, RotateCcw, Tag, Palette } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle, Printer, RotateCcw, Tag } from 'lucide-react';
 import { COLOR_PRESETS } from '../../lib/constants';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -22,11 +22,13 @@ export default function AdminOrderDetail() {
   const [status, setStatus] = useState<OrderStatus>('pending');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [notes, setNotes] = useState('');
-  // Per-item color editing: map of item.id -> selected colors array
+  // Per-item color editing: map of item.id -> selected colors array (encoded "Color:pct" or plain "Color")
   const [itemColors, setItemColors] = useState<Record<string, string[]>>({});
   const [savingColorItemId, setSavingColorItemId] = useState<string | null>(null);
   // Per-item available colors fetched from their product
   const [productColors, setProductColors] = useState<Record<string, string[]>>({});
+  // Which items have their color editor open
+  const [editingColorItemIds, setEditingColorItemIds] = useState<Set<string>>(new Set());
 
   // Shipping label state
   const [isGeneratingLabel, setIsGeneratingLabel] = useState(false);
@@ -179,6 +181,7 @@ export default function AdminOrderDetail() {
         .eq('id', itemId);
       if (error) throw error;
       setItems(prev => prev.map(i => i.id === itemId ? { ...i, selected_colors: colors.length ? colors : null } : i));
+      setEditingColorItemIds(prev => { const n = new Set(prev); n.delete(itemId); return n; });
     } catch (err) {
       console.error('Error saving colors:', err);
       alert('Failed to save colors');
@@ -475,49 +478,86 @@ export default function AdminOrderDetail() {
                       {item.product_description && (
                         <p className="text-gray-400 text-xs mt-1 italic">"{item.product_description}"</p>
                       )}
-                      {/* Color selection — editable by admin */}
+                      {/* Color display / editor */}
                       {item.product_id && (
                         <div className="mt-2">
-                          <div className="flex items-center gap-1.5 mb-1.5">
-                            <Palette className="h-3.5 w-3.5 text-gray-400" />
-                            <span className="text-xs text-gray-400">Colors</span>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5 mb-2">
-                            {(productColors[item.product_id] ?? COLOR_PRESETS.map(c => c.name)).map(colorName => {
-                              const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
-                              const selected = (itemColors[item.id] ?? []).includes(colorName);
-                              return (
-                                <button
-                                  key={colorName}
-                                  type="button"
-                                  onClick={() => setItemColors(prev => {
-                                    const cur = prev[item.id] ?? [];
-                                    return {
-                                      ...prev,
-                                      [item.id]: selected
-                                        ? cur.filter(c => c !== colorName)
-                                        : [...cur, colorName],
-                                    };
+                          {/* Compact read view */}
+                          {!editingColorItemIds.has(item.id) ? (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {(itemColors[item.id] ?? []).length > 0 ? (
+                                <>
+                                  {(itemColors[item.id] ?? []).map(entry => {
+                                    const [colorName, pct] = entry.includes(':') ? entry.split(':') : [entry, null];
+                                    const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
+                                    return (
+                                      <span key={entry} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-gray text-xs text-[#0D1B2A]">
+                                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
+                                        {colorName}{pct ? ` ${pct}%` : ''}
+                                        {pct && item.quantity > 1 && (
+                                          <span className="text-gray-400 ml-0.5">({Math.round(item.quantity * parseInt(pct) / 100)} units)</span>
+                                        )}
+                                      </span>
+                                    );
                                   })}
-                                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors ${
-                                    selected
-                                      ? 'border-brand-neon bg-brand-neon/10 text-brand-neon font-medium'
-                                      : 'border-gray-300 text-gray-500 hover:border-brand-neon/50'
-                                  }`}
+                                </>
+                              ) : (
+                                <span className="text-xs text-gray-400 italic">No colors set</span>
+                              )}
+                              <button
+                                onClick={() => setEditingColorItemIds(prev => { const n = new Set(prev); n.add(item.id); return n; })}
+                                className="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-400 hover:border-brand-neon hover:text-brand-neon transition-colors"
+                              >
+                                Edit
+                              </button>
+                            </div>
+                          ) : (
+                            /* Full editor */
+                            <div>
+                              <div className="flex flex-wrap gap-1.5 mb-2">
+                                {(productColors[item.product_id] ?? COLOR_PRESETS.map(c => c.name)).map(colorName => {
+                                  const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
+                                  const cur = itemColors[item.id] ?? [];
+                                  const selected = cur.some(e => e === colorName || e.startsWith(colorName + ':'));
+                                  return (
+                                    <button
+                                      key={colorName}
+                                      type="button"
+                                      onClick={() => setItemColors(prev => {
+                                        const existing = prev[item.id] ?? [];
+                                        return {
+                                          ...prev,
+                                          [item.id]: selected
+                                            ? existing.filter(e => e !== colorName && !e.startsWith(colorName + ':'))
+                                            : [...existing, colorName],
+                                        };
+                                      })}
+                                      className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors ${
+                                        selected ? 'border-brand-neon bg-brand-neon/10 text-brand-neon font-medium' : 'border-gray-300 text-gray-500 hover:border-brand-neon/50'
+                                      }`}
+                                    >
+                                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white/20" style={{ backgroundColor: hex }} />
+                                      {colorName}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleSaveItemColors(item.id)}
+                                  disabled={savingColorItemId === item.id}
+                                  className="text-xs px-3 py-1 rounded bg-brand-neon/20 border border-brand-neon/40 text-brand-neon hover:bg-brand-neon/30 transition-colors disabled:opacity-50"
                                 >
-                                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white/20" style={{ backgroundColor: hex }} />
-                                  {colorName}
+                                  {savingColorItemId === item.id ? 'Saving…' : 'Save'}
                                 </button>
-                              );
-                            })}
-                          </div>
-                          <button
-                            onClick={() => handleSaveItemColors(item.id)}
-                            disabled={savingColorItemId === item.id}
-                            className="text-xs px-3 py-1 rounded bg-brand-neon/20 border border-brand-neon/40 text-brand-neon hover:bg-brand-neon/30 transition-colors disabled:opacity-50"
-                          >
-                            {savingColorItemId === item.id ? 'Saving…' : 'Save Colors'}
-                          </button>
+                                <button
+                                  onClick={() => setEditingColorItemIds(prev => { const n = new Set(prev); n.delete(item.id); return n; })}
+                                  className="text-xs px-3 py-1 rounded border border-gray-300 text-gray-400 hover:border-gray-500 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

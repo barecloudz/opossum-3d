@@ -6,7 +6,7 @@ import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import { supabase } from '../../lib/supabase';
-import { ORDER_STATUSES } from '../../lib/constants';
+import { ORDER_STATUSES, COLOR_PRESETS } from '../../lib/constants';
 import type { OrderStatus } from '../../types';
 
 interface OrderRef {
@@ -264,9 +264,17 @@ export default function ProductionQueue() {
                         {/* Color swatches */}
                         {o.selectedColors && o.selectedColors.length > 0 && (
                           <div className="flex flex-wrap gap-1">
-                            {o.selectedColors.map(c => (
-                              <span key={c} className="text-xs bg-brand-gray text-[#0D1B2A] px-2 py-0.5 rounded-full whitespace-nowrap">{c}</span>
-                            ))}
+                            {o.selectedColors.map(entry => {
+                              const [colorName, pct] = entry.includes(':') ? entry.split(':') : [entry, null];
+                              const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
+                              const units = pct && o.quantity > 1 ? Math.round(o.quantity * parseInt(pct) / 100) : null;
+                              return (
+                                <span key={entry} className="flex items-center gap-1 text-xs bg-brand-gray text-[#0D1B2A] px-2 py-0.5 rounded-full whitespace-nowrap">
+                                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
+                                  {colorName}{pct ? ` ${pct}%` : ''}{units ? ` (${units})` : ''}
+                                </span>
+                              );
+                            })}
                           </div>
                         )}
 

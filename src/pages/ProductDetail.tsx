@@ -29,6 +29,8 @@ export default function ProductDetail() {
   const [customizationUploading, setCustomizationUploading] = useState(false);
   const [quantityInput, setQuantityInput] = useState('1');
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [colorRatios, setColorRatios] = useState<Record<string, number>>({});
+  const [colorSplitError, setColorSplitError] = useState<string | null>(null);
   const [productDescription, setProductDescription] = useState('');
   const { addItem, openCart } = useCartStore();
 
@@ -143,19 +145,64 @@ export default function ProductDetail() {
   };
 
   const toggleColor = (colorName: string) => {
-    setSelectedColors(prev =>
-      prev.includes(colorName) ? prev.filter(c => c !== colorName) : [...prev, colorName]
-    );
+    setSelectedColors(prev => {
+      const next = prev.includes(colorName)
+        ? prev.filter(c => c !== colorName)
+        : [...prev, colorName];
+      // Auto-balance ratios to equal split
+      if (next.length > 0) {
+        const equal = Math.floor(100 / next.length);
+        const remainder = 100 - equal * next.length;
+        const ratios: Record<string, number> = {};
+        next.forEach((c, i) => { ratios[c] = equal + (i === 0 ? remainder : 0); });
+        setColorRatios(ratios);
+      } else {
+        setColorRatios({});
+      }
+      setColorSplitError(null);
+      return next;
+    });
+  };
+
+  const updateColorRatio = (colorName: string, value: number) => {
+    setColorRatios(prev => ({ ...prev, [colorName]: value }));
+    setColorSplitError(null);
   };
 
   const handleAddToCart = () => {
+    // Validate color split if multiple colors selected
+    if (selectedColors.length > 1) {
+      const total = selectedColors.reduce((sum, c) => sum + (colorRatios[c] ?? 0), 0);
+      if (total !== 100) {
+        setColorSplitError(`Color percentages must add up to 100% (currently ${total}%). Please adjust the split.`);
+        return;
+      }
+      if (quantity > 1) {
+        const nonWhole = selectedColors.filter(c => (quantity * (colorRatios[c] ?? 0) / 100) % 1 !== 0);
+        if (nonWhole.length > 0) {
+          const breakdown = selectedColors.map(c => {
+            const units = quantity * (colorRatios[c] ?? 0) / 100;
+            return `${colorRatios[c]}% = ${units} units`;
+          }).join(', ');
+          setColorSplitError(`This split doesn't divide evenly into ${quantity} units (${breakdown}). Adjust the percentages or quantity so each color results in a whole number of units.`);
+          return;
+        }
+      }
+    }
+    setColorSplitError(null);
     setIsAdding(true);
+
+    // Encode ratios into color strings: "Red:75", "Blue:25"
+    const encodedColors = selectedColors.length > 1
+      ? selectedColors.map(c => `${c}:${colorRatios[c] ?? 0}`)
+      : selectedColors;
+
     addItem(
       product,
       selectedVariant,
       quantity,
       customizationImageUrl || undefined,
-      selectedColors.length ? selectedColors : undefined,
+      encodedColors.length ? encodedColors : undefined,
       productDescription.trim() || undefined,
     );
     setTimeout(() => {
@@ -553,6 +600,65 @@ export default function ProductDetail() {
                     </button>
                   ))}
                 </div>
+
+                {/* Color ratio sliders — shown when 2+ colors selected */}
+                {selectedColors.length > 1 && (
+                  <div className="mt-4 space-y-3">
+                    <p className="text-xs font-medium text-[#0D1B2A]">Color split</p>
+                    {selectedColors.map(colorName => {
+                      const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
+                      const pct = colorRatios[colorName] ?? 0;
+                      const units = quantity > 1 ? (quantity * pct / 100) : null;
+                      const isWholeUnit = units === null || units % 1 === 0;
+                      return (
+                        <div key={colorName} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full flex-shrink-0 border border-gray-300" style={{ backgroundColor: hex }} />
+                              <span className="text-sm text-[#0D1B2A]">{colorName}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {units !== null && (
+                                <span className={`text-xs ${isWholeUnit ? 'text-gray-400' : 'text-orange-500 font-medium'}`}>
+                                  {isWholeUnit ? `${units} unit${units !== 1 ? 's' : ''}` : `${units} units`}
+                                </span>
+                              )}
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={pct}
+                                  onChange={e => updateColorRatio(colorName, Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                                  className="w-14 text-center text-sm px-1 py-0.5 rounded border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                                />
+                                <span className="text-sm text-gray-400">%</span>
+                              </div>
+                            </div>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={pct}
+                            onChange={e => updateColorRatio(colorName, parseInt(e.target.value))}
+                            className="w-full accent-[var(--color-primary)]"
+                          />
+                        </div>
+                      );
+                    })}
+                    <div className={`text-xs font-medium ${selectedColors.reduce((s, c) => s + (colorRatios[c] ?? 0), 0) === 100 ? 'text-green-500' : 'text-orange-500'}`}>
+                      Total: {selectedColors.reduce((s, c) => s + (colorRatios[c] ?? 0), 0)}% {selectedColors.reduce((s, c) => s + (colorRatios[c] ?? 0), 0) === 100 ? '✓' : '— must equal 100%'}
+                    </div>
+                  </div>
+                )}
+
+                {/* Color split error */}
+                {colorSplitError && (
+                  <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-xl text-orange-700 text-xs">
+                    {colorSplitError}
+                  </div>
+                )}
               </div>
             )}
 

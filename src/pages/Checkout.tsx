@@ -704,6 +704,8 @@ export default function Checkout() {
           quantity: item.quantity,
           unit_price: unitPrice,
           total_price: unitPrice * item.quantity,
+          selected_colors: item.selected_colors?.length ? item.selected_colors : undefined,
+          product_description: item.product_description || undefined,
         };
       }),
       subtotal,
