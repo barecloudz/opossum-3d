@@ -156,7 +156,13 @@ export default function ProductDetail() {
 
   const toggleColor = (colorName: string) => {
     setSelectedColors(prev => {
-      const next = prev.includes(colorName)
+      const isRemoving = prev.includes(colorName);
+      // Block adding a color if already at the quantity limit
+      if (!isRemoving && prev.length >= quantity) {
+        setColorSplitError(`You can only pick up to ${quantity} color${quantity !== 1 ? 's' : ''} for a quantity of ${quantity}. Increase your quantity or remove a color first.`);
+        return prev;
+      }
+      const next = isRemoving
         ? prev.filter(c => c !== colorName)
         : [...prev, colorName];
       setColorRatios(distributeUnits(next, quantity));
@@ -170,12 +176,16 @@ export default function ProductDetail() {
     setColorSplitError(null);
   };
 
-  // When quantity changes, redistribute units proportionally
+  // When quantity changes, trim colors to new qty limit and redistribute
   const handleQuantityChange = (newQty: number) => {
     setQuantity(newQty);
     setQuantityInput(String(newQty));
-    if (selectedColors.length > 1) {
-      setColorRatios(distributeUnits(selectedColors, newQty));
+    if (selectedColors.length > 0) {
+      const trimmed = selectedColors.slice(0, newQty);
+      if (trimmed.length !== selectedColors.length) {
+        setSelectedColors(trimmed);
+      }
+      setColorRatios(distributeUnits(trimmed, newQty));
       setColorSplitError(null);
     }
   };
