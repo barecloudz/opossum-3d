@@ -1388,7 +1388,7 @@ export default function Checkout() {
               Continue to Payment
             </Button>
 
-            {isAdmin && import.meta.env.VITE_DEV_MODE === 'true' && (
+            {isAdmin && (
               <button
                 type="button"
                 onClick={handleTestPayment}
