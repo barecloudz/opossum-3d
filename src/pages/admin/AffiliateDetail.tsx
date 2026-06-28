@@ -63,6 +63,11 @@ export default function AdminAffiliateDetail() {
   const [commissionRate, setCommissionRate] = useState('');
   const [isSavingRate, setIsSavingRate] = useState(false);
 
+  // Affiliate code change
+  const [newCode, setNewCode] = useState('');
+  const [isSavingCode, setIsSavingCode] = useState(false);
+  const [codeError, setCodeError] = useState('');
+
   // Status action loading
   const [statusLoading, setStatusLoading] = useState<AffiliateStatus | 'suspended' | null>(null);
 
@@ -95,6 +100,7 @@ export default function AdminAffiliateDetail() {
       setAffiliate(aff);
       setAdminNotes(aff.admin_notes || '');
       setCommissionRate(aff.commission_rate != null ? String(aff.commission_rate) : '');
+      setNewCode(aff.code || '');
 
       // Fetch conversions with order info
       const { data: convData } = await supabase
@@ -219,6 +225,44 @@ export default function AdminAffiliateDetail() {
       alert('Failed to save commission rate');
     } finally {
       setIsSavingRate(false);
+    }
+  };
+
+  const handleSaveCode = async () => {
+    if (!affiliate) return;
+    const trimmed = newCode.trim().toUpperCase();
+    if (!trimmed) {
+      setCodeError('Code cannot be empty');
+      return;
+    }
+    if (trimmed === affiliate.code) {
+      setCodeError('');
+      return;
+    }
+    setIsSavingCode(true);
+    setCodeError('');
+    try {
+      const { error } = await supabase
+        .from('affiliates')
+        .update({ code: trimmed })
+        .eq('id', affiliate.id);
+
+      if (error) {
+        if (error.code === '23505') {
+          setCodeError('That code is already taken by another affiliate');
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      setAffiliate((prev) => (prev ? { ...prev, code: trimmed } : prev));
+      setNewCode(trimmed);
+    } catch (err) {
+      console.error('Error saving code:', err);
+      setCodeError('Failed to save code');
+    } finally {
+      setIsSavingCode(false);
     }
   };
 
@@ -501,6 +545,32 @@ export default function AdminAffiliateDetail() {
             <Button size="sm" onClick={handleSaveCommissionRate} isLoading={isSavingRate}>
               <Save className="h-4 w-4 mr-1.5" />
               Save Rate
+            </Button>
+          </div>
+        </Card>
+
+        {/* Affiliate Code */}
+        <Card>
+          <h2 className="text-lg font-semibold text-[#0D1B2A] mb-4">Affiliate Code</h2>
+          <p className="text-gray-400 text-sm mb-3">
+            Changing this will update the referral link. The old code will stop working immediately.
+          </p>
+          <Input
+            type="text"
+            placeholder="e.g. BLAKE10"
+            value={newCode}
+            onChange={(e) => { setNewCode(e.target.value.toUpperCase()); setCodeError(''); }}
+          />
+          {codeError && <p className="text-red-400 text-xs mt-1">{codeError}</p>}
+          <div className="flex justify-end mt-3">
+            <Button
+              size="sm"
+              onClick={handleSaveCode}
+              isLoading={isSavingCode}
+              disabled={!newCode.trim() || newCode.trim().toUpperCase() === affiliate.code}
+            >
+              <Save className="h-4 w-4 mr-1.5" />
+              Save Code
             </Button>
           </div>
         </Card>
