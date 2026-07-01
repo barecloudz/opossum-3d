@@ -65,7 +65,8 @@ export const marketingSubItems = [
 
 // Affiliates section
 export const affiliatesSubItems = [
-  { href: '/admin/affiliates', icon: BarChart2, label: 'Affiliates' },
+  { href: '/admin/affiliates', icon: BarChart2, label: 'Manage Affiliates' },
+  { href: '/admin/affiliate-settings', icon: Settings, label: 'Settings' },
 ];
 
 // Bottom items (always visible)
@@ -125,7 +126,7 @@ export default function AdminSidebar() {
     marketingSubItems.some(item => location.pathname.startsWith(item.href))
   );
   const [affiliatesOpen, setAffiliatesOpen] = useState(
-    location.pathname.startsWith('/admin/affiliates')
+    affiliatesSubItems.some(item => location.pathname.startsWith(item.href))
   );
 
   const isActive = (path: string) => {
@@ -316,31 +317,34 @@ export default function AdminSidebar() {
           <button
             onClick={() => setAffiliatesOpen(!affiliatesOpen)}
             className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
-              location.pathname.startsWith('/admin/affiliates')
+              affiliatesSubItems.some(item => isActive(item.href))
                 ? 'bg-brand-neon/10 text-brand-neon border border-brand-neon/30'
                 : 'text-gray-600 hover:bg-gray-100 hover:text-[#0D1B2A] border border-transparent'
             }`}
           >
             <div className="flex items-center space-x-3">
-              <Handshake className={`h-5 w-5 ${location.pathname.startsWith('/admin/affiliates') ? 'text-brand-neon' : ''}`} />
+              <Handshake className={`h-5 w-5 ${affiliatesSubItems.some(item => isActive(item.href)) ? 'text-brand-neon' : ''}`} />
               <span className="font-medium">Affiliates</span>
             </div>
             {affiliatesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
           {affiliatesOpen && (
             <div className="ml-4 mt-1 space-y-1">
-              <Link
-                to="/admin/affiliates"
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all ${
-                  isActive('/admin/affiliates')
-                    ? 'bg-brand-neon/10 text-brand-neon'
-                    : 'text-gray-500 hover:bg-gray-100 hover:text-[#0D1B2A]'
-                }`}
-              >
-                <BarChart2 className={`h-4 w-4 ${isActive('/admin/affiliates') ? 'text-brand-neon' : ''}`} />
-                <span className="text-sm">Manage Affiliates</span>
-              </Link>
+              {affiliatesSubItems.map((item) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-all ${
+                    isActive(item.href)
+                      ? 'bg-brand-neon/10 text-brand-neon'
+                      : 'text-gray-500 hover:bg-gray-100 hover:text-[#0D1B2A]'
+                  }`}
+                >
+                  <item.icon className={`h-4 w-4 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
+                  <span className="text-sm">{item.label}</span>
+                </Link>
+              ))}
             </div>
           )}
         </div>

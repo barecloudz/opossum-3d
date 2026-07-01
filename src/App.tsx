@@ -34,6 +34,7 @@ import AffiliateDashboard from './pages/affiliate/Dashboard';
 // Admin Pages
 import AdminAffiliates from './pages/admin/Affiliates';
 import AdminAffiliateDetail from './pages/admin/AffiliateDetail';
+import AdminAffiliateSettings from './pages/admin/AffiliateSettings';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
 import AdminProductEdit from './pages/admin/ProductEdit';
@@ -184,6 +185,7 @@ function App() {
           <Route path="settings" element={<AdminSettings />} />
           <Route path="affiliates" element={<AdminAffiliates />} />
           <Route path="affiliates/:id" element={<AdminAffiliateDetail />} />
+          <Route path="affiliate-settings" element={<AdminAffiliateSettings />} />
           <Route path="shipping-label" element={<AdminShippingLabel />} />
           <Route path="production-queue" element={<AdminProductionQueue />} />
         </Route>
