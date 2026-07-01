@@ -6,15 +6,8 @@ import Input from '../../components/ui/Input';
 import Spinner from '../../components/ui/Spinner';
 import { supabase } from '../../lib/supabase';
 
-interface AffiliateSettingsRow {
-  commission_rate: number;
-  customer_discount_rate: number;
-  min_payout_threshold: number;
-  cookie_duration_days: number;
-}
 
 export default function AdminAffiliateSettings() {
-  const [settings, setSettings] = useState<AffiliateSettingsRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -36,7 +29,6 @@ export default function AdminAffiliateSettings() {
       if (error || !data) {
         setError('Failed to load settings');
       } else {
-        setSettings(data);
         setCommissionRate(String(data.commission_rate));
         setCustomerDiscountRate(String(data.customer_discount_rate));
         setMinPayout(String(data.min_payout_threshold));
@@ -86,7 +78,6 @@ export default function AdminAffiliateSettings() {
 
       if (saveError) throw saveError;
 
-      setSettings(prev => prev ? { ...prev, commission_rate: commission, customer_discount_rate: discount, min_payout_threshold: payout, cookie_duration_days: days } : prev);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
