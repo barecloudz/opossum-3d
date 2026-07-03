@@ -163,7 +163,7 @@ export default function Home() {
             <div className="flex items-end justify-between mb-8">
               <div>
                 <p className="text-[#1677FF] text-sm font-semibold uppercase tracking-widest mb-1">Our Products</p>
-                <h2 className="text-2xl md:text-3xl font-extrabold text-[#0D1B2A]">Ready to Ship</h2>
+                <h2 className="text-2xl md:text-3xl font-extrabold text-[#0D1B2A]">Most Popular</h2>
               </div>
               <Link
                 to="/shop"
