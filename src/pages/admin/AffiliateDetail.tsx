@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, DollarSign, MousePointerClick, TrendingUp, Clock } from 'lucide-react';
+import { ArrowLeft, Save, DollarSign, MousePointerClick, TrendingUp, Clock, Mail } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -67,6 +67,10 @@ export default function AdminAffiliateDetail() {
   const [newCode, setNewCode] = useState('');
   const [isSavingCode, setIsSavingCode] = useState(false);
   const [codeError, setCodeError] = useState('');
+
+  // Re-send invite / password reset
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [inviteSent, setInviteSent] = useState(false);
 
   // Status action loading
   const [statusLoading, setStatusLoading] = useState<AffiliateStatus | 'suspended' | null>(null);
@@ -263,6 +267,26 @@ export default function AdminAffiliateDetail() {
       setCodeError('Failed to save code');
     } finally {
       setIsSavingCode(false);
+    }
+  };
+
+  const handleResendInvite = async () => {
+    if (!affiliate) return;
+    setIsSendingInvite(true);
+    setInviteSent(false);
+    try {
+      const response = await fetch('/.netlify/functions/resend-affiliate-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ affiliateId: affiliate.id, email: affiliate.email, name: affiliate.name, code: affiliate.code }),
+      });
+      if (!response.ok) throw new Error('Failed');
+      setInviteSent(true);
+      setTimeout(() => setInviteSent(false), 4000);
+    } catch {
+      alert('Failed to send invite. Check the Netlify function logs.');
+    } finally {
+      setIsSendingInvite(false);
     }
   };
 
@@ -466,6 +490,16 @@ export default function AdminAffiliateDetail() {
               Suspend
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleResendInvite}
+            isLoading={isSendingInvite}
+            className="text-blue-400 border-blue-500/30 hover:bg-blue-500/10"
+          >
+            <Mail className="h-4 w-4 mr-1.5" />
+            {inviteSent ? 'Sent!' : 'Re-send Invite'}
+          </Button>
         </div>
       </div>
 

@@ -41,6 +41,12 @@ export default function AdminOrderDetail() {
   const [refundMessage, setRefundMessage] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState<string | null>(null);
 
+  // Assign affiliate state
+  const [affiliates, setAffiliates] = useState<{ id: string; name: string; code: string; commission_rate: number | null }[]>([]);
+  const [selectedAffiliateId, setSelectedAffiliateId] = useState<string>('');
+  const [isAssigningAffiliate, setIsAssigningAffiliate] = useState(false);
+  const [affiliateAssigned, setAffiliateAssigned] = useState(false);
+
   useEffect(() => {
     if (id) fetchOrder();
   }, [id]);
@@ -97,6 +103,15 @@ export default function AdminOrderDetail() {
           labelUrl: orderData.shipping_label_pdf,
         });
       }
+
+      // Fetch approved affiliates for the assign dropdown
+      const { data: affiliateData } = await supabase
+        .from('affiliates')
+        .select('id, name, code, commission_rate')
+        .eq('status', 'approved')
+        .order('name');
+      setAffiliates(affiliateData || []);
+      setSelectedAffiliateId(orderData.affiliate_id || '');
 
       // Fetch promo code if one was used
       if (orderData.promo_code_id) {
@@ -187,6 +202,59 @@ export default function AdminOrderDetail() {
       alert('Failed to save colors');
     } finally {
       setSavingColorItemId(null);
+    }
+  };
+
+  const handleAssignAffiliate = async () => {
+    if (!order) return;
+    setIsAssigningAffiliate(true);
+    setAffiliateAssigned(false);
+    try {
+      const affiliate = affiliates.find(a => a.id === selectedAffiliateId) || null;
+
+      // Update order's affiliate_id
+      const { error: orderErr } = await supabase
+        .from('orders')
+        .update({ affiliate_id: selectedAffiliateId || null })
+        .eq('id', order.id);
+      if (orderErr) throw orderErr;
+
+      // Remove any existing conversion for this order first
+      await supabase
+        .from('affiliate_conversions')
+        .delete()
+        .eq('order_id', order.id);
+
+      // Insert new conversion if an affiliate was selected
+      if (affiliate) {
+        const { data: settings } = await supabase
+          .from('affiliate_settings')
+          .select('commission_rate')
+          .eq('id', 1)
+          .single();
+        const rate = affiliate.commission_rate ?? settings?.commission_rate ?? 10;
+        const commission = order.total * (rate / 100);
+
+        const { error: convErr } = await supabase
+          .from('affiliate_conversions')
+          .insert({
+            affiliate_id: affiliate.id,
+            order_id: order.id,
+            order_total: order.total,
+            commission_amount: parseFloat(commission.toFixed(2)),
+            status: 'approved',
+          });
+        if (convErr) throw convErr;
+      }
+
+      setOrder(prev => prev ? { ...prev, affiliate_id: selectedAffiliateId || null } : prev);
+      setAffiliateAssigned(true);
+      setTimeout(() => setAffiliateAssigned(false), 3000);
+    } catch (err) {
+      console.error('Error assigning affiliate:', err);
+      alert('Failed to assign affiliate');
+    } finally {
+      setIsAssigningAffiliate(false);
     }
   };
 
@@ -667,6 +735,34 @@ export default function AdminOrderDetail() {
                 Save Changes
               </Button>
             </div>
+          </Card>
+
+          {/* Assign Affiliate */}
+          <Card>
+            <h2 className="text-xl font-semibold text-[#0D1B2A] mb-1 flex items-center gap-2">
+              <Tag className="h-5 w-5 text-brand-neon" />
+              Affiliate
+            </h2>
+            <p className="text-gray-400 text-xs mb-3">Assign credit and auto-create commission at their rate.</p>
+            <select
+              value={selectedAffiliateId}
+              onChange={(e) => setSelectedAffiliateId(e.target.value)}
+              className="w-full px-3 py-2 bg-brand-black border border-brand-gray rounded-lg text-[#0D1B2A] text-sm focus:outline-none focus:ring-2 focus:ring-brand-neon mb-3"
+            >
+              <option value="">— No affiliate —</option>
+              {affiliates.map(a => (
+                <option key={a.id} value={a.id}>{a.name} ({a.code})</option>
+              ))}
+            </select>
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={handleAssignAffiliate}
+              isLoading={isAssigningAffiliate}
+            >
+              <Save className="h-4 w-4 mr-1.5" />
+              {affiliateAssigned ? 'Saved!' : 'Save Affiliate'}
+            </Button>
           </Card>
 
           {order.stripe_payment_intent_id && (
