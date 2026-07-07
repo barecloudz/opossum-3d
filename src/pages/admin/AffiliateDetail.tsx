@@ -275,9 +275,13 @@ export default function AdminAffiliateDetail() {
     setIsSendingInvite(true);
     setInviteSent(false);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/.netlify/functions/resend-affiliate-invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ affiliateId: affiliate.id, email: affiliate.email, name: affiliate.name, code: affiliate.code }),
       });
       if (!response.ok) throw new Error('Failed');
