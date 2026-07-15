@@ -135,8 +135,8 @@ export default function ProductDetail() {
     }
     setCustomizationUploading(true);
     try {
-      const { uploadToCloudinary } = await import('../lib/cloudinary');
-      const url = await uploadToCloudinary(file, 'customizations');
+      const { uploadToStorage } = await import('../lib/storage');
+      const url = await uploadToStorage(file, 'customizations');
       setCustomizationImageUrl(url);
     } catch {
       alert('Upload failed. Please try again.');

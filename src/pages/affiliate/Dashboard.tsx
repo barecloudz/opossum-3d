@@ -514,10 +514,10 @@ export default function AffiliateDashboard() {
 
   // Only delete images the affiliate themselves uploaded (affiliate-share folder), never the site default banner
   const deleteShareImageFromCloudinary = async (url: string) => {
-    if (!url || !url.includes('cloudinary.com') || !url.includes('affiliate-share')) return;
+    if (!url || !url.includes('r2.dev') || !url.includes('affiliate-share')) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      await fetch('/.netlify/functions/delete-cloudinary-images', {
+      await fetch('/.netlify/functions/delete-images', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -535,8 +535,8 @@ export default function AffiliateDashboard() {
     try {
       // Delete previous custom image before uploading new one
       if (shareImageUrl) await deleteShareImageFromCloudinary(shareImageUrl);
-      const { uploadToCloudinary } = await import('../../lib/cloudinary');
-      const url = await uploadToCloudinary(file, 'affiliate-share');
+      const { uploadToStorage } = await import('../../lib/storage');
+      const url = await uploadToStorage(file, 'affiliate-share');
       setShareImageUrl(url);
     } catch (err) {
       alert('Image upload failed. Please try again.');

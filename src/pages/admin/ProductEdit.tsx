@@ -10,7 +10,7 @@ import Modal from '../../components/ui/Modal';
 import ImageUpload from '../../components/admin/ImageUpload';
 import SingleImageUpload from '../../components/admin/SingleImageUpload';
 import { supabase } from '../../lib/supabase';
-import { uploadToCloudinary } from '../../lib/cloudinary';
+import { uploadToStorage } from '../../lib/storage';
 import { slugify } from '../../lib/utils';
 import { useCategories } from '../../hooks/useCategories';
 import { useProductStore } from '../../store/productStore';
@@ -303,7 +303,7 @@ export default function AdminProductEdit() {
     updateVariant(index, 'image_url', 'uploading...');
 
     try {
-      const publicUrl = await uploadToCloudinary(file, 'products');
+      const publicUrl = await uploadToStorage(file, 'products');
       updateVariant(index, 'image_url', publicUrl);
     } catch (err: any) {
       console.error('Failed to upload variant image:', err);

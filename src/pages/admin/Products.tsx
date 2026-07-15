@@ -13,7 +13,7 @@ import { supabase } from '../../lib/supabase';
 import Spinner from '../../components/ui/Spinner';
 import { useToast } from '../../components/ui/Toast';
 
-const CLOUDINARY_DELETE_URL = '/.netlify/functions/delete-cloudinary-images';
+const CLOUDINARY_DELETE_URL = '/.netlify/functions/delete-images';
 
 async function deleteProductImages(productIds: string[]) {
   if (productIds.length === 0) return;

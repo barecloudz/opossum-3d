@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2, AlertCircle } from 'lucide-react';
-import { uploadToCloudinary } from '../../lib/cloudinary';
+import { uploadToStorage } from '../../lib/storage';
 
 interface ImageUploadProps {
   images: string[];
@@ -35,7 +35,7 @@ export default function ImageUpload({
     if (file.size > 5 * 1024 * 1024) {
       throw new Error('Images must be under 5MB');
     }
-    return await uploadToCloudinary(file, folder);
+    return await uploadToStorage(file, folder);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
