@@ -1,7 +1,14 @@
+import { supabase } from './supabase';
+
 export async function uploadToStorage(file: File, folder: string): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+
   const res = await fetch('/.netlify/functions/get-upload-url', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+    },
     body: JSON.stringify({ folder, contentType: file.type, fileName: file.name }),
   });
 
