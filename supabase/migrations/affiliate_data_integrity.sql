@@ -1,7 +1,15 @@
 -- Add UNIQUE constraint to prevent duplicate conversions for the same order
--- This prevents both accidental manual duplicates and any checkout double-fires
-ALTER TABLE affiliate_conversions
-  ADD CONSTRAINT affiliate_conversions_order_id_unique UNIQUE (order_id);
+-- PostgreSQL doesn't support IF NOT EXISTS for ADD CONSTRAINT, so use a DO block
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'affiliate_conversions_order_id_unique'
+  ) THEN
+    ALTER TABLE affiliate_conversions
+      ADD CONSTRAINT affiliate_conversions_order_id_unique UNIQUE (order_id);
+  END IF;
+END$$;
 
 -- Ensure 'reversed' is a valid status (was missing from original CHECK constraint)
 -- Drop and recreate the constraint to include 'reversed'
