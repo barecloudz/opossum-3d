@@ -5,6 +5,7 @@ import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
 import { formatPrice } from '../../lib/utils';
 import { useToast } from '../../components/ui/Toast';
+import { supabase } from '../../lib/supabase';
 
 interface RateOption {
   serviceToken: string;
@@ -70,9 +71,13 @@ export default function AdminShippingLabel() {
     setRates([]);
     setGeneratedLabel(null);
 
+    const controller = new AbortController();
+    const ratesTimeout = setTimeout(() => controller.abort(), 20000);
+
     try {
       const res = await fetch('/.netlify/functions/get-shipping-rate', {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           destinationAddress: {
@@ -93,9 +98,11 @@ export default function AdminShippingLabel() {
       } else {
         addToast('No rates returned. Check the address and try again.', 'error');
       }
-    } catch {
-      addToast('Failed to fetch rates. Check your connection.', 'error');
+    } catch (err: any) {
+      const msg = err.name === 'AbortError' ? 'Request timed out. Try again.' : 'Failed to fetch rates. Check your connection.';
+      addToast(msg, 'error');
     } finally {
+      clearTimeout(ratesTimeout);
       setRatesLoading(false);
     }
   };
@@ -104,10 +111,21 @@ export default function AdminShippingLabel() {
     if (!rates[selectedRateIndex]) return;
     setLabelLoading(true);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
+
     try {
+      const sessionTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Session timeout. Please refresh and try again.')), 5000)
+      );
+      const { data: { session } } = await Promise.race([supabase.auth.getSession(), sessionTimeout]);
       const res = await fetch('/.netlify/functions/create-shipping-label', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           orderId: `manual-${Date.now()}`,
           orderNumber: `MANUAL`,
@@ -135,8 +153,10 @@ export default function AdminShippingLabel() {
       });
       addToast('Label generated successfully!', 'success');
     } catch (err: any) {
-      addToast(err.message || 'Failed to generate label', 'error');
+      const msg = err.name === 'AbortError' ? 'Request timed out. Try again.' : (err.message || 'Failed to generate label');
+      addToast(msg, 'error');
     } finally {
+      clearTimeout(timeout);
       setLabelLoading(false);
     }
   };
@@ -206,8 +226,8 @@ export default function AdminShippingLabel() {
               </div>
               <Input label="Street Address" name="address" value={form.address} onChange={handleChange} required />
               <Input label="Apt, Suite, etc. (optional)" name="apartment" value={form.apartment} onChange={handleChange} />
-              <div className="grid grid-cols-3 gap-3">
-                <Input label="City" name="city" value={form.city} onChange={handleChange} required />
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <Input label="City" name="city" value={form.city} onChange={handleChange} required className="col-span-2 sm:col-span-1" />
                 <Input label="State" name="state" value={form.state} onChange={handleChange} required maxLength={2} placeholder="NC" />
                 <Input label="ZIP" name="zip" value={form.zip} onChange={handleChange} required maxLength={10} placeholder="28792" />
               </div>

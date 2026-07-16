@@ -123,6 +123,7 @@ const handler: Handler = async (event) => {
         state: order.shipping_address.state,
         zip: destZip,
         country: 'US',
+        validate: false,
       },
       parcels: [{
         ...DEFAULT_PARCEL,

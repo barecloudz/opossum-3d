@@ -2,103 +2,100 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface QueryOptions {
   timeout?: number;
-  maxRetries?: number;
   fetchOnMount?: boolean;
 }
 
 /**
- * Generic hook for Supabase queries with timeout, retry, and abort support.
+ * Generic hook for Supabase queries with timeout and unmount-safe state updates.
  */
 export function useSupabaseQuery<T>(
-  queryFn: (signal: AbortSignal) => PromiseLike<{ data: T | null; error: any }>,
+  queryFn: () => PromiseLike<{ data: T | null; error: any }>,
   deps: any[] = [],
   options: QueryOptions = {}
 ) {
-  const { timeout = 12000, maxRetries = 2, fetchOnMount = true } = options;
+  const { timeout = 10000, fetchOnMount = true } = options;
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(fetchOnMount);
   const [error, setError] = useState<Error | null>(null);
 
-  // Store queryFn in a ref so useCallback always has the latest version
   const queryFnRef = useRef(queryFn);
   queryFnRef.current = queryFn;
 
-  // Track the current active abort controller to cancel on unmount/re-fetch
-  const activeControllerRef = useRef<AbortController | null>(null);
-  // Incremented on each fetch call to ignore stale responses
-  const fetchIdRef = useRef(0);
+  const cancelledRef = useRef(false);
 
   const fetchData = useCallback(async () => {
-    // Cancel any in-flight request
-    if (activeControllerRef.current) {
-      activeControllerRef.current.abort();
-    }
-
-    const currentFetchId = ++fetchIdRef.current;
+    cancelledRef.current = false;
     setIsLoading(true);
     setError(null);
 
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      // Check if this fetch is still the latest one
-      if (currentFetchId !== fetchIdRef.current) return;
+    const timeoutId = { current: 0 };
 
-      const controller = new AbortController();
-      activeControllerRef.current = controller;
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId.current = window.setTimeout(() => reject(new Error('Request timed out. Please try again.')), timeout);
+      });
 
-      try {
-        const { data: result, error: queryError } = await queryFnRef.current(controller.signal);
-        clearTimeout(timeoutId);
+      const { data: result, error: queryError } = await Promise.race([
+        queryFnRef.current(),
+        timeoutPromise,
+      ]);
 
-        // Stale check - a newer fetch may have started
-        if (currentFetchId !== fetchIdRef.current) return;
-        if (queryError) throw queryError;
+      clearTimeout(timeoutId.current);
+      if (cancelledRef.current) return;
+      if (queryError) throw queryError;
 
-        setData(result);
-        setError(null);
-        setIsLoading(false);
-        return;
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-        if (currentFetchId !== fetchIdRef.current) return;
-
-        // If aborted due to unmount/re-fetch (stale), exit silently
-        // If aborted due to our own timeout, fall through to show error
-        if (err.name === 'AbortError' && currentFetchId !== fetchIdRef.current) return;
-
-        const isRetryable =
-          err.message?.includes('network') ||
-          err.message?.includes('fetch');
-
-        if (isRetryable && attempt <= maxRetries) {
-          await new Promise(r => setTimeout(r, attempt * 1000));
-          // Check again after delay
-          if (currentFetchId !== fetchIdRef.current) return;
-          continue;
-        }
-
-        const errorMessage = err.name === 'AbortError'
-          ? 'Request timed out. Please try again.'
-          : err.message || 'Failed to load data';
-
-        setError(new Error(errorMessage));
-        setIsLoading(false);
-        return;
-      }
+      setData(result);
+      setError(null);
+      setIsLoading(false);
+    } catch (err: any) {
+      clearTimeout(timeoutId.current);
+      if (cancelledRef.current) return;
+      setError(new Error(err.message || 'Failed to load data'));
+      setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   useEffect(() => {
-    if (fetchOnMount) fetchData();
+    if (!fetchOnMount) return;
+
+    let cancelled = false;
+    let timeoutId = 0;
+
+    const run = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timeoutId = window.setTimeout(() => reject(new Error('Request timed out. Please try again.')), timeout);
+        });
+
+        const { data: result, error: queryError } = await Promise.race([
+          queryFnRef.current(),
+          timeoutPromise,
+        ]);
+
+        clearTimeout(timeoutId);
+        if (cancelled) return;
+        if (queryError) throw queryError;
+
+        setData(result);
+        setError(null);
+        setIsLoading(false);
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (cancelled) return;
+        setError(new Error(err.message || 'Failed to load data'));
+        setIsLoading(false);
+      }
+    };
+
+    run();
 
     return () => {
-      // Cancel in-flight request on unmount
-      if (activeControllerRef.current) {
-        activeControllerRef.current.abort();
-      }
-      // Invalidate any pending fetch
-      fetchIdRef.current++;
+      cancelled = true;
+      clearTimeout(timeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchData]);

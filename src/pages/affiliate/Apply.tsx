@@ -200,7 +200,7 @@ export default function AffiliateApply() {
                 name="business_name"
                 value={form.business_name}
                 onChange={handleChange}
-                placeholder="Best Life Nutrition Club"
+                placeholder="Your business or club name (optional)"
                 className="w-full px-4 py-3 bg-white border border-[var(--color-border)] rounded-xl text-[#0D1B2A] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
               />
             </div>
@@ -213,7 +213,7 @@ export default function AffiliateApply() {
               value={form.promo_plan}
               onChange={handleChange}
               rows={4}
-              placeholder="e.g. Social media posts, nutrition club promotion, customer referrals, team recommendations..."
+              placeholder="e.g. Social media posts, customer referrals, community groups, team recommendations..."
               className="w-full px-4 py-3 bg-white border border-[var(--color-border)] rounded-xl text-[#0D1B2A] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-none"
             />
           </div>

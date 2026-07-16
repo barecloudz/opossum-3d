@@ -1,10 +1,12 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogOut, Handshake } from 'lucide-react';
+import { Menu, X, User, LogOut, Handshake, ShoppingBag } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
+import { supabase } from '../../lib/supabase';
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isApprovedAffiliate, setIsApprovedAffiliate] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -13,6 +15,17 @@ export default function Header() {
     setMobileMenuOpen(false);
   }, [location.pathname]);
   const { user, isAdmin, signOut } = useAuthStore();
+
+  useEffect(() => {
+    if (!user) { setIsApprovedAffiliate(false); return; }
+    supabase
+      .from('affiliates')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('status', 'approved')
+      .maybeSingle()
+      .then(({ data }) => setIsApprovedAffiliate(!!data));
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -47,13 +60,20 @@ export default function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             <Link
+              to="/products"
+              className="flex items-center gap-1.5 text-theme hover:text-[var(--color-primary)] transition-colors text-sm font-medium"
+            >
+              <ShoppingBag className="h-4 w-4" />
+              Shop
+            </Link>
+            <Link
               to="/faq"
               className="text-theme hover:text-[var(--color-primary)] transition-colors text-sm font-medium"
             >
               FAQ
             </Link>
             <Link
-              to="/affiliate/apply"
+              to={isApprovedAffiliate ? '/affiliate/dashboard' : '/affiliate/apply'}
               className="flex items-center gap-1.5 text-theme hover:text-[var(--color-primary)] transition-colors text-sm font-medium"
             >
               <Handshake className="h-4 w-4" />
@@ -107,6 +127,14 @@ export default function Header() {
           <div className="md:hidden py-4 border-t border-[var(--color-border)]">
             <nav className="flex flex-col gap-3 px-2">
               <Link
+                to="/products"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-2 py-3 px-4 bg-[var(--color-surface)] hover:bg-[var(--color-primary)]/10 border border-[var(--color-border)] hover:border-[var(--color-primary)]/50 rounded-xl text-theme font-medium transition-all"
+              >
+                <ShoppingBag className="h-5 w-5" />
+                Shop
+              </Link>
+              <Link
                 to="/faq"
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center justify-center py-3 px-4 bg-[var(--color-surface)] hover:bg-[var(--color-primary)]/10 border border-[var(--color-border)] hover:border-[var(--color-primary)]/50 rounded-xl text-theme font-medium transition-all"
@@ -114,7 +142,7 @@ export default function Header() {
                 FAQ
               </Link>
               <Link
-                to="/affiliate/apply"
+                to={isApprovedAffiliate ? '/affiliate/dashboard' : '/affiliate/apply'}
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center justify-center gap-2 py-3 px-4 bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/30 hover:border-[var(--color-primary)] rounded-xl text-[var(--color-primary)] font-medium transition-all"
               >

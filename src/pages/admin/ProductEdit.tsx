@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, AlertCircle, X, Image as ImageIcon, Upload, FolderPlus } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, AlertCircle, X, Image as ImageIcon, Upload, FolderPlus, Palette } from 'lucide-react';
+import { COLOR_PRESETS } from '../../lib/constants';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
@@ -9,7 +10,7 @@ import Modal from '../../components/ui/Modal';
 import ImageUpload from '../../components/admin/ImageUpload';
 import SingleImageUpload from '../../components/admin/SingleImageUpload';
 import { supabase } from '../../lib/supabase';
-import { uploadToCloudinary } from '../../lib/cloudinary';
+import { uploadToStorage } from '../../lib/storage';
 import { slugify } from '../../lib/utils';
 import { useCategories } from '../../hooks/useCategories';
 import { useProductStore } from '../../store/productStore';
@@ -45,6 +46,9 @@ export default function AdminProductEdit() {
   const [images, setImages] = useState<string[]>([]);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [priceTiers, setPriceTiers] = useState<PriceTier[]>([]);
+  const [availableColors, setAvailableColors] = useState<string[]>([]);
+  const [customColorInput, setCustomColorInput] = useState('');
+  const variantsEndRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
 
   // Category modal state
@@ -71,6 +75,8 @@ export default function AdminProductEdit() {
     is_active: true,
     is_featured: false,
     is_customizable: false,
+    allow_color_selection: false,
+    show_description_prompt: false,
     track_inventory: true,
     continue_selling_when_out_of_stock: false,
     print_time_hours: '',
@@ -115,11 +121,14 @@ export default function AdminProductEdit() {
           is_active: data.is_active,
           is_featured: data.is_featured,
           is_customizable: data.is_customizable ?? false,
+          allow_color_selection: data.allow_color_selection ?? false,
+          show_description_prompt: data.show_description_prompt ?? false,
           track_inventory: data.track_inventory,
           continue_selling_when_out_of_stock: data.continue_selling_when_out_of_stock,
           print_time_hours: data.print_time_hours?.toString() || '',
           weight_oz: data.weight_oz?.toString() || '',
         });
+        setAvailableColors(data.available_colors ?? []);
 
         // Fetch product images
         const { data: imagesData } = await supabase
@@ -196,6 +205,9 @@ export default function AdminProductEdit() {
 
   const addVariant = () => {
     setVariants([...variants, { name: '', sku: '', price_adjustment: '0', stock_quantity: '0', image_url: '' }]);
+    setTimeout(() => {
+      variantsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 50);
   };
 
   const updateVariant = (index: number, field: keyof Variant, value: string) => {
@@ -291,7 +303,7 @@ export default function AdminProductEdit() {
     updateVariant(index, 'image_url', 'uploading...');
 
     try {
-      const publicUrl = await uploadToCloudinary(file, 'products');
+      const publicUrl = await uploadToStorage(file, 'products');
       updateVariant(index, 'image_url', publicUrl);
     } catch (err: any) {
       console.error('Failed to upload variant image:', err);
@@ -328,6 +340,9 @@ export default function AdminProductEdit() {
         is_active: formData.is_active,
         is_featured: formData.is_featured,
         is_customizable: formData.is_customizable,
+        allow_color_selection: formData.allow_color_selection,
+        available_colors: availableColors.length ? availableColors : null,
+        show_description_prompt: formData.show_description_prompt,
         track_inventory: formData.track_inventory,
         continue_selling_when_out_of_stock: formData.continue_selling_when_out_of_stock,
         print_time_hours: formData.print_time_hours ? parseInt(formData.print_time_hours) : null,
@@ -820,6 +835,7 @@ export default function AdminProductEdit() {
                     <div
                       key={index}
                       className="p-4 bg-gray-50 rounded-lg border border-gray-200"
+                      ref={index === variants.length - 1 ? variantsEndRef : undefined}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <span className="text-gray-400 text-sm">Option {index + 1}</span>
@@ -976,6 +992,128 @@ export default function AdminProductEdit() {
                       <span className="text-gray-300 font-medium">Requires logo / artwork upload</span>
                       <p className="text-gray-500 text-xs mt-0.5">
                         Customers must upload their own image (logo, design, etc.) before they can add this product to cart.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Color Selection Toggle + Manager */}
+                <div className="pt-2 border-t border-gray-200">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="allow_color_selection"
+                      checked={formData.allow_color_selection}
+                      onChange={handleInputChange}
+                      className="sr-only"
+                    />
+                    <div className={`relative w-10 h-6 rounded-full flex-shrink-0 transition-colors ${formData.allow_color_selection ? 'bg-brand-neon' : 'bg-gray-600'}`}>
+                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.allow_color_selection ? 'translate-x-4' : ''}`} />
+                    </div>
+                    <div>
+                      <span className="text-gray-300 font-medium">Color Selection</span>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        Show a color picker on the product page so customers can choose their preferred colors.
+                      </p>
+                    </div>
+                  </label>
+
+                  {formData.allow_color_selection && (
+                    <div className="mt-4 p-4 bg-brand-black/40 rounded-xl border border-brand-gray">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Palette className="h-4 w-4 text-brand-neon" />
+                        <span className="text-gray-300 text-sm font-medium">Available Colors for This Product</span>
+                      </div>
+
+                      {/* All colors as toggle grid */}
+                      <p className="text-gray-400 text-xs mb-2">Click to toggle colors on/off. Selected colors = what customers see.</p>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {COLOR_PRESETS.map(color => {
+                          const active = availableColors.includes(color.name);
+                          return (
+                            <button
+                              key={color.name}
+                              type="button"
+                              onClick={() => setAvailableColors(prev =>
+                                active ? prev.filter(c => c !== color.name) : [...prev, color.name]
+                              )}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                                active
+                                  ? 'border-brand-neon bg-brand-neon/20 text-brand-neon'
+                                  : 'border-gray-600 bg-transparent text-gray-400 hover:border-gray-400'
+                              }`}
+                            >
+                              <span
+                                className="w-3 h-3 rounded-full flex-shrink-0 border border-white/30"
+                                style={{ backgroundColor: color.hex }}
+                              />
+                              {color.name}
+                              {active && <X className="h-2.5 w-2.5 ml-0.5 opacity-70" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {availableColors.length === 0 && (
+                        <p className="text-yellow-500/80 text-xs mb-2">⚠ No colors selected — all 12 will show to customers.</p>
+                      )}
+                      {availableColors.length > 0 && (
+                        <p className="text-brand-neon text-xs mb-2">✓ {availableColors.length} color{availableColors.length !== 1 ? 's' : ''} selected — only these will show to customers.</p>
+                      )}
+
+                      {/* Custom color name */}
+                      <div className="flex gap-2 mt-1">
+                        <input
+                          type="text"
+                          value={customColorInput}
+                          onChange={e => setCustomColorInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const name = customColorInput.trim();
+                              if (name && !availableColors.includes(name)) {
+                                setAvailableColors(prev => [...prev, name]);
+                              }
+                              setCustomColorInput('');
+                            }
+                          }}
+                          placeholder="Custom color name (e.g. Teal, Galaxy Black)"
+                          className="flex-1 text-xs px-3 py-1.5 rounded-lg bg-brand-black border border-brand-gray text-[#0D1B2A] placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-neon"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const name = customColorInput.trim();
+                            if (name && !availableColors.includes(name)) {
+                              setAvailableColors(prev => [...prev, name]);
+                            }
+                            setCustomColorInput('');
+                          }}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-brand-neon/20 border border-brand-neon/40 text-brand-neon hover:bg-brand-neon/30 transition-colors whitespace-nowrap"
+                        >
+                          + Add
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Description Prompt Toggle */}
+                <div className="pt-2 border-t border-gray-200">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="show_description_prompt"
+                      checked={formData.show_description_prompt}
+                      onChange={handleInputChange}
+                      className="sr-only"
+                    />
+                    <div className={`relative w-10 h-6 rounded-full flex-shrink-0 transition-colors ${formData.show_description_prompt ? 'bg-brand-neon' : 'bg-gray-600'}`}>
+                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.show_description_prompt ? 'translate-x-4' : ''}`} />
+                    </div>
+                    <div>
+                      <span className="text-gray-300 font-medium">Product Description Prompt</span>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        Ask customers to describe how they want their product before adding to cart.
                       </p>
                     </div>
                   </label>

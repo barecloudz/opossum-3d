@@ -7,10 +7,20 @@
 [functions]
   node_bundler = "esbuild"
 
+[functions."create-shipping-label"]
+  timeout = 26
+
 [build.environment]
   # Skip secrets scanning for public Supabase keys
   # These are client-side keys protected by Row Level Security, not secrets
   SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY,VITE_STRIPE_PUBLISHABLE_KEY"
+
+# Stripe webhook — must come before SPA catch-all
+[[redirects]]
+  from = "/stripe-webhook"
+  to = "/.netlify/functions/stripe-webhook"
+  status = 200
+  force = true
 
 # Affiliate share links with custom OG meta tags — must come before SPA catch-all
 [[redirects]]
@@ -41,3 +51,13 @@
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://pub-20e09b00ed144e3c87b5ca98f2e8183c.r2.dev https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://api.resend.com https://api.goshippo.com https://*.r2.cloudflarestorage.com https://pub-20e09b00ed144e3c87b5ca98f2e8183c.r2.dev; frame-src https://js.stripe.com https://hooks.stripe.com; object-src 'none'; base-uri 'self';"

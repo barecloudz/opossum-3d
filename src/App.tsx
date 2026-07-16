@@ -11,6 +11,7 @@ import AdminLayout from './components/layout/AdminLayout';
 // Public Pages
 import Home from './pages/Home';
 import Products from './pages/Products';
+import Shop from './pages/Shop';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
@@ -33,6 +34,7 @@ import AffiliateDashboard from './pages/affiliate/Dashboard';
 // Admin Pages
 import AdminAffiliates from './pages/admin/Affiliates';
 import AdminAffiliateDetail from './pages/admin/AffiliateDetail';
+import AdminAffiliateSettings from './pages/admin/AffiliateSettings';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
 import AdminProductEdit from './pages/admin/ProductEdit';
@@ -50,6 +52,7 @@ import AdminTeam from './pages/admin/Team';
 import AdminBanners from './pages/admin/Banners';
 import AdminExampleWorks from './pages/admin/ExampleWorks';
 import AdminShippingLabel from './pages/admin/ShippingLabel';
+import AdminProductionQueue from './pages/admin/ProductionQueue';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -68,8 +71,9 @@ function App() {
   useEffect(() => {
     // Skip auth initialization on reset-password — the PKCE code in the URL
     // is single-use and will be consumed by the ResetPassword page itself.
+    let cleanup: (() => void) | undefined;
     if (!window.location.pathname.startsWith('/reset-password')) {
-      initialize();
+      cleanup = initialize();
     } else {
       setLoading(false);
     }
@@ -77,13 +81,17 @@ function App() {
     // Pre-fetch products so they're ready when user navigates
     fetchProducts();
 
-    // Failsafe: proceed after 3 seconds even if auth hangs
+    // Last-resort failsafe: if INITIAL_SESSION and the 5s safety net inside
+    // initialize() both fail, force-clear the splash after 6s.
     const timeout = setTimeout(() => {
       setLoading(false);
       setReady(true);
-    }, 3000);
+    }, 6000);
 
-    return () => clearTimeout(timeout);
+    return () => {
+      cleanup?.();
+      clearTimeout(timeout);
+    };
   }, [initialize, fetchSettings, fetchProducts, setLoading]);
 
   // Update ready state when loading finishes normally
@@ -93,7 +101,7 @@ function App() {
     }
   }, [isLoading]);
 
-  // Show loading screen while auth initializes (max 3 seconds)
+  // Show loading screen while auth initializes
   if (!ready) {
     return (
       <div className="min-h-screen bg-[#F2F4F7] flex items-center justify-center">
@@ -113,6 +121,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
+          <Route path="shop" element={<Shop />} />
           <Route path="products" element={<Products />} />
           <Route path="products/:slug" element={<ProductDetail />} />
           <Route path="cart" element={<Cart />} />
@@ -176,7 +185,9 @@ function App() {
           <Route path="settings" element={<AdminSettings />} />
           <Route path="affiliates" element={<AdminAffiliates />} />
           <Route path="affiliates/:id" element={<AdminAffiliateDetail />} />
+          <Route path="affiliate-settings" element={<AdminAffiliateSettings />} />
           <Route path="shipping-label" element={<AdminShippingLabel />} />
+          <Route path="production-queue" element={<AdminProductionQueue />} />
         </Route>
       </Routes>
 

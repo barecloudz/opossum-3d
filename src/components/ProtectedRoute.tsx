@@ -8,10 +8,13 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const { user, isAdmin, isLoading } = useAuthStore();
+  const { user, isAdmin, isLoading, isProfileLoading } = useAuthStore();
   const location = useLocation();
 
-  if (isLoading) {
+  // Wait for auth AND profile to finish loading before making any decisions.
+  // Without this, on hard refresh isAdmin is false while fetchProfile() is still
+  // in flight — causing admins to get bounced to "/" before the role is known.
+  if (isLoading || (user && isProfileLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-black">
         <Spinner size="lg" />

@@ -30,6 +30,9 @@ export interface Product {
   print_time_hours: number | null;
   weight_oz: number | null;
   is_customizable: boolean;
+  allow_color_selection: boolean;
+  show_description_prompt: boolean;
+  available_colors?: string[] | null;
   created_at: string;
   updated_at: string;
   images?: ProductImage[];
@@ -73,6 +76,8 @@ export interface CartItem {
   variant?: ProductVariant;
   quantity: number;
   customization_image_url?: string;
+  selected_colors?: string[];
+  product_description?: string;
 }
 
 export interface Address {
@@ -116,6 +121,7 @@ export interface Order {
   shipping_label_generated_at?: string | null;
   shippo_transaction_id?: string | null;
   shipping_label_refunded_at?: string | null;
+  refund_amount?: number;
   created_at: string;
   updated_at: string;
   items?: OrderItem[];
@@ -134,6 +140,8 @@ export interface OrderItem {
   unit_price: number;
   total_price: number;
   customization_image_url: string | null;
+  selected_colors?: string[] | null;
+  product_description?: string | null;
   created_at: string;
 }
 

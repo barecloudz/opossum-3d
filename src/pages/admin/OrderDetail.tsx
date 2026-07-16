@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle, Printer, RotateCcw, Tag } from 'lucide-react';
+import { COLOR_PRESETS } from '../../lib/constants';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -21,6 +22,13 @@ export default function AdminOrderDetail() {
   const [status, setStatus] = useState<OrderStatus>('pending');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [notes, setNotes] = useState('');
+  // Per-item color editing: map of item.id -> selected colors array (encoded "Color:pct" or plain "Color")
+  const [itemColors, setItemColors] = useState<Record<string, string[]>>({});
+  const [savingColorItemId, setSavingColorItemId] = useState<string | null>(null);
+  // Per-item available colors fetched from their product
+  const [productColors, setProductColors] = useState<Record<string, string[]>>({});
+  // Which items have their color editor open
+  const [editingColorItemIds, setEditingColorItemIds] = useState<Set<string>>(new Set());
 
   // Shipping label state
   const [isGeneratingLabel, setIsGeneratingLabel] = useState(false);
@@ -32,6 +40,12 @@ export default function AdminOrderDetail() {
   const [isRefundingLabel, setIsRefundingLabel] = useState(false);
   const [refundMessage, setRefundMessage] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState<string | null>(null);
+
+  // Assign affiliate state
+  const [affiliates, setAffiliates] = useState<{ id: string; name: string; code: string; commission_rate: number | null }[]>([]);
+  const [selectedAffiliateId, setSelectedAffiliateId] = useState<string>('');
+  const [isAssigningAffiliate, setIsAssigningAffiliate] = useState(false);
+  const [affiliateAssigned, setAffiliateAssigned] = useState(false);
 
   useEffect(() => {
     if (id) fetchOrder();
@@ -59,6 +73,28 @@ export default function AdminOrderDetail() {
       setStatus(orderData.status);
       setTrackingNumber(orderData.tracking_number || '');
       setNotes(orderData.notes || '');
+      // Initialize color selections from DB
+      const colorMap: Record<string, string[]> = {};
+      for (const item of itemsData || []) {
+        colorMap[item.id] = item.selected_colors ?? [];
+      }
+      setItemColors(colorMap);
+
+      // Fetch available colors for each unique product
+      const productIds = [...new Set((itemsData || []).map(i => i.product_id).filter(Boolean))] as string[];
+      if (productIds.length) {
+        const { data: products } = await supabase
+          .from('products')
+          .select('id, available_colors')
+          .in('id', productIds);
+        const pColorMap: Record<string, string[]> = {};
+        for (const p of products ?? []) {
+          pColorMap[p.id] = p.available_colors?.length
+            ? p.available_colors
+            : COLOR_PRESETS.map(c => c.name);
+        }
+        setProductColors(pColorMap);
+      }
 
       // Load stored label if available
       if (orderData.shipping_label_pdf && orderData.tracking_number) {
@@ -67,6 +103,15 @@ export default function AdminOrderDetail() {
           labelUrl: orderData.shipping_label_pdf,
         });
       }
+
+      // Fetch approved affiliates for the assign dropdown
+      const { data: affiliateData } = await supabase
+        .from('affiliates')
+        .select('id, name, code, commission_rate')
+        .eq('status', 'approved')
+        .order('name');
+      setAffiliates(affiliateData || []);
+      setSelectedAffiliateId(orderData.affiliate_id || '');
 
       // Fetch promo code if one was used
       if (orderData.promo_code_id) {
@@ -141,6 +186,78 @@ export default function AdminOrderDetail() {
     }
   };
 
+  const handleSaveItemColors = async (itemId: string) => {
+    setSavingColorItemId(itemId);
+    try {
+      const colors = itemColors[itemId] ?? [];
+      const { error } = await supabase
+        .from('order_items')
+        .update({ selected_colors: colors.length ? colors : null })
+        .eq('id', itemId);
+      if (error) throw error;
+      setItems(prev => prev.map(i => i.id === itemId ? { ...i, selected_colors: colors.length ? colors : null } : i));
+      setEditingColorItemIds(prev => { const n = new Set(prev); n.delete(itemId); return n; });
+    } catch (err) {
+      console.error('Error saving colors:', err);
+      alert('Failed to save colors');
+    } finally {
+      setSavingColorItemId(null);
+    }
+  };
+
+  const handleAssignAffiliate = async () => {
+    if (!order) return;
+    setIsAssigningAffiliate(true);
+    setAffiliateAssigned(false);
+    try {
+      const affiliate = affiliates.find(a => a.id === selectedAffiliateId) || null;
+
+      // Update order's affiliate_id
+      const { error: orderErr } = await supabase
+        .from('orders')
+        .update({ affiliate_id: selectedAffiliateId || null })
+        .eq('id', order.id);
+      if (orderErr) throw orderErr;
+
+      // Remove any existing conversion for this order first
+      await supabase
+        .from('affiliate_conversions')
+        .delete()
+        .eq('order_id', order.id);
+
+      // Insert new conversion if an affiliate was selected
+      if (affiliate) {
+        const { data: settings } = await supabase
+          .from('affiliate_settings')
+          .select('commission_rate')
+          .eq('id', 1)
+          .single();
+        const rate = affiliate.commission_rate ?? settings?.commission_rate ?? 10;
+        const commission = order.total * (rate / 100);
+
+        const { error: convErr } = await supabase
+          .from('affiliate_conversions')
+          .insert({
+            affiliate_id: affiliate.id,
+            order_id: order.id,
+            order_total: order.total,
+            commission_amount: parseFloat(commission.toFixed(2)),
+            status: 'approved',
+          });
+        if (convErr) throw convErr;
+      }
+
+      setOrder(prev => prev ? { ...prev, affiliate_id: selectedAffiliateId || null } : prev);
+      setAffiliateAssigned(true);
+      setTimeout(() => setAffiliateAssigned(false), 3000);
+    } catch (err) {
+      console.error('Error assigning affiliate:', err);
+      alert('Failed to assign affiliate');
+    } finally {
+      setIsAssigningAffiliate(false);
+    }
+  };
+
   // Calculate total weight from order items
   const calculateOrderWeight = async (): Promise<number> => {
     const productIds = items.map(item => item.product_id).filter(Boolean) as string[];
@@ -169,6 +286,9 @@ export default function AdminOrderDetail() {
     setIsGeneratingLabel(true);
     setLabelError(null);
 
+    const controller = new AbortController();
+    const labelTimeout = setTimeout(() => controller.abort(), 25000);
+
     try {
       const totalWeight = await calculateOrderWeight();
 
@@ -178,9 +298,20 @@ export default function AdminOrderDetail() {
       const firstName = nameParts[0] || 'Customer';
       const lastName = nameParts.slice(1).join(' ') || firstName;
 
+      const sessionPromise = supabase.auth.getSession();
+      const sessionTimeout = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error('Session timeout')), 10000)
+      );
+      const sessionResult = await Promise.race([sessionPromise, sessionTimeout]).catch(() => null);
+      const labelSession = sessionResult && 'data' in sessionResult ? sessionResult.data.session : null;
+
       const response = await fetch('/.netlify/functions/create-shipping-label', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(labelSession?.access_token ? { 'Authorization': `Bearer ${labelSession.access_token}` } : {}),
+        },
         body: JSON.stringify({
           orderId: order.id,
           orderNumber: order.order_number,
@@ -254,8 +385,13 @@ export default function AdminOrderDetail() {
 
     } catch (error: any) {
       console.error('Label generation error:', error);
-      setLabelError(error.message || 'Failed to generate shipping label');
+      if (error.name === 'AbortError') {
+        setLabelError('Request timed out. Shippo may be slow — please try again.');
+      } else {
+        setLabelError(error.message || 'Failed to generate shipping label');
+      }
     } finally {
+      clearTimeout(labelTimeout);
       setIsGeneratingLabel(false);
     }
   };
@@ -290,9 +426,13 @@ export default function AdminOrderDetail() {
     setRefundMessage(null);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/.netlify/functions/refund-shipping-label', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ orderId: order.id }),
       });
 
@@ -402,6 +542,88 @@ export default function AdminOrderDetail() {
                           />
                           <span className="text-xs text-blue-500 group-hover:underline">View artwork</span>
                         </a>
+                      )}
+                      {item.product_description && (
+                        <p className="text-gray-400 text-xs mt-1 italic">"{item.product_description}"</p>
+                      )}
+                      {/* Color display / editor */}
+                      {item.product_id && (
+                        <div className="mt-2">
+                          {/* Compact read view */}
+                          {!editingColorItemIds.has(item.id) ? (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {(itemColors[item.id] ?? []).length > 0 ? (
+                                <>
+                                  {(itemColors[item.id] ?? []).map(entry => {
+                                    const [colorName, pct] = entry.includes(':') ? entry.split(':') : [entry, null];
+                                    const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
+                                    return (
+                                      <span key={entry} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-gray text-xs text-[#0D1B2A]">
+                                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
+                                        {colorName}{pct ? ` ×${pct}` : ''}
+                                      </span>
+                                    );
+                                  })}
+                                </>
+                              ) : (
+                                <span className="text-xs text-gray-400 italic">No colors set</span>
+                              )}
+                              <button
+                                onClick={() => setEditingColorItemIds(prev => { const n = new Set(prev); n.add(item.id); return n; })}
+                                className="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-400 hover:border-brand-neon hover:text-brand-neon transition-colors"
+                              >
+                                Edit
+                              </button>
+                            </div>
+                          ) : (
+                            /* Full editor */
+                            <div>
+                              <div className="flex flex-wrap gap-1.5 mb-2">
+                                {(productColors[item.product_id] ?? COLOR_PRESETS.map(c => c.name)).map(colorName => {
+                                  const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
+                                  const cur = itemColors[item.id] ?? [];
+                                  const selected = cur.some(e => e === colorName || e.startsWith(colorName + ':'));
+                                  return (
+                                    <button
+                                      key={colorName}
+                                      type="button"
+                                      onClick={() => setItemColors(prev => {
+                                        const existing = prev[item.id] ?? [];
+                                        return {
+                                          ...prev,
+                                          [item.id]: selected
+                                            ? existing.filter(e => e !== colorName && !e.startsWith(colorName + ':'))
+                                            : [...existing, colorName],
+                                        };
+                                      })}
+                                      className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors ${
+                                        selected ? 'border-brand-neon bg-brand-neon/10 text-brand-neon font-medium' : 'border-gray-300 text-gray-500 hover:border-brand-neon/50'
+                                      }`}
+                                    >
+                                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-white/20" style={{ backgroundColor: hex }} />
+                                      {colorName}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleSaveItemColors(item.id)}
+                                  disabled={savingColorItemId === item.id}
+                                  className="text-xs px-3 py-1 rounded bg-brand-neon/20 border border-brand-neon/40 text-brand-neon hover:bg-brand-neon/30 transition-colors disabled:opacity-50"
+                                >
+                                  {savingColorItemId === item.id ? 'Saving…' : 'Save'}
+                                </button>
+                                <button
+                                  onClick={() => setEditingColorItemIds(prev => { const n = new Set(prev); n.delete(item.id); return n; })}
+                                  className="text-xs px-3 py-1 rounded border border-gray-300 text-gray-400 hover:border-gray-500 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -515,6 +737,34 @@ export default function AdminOrderDetail() {
             </div>
           </Card>
 
+          {/* Assign Affiliate */}
+          <Card>
+            <h2 className="text-xl font-semibold text-[#0D1B2A] mb-1 flex items-center gap-2">
+              <Tag className="h-5 w-5 text-brand-neon" />
+              Affiliate
+            </h2>
+            <p className="text-gray-400 text-xs mb-3">Assign credit and auto-create commission at their rate.</p>
+            <select
+              value={selectedAffiliateId}
+              onChange={(e) => setSelectedAffiliateId(e.target.value)}
+              className="w-full px-3 py-2 bg-brand-black border border-brand-gray rounded-lg text-[#0D1B2A] text-sm focus:outline-none focus:ring-2 focus:ring-brand-neon mb-3"
+            >
+              <option value="">— No affiliate —</option>
+              {affiliates.map(a => (
+                <option key={a.id} value={a.id}>{a.name} ({a.code})</option>
+              ))}
+            </select>
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={handleAssignAffiliate}
+              isLoading={isAssigningAffiliate}
+            >
+              <Save className="h-4 w-4 mr-1.5" />
+              {affiliateAssigned ? 'Saved!' : 'Save Affiliate'}
+            </Button>
+          </Card>
+
           {order.stripe_payment_intent_id && (
             <Card>
               <h2 className="text-xl font-semibold text-[#0D1B2A] mb-4">Payment</h2>
@@ -626,27 +876,21 @@ export default function AdminOrderDetail() {
                       </div>
                     </div>
                   )}
-                  {(order.status === 'paid' || order.status === 'pending' || order.status === 'processing') ? (
-                    <>
-                      <p className="text-gray-400 text-sm">
-                        {order.shipping_label_refunded_at
-                          ? 'Generate a new shipping label if needed.'
-                          : 'Generate a shipping label for this order.'}
-                      </p>
-                      <Button
-                        onClick={handleGenerateLabel}
-                        className="w-full"
-                        isLoading={isGeneratingLabel}
-                      >
-                        <Truck className="h-5 w-5 mr-2" />
-                        Generate Shipping Label
-                      </Button>
-                    </>
-                  ) : !order.shipping_label_refunded_at && (
-                    <p className="text-gray-500 text-sm">
-                      No shipping label generated for this order.
+                  <>
+                    <p className="text-gray-400 text-sm">
+                      {order.shipping_label_refunded_at
+                        ? 'Generate a new shipping label if needed.'
+                        : 'Generate a shipping label for this order.'}
                     </p>
-                  )}
+                    <Button
+                      onClick={handleGenerateLabel}
+                      className="w-full"
+                      isLoading={isGeneratingLabel}
+                    >
+                      <Truck className="h-5 w-5 mr-2" />
+                      Generate Shipping Label
+                    </Button>
+                  </>
                 </div>
               )}
             </Card>

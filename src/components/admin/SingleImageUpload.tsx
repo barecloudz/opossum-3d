@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { uploadToCloudinary } from '../../lib/cloudinary';
+import { uploadToStorage } from '../../lib/storage';
 
 interface SingleImageUploadProps {
   image: string | null;
@@ -39,7 +39,7 @@ export default function SingleImageUpload({
     setError(null);
 
     try {
-      const url = await uploadToCloudinary(file, folder);
+      const url = await uploadToStorage(file, folder);
       onChange(url);
     } catch (err) {
       console.error('Upload error:', err);

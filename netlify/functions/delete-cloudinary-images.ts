@@ -1,6 +1,7 @@
 import type { Handler } from '@netlify/functions';
 import * as crypto from 'crypto';
 import { getCorsHeaders, getRequestOrigin } from './cors-helper';
+import { requireAuth } from './require-admin';
 
 const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME as string;
 const API_KEY = process.env.CLOUDINARY_API_KEY as string;
@@ -55,6 +56,9 @@ const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers: corsHeaders, body: 'Method not allowed' };
   }
+
+  const authResult = await requireAuth(event.headers as Record<string, string>);
+  if ('error' in authResult) return { ...authResult.error, headers: corsHeaders };
 
   if (!CLOUD_NAME || !API_KEY || !API_SECRET) {
     return {

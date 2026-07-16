@@ -381,6 +381,10 @@ export default function Checkout() {
 
   const removePromoCode = () => {
     setAppliedPromo(null);
+    setPromoError('');
+  };
+
+  const removeAffiliate = () => {
     setAppliedAffiliate(null);
     setAffiliateDiscountRate(0);
     setPromoError('');
@@ -451,53 +455,6 @@ export default function Checkout() {
 
       if (orderError) throw orderError;
 
-      // Create pending affiliate conversion if affiliate code was used
-      if (appliedAffiliate && order) {
-        const affiliateSettings = await supabase
-          .from('affiliate_settings')
-          .select('commission_rate')
-          .eq('id', 1)
-          .single();
-        const globalRate = affiliateSettings.data?.commission_rate ?? 10;
-        const commissionRate = appliedAffiliate.commission_rate ?? globalRate;
-        const commissionAmount = total * (commissionRate / 100);
-
-        // Link to the originating click if within 30 days
-        const storedClickId = sessionStorage.getItem('nexalon_click_id');
-        const storedClickAt = sessionStorage.getItem('nexalon_click_at');
-        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-        const clickId =
-          storedClickId && storedClickAt && Date.now() - parseInt(storedClickAt) <= THIRTY_DAYS_MS
-            ? storedClickId
-            : null;
-
-        await supabase.from('affiliate_conversions').insert({
-          affiliate_id: appliedAffiliate.id,
-          order_id: order.id,
-          order_total: total,
-          commission_amount: commissionAmount,
-          status: 'pending',
-          click_id: clickId,
-        });
-
-        // Clear click tracking data
-        sessionStorage.removeItem('nexalon_click_id');
-        sessionStorage.removeItem('nexalon_click_at');
-        clearAffiliateCookie();
-
-        // Notify affiliate of their sale — fire and forget
-        fetch('/.netlify/functions/send-affiliate-sale-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            affiliateId: appliedAffiliate.id,
-            orderNumber: order.order_number,
-            commissionAmount,
-            orderTotal: total,
-          }),
-        }).catch(() => {});
-      }
-
       // Validate variant IDs still exist in database before inserting
       const variantIds = items.map(i => i.variant?.id).filter(Boolean) as string[];
       let validVariantIds = new Set<string>();
@@ -523,6 +480,8 @@ export default function Checkout() {
           unit_price: unitPrice,
           total_price: unitPrice * item.quantity,
           customization_image_url: item.customization_image_url || null,
+          selected_colors: item.selected_colors?.length ? item.selected_colors : null,
+          product_description: item.product_description || null,
         };
       });
 
@@ -531,6 +490,78 @@ export default function Checkout() {
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
+
+      // Create pending affiliate conversion if affiliate code was used
+      if (appliedAffiliate && order) {
+        const affiliateSettings = await supabase
+          .from('affiliate_settings')
+          .select('commission_rate')
+          .eq('id', 1)
+          .single();
+        const globalRate = affiliateSettings.data?.commission_rate ?? 10;
+        const commissionRate = appliedAffiliate.commission_rate ?? globalRate;
+        const commissionAmount = total * (commissionRate / 100);
+
+        // Link to the originating click if within 30 days
+        const storedClickId = sessionStorage.getItem('nexalon_click_id');
+        const storedClickAt = sessionStorage.getItem('nexalon_click_at');
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+        const clickId =
+          storedClickId && storedClickAt && Date.now() - parseInt(storedClickAt) <= THIRTY_DAYS_MS
+            ? storedClickId
+            : null;
+
+        const conversionPayload: Record<string, unknown> = {
+          affiliate_id: appliedAffiliate.id,
+          order_id: order.id,
+          order_total: total,
+          commission_amount: commissionAmount,
+          status: 'pending',
+        };
+        if (clickId) conversionPayload.click_id = clickId;
+
+        const { error: conversionError } = await supabase
+          .from('affiliate_conversions')
+          .insert(conversionPayload);
+
+        if (conversionError) {
+          // If click_id column doesn't exist yet, retry without it
+          if (conversionError.message?.includes('click_id')) {
+            const { error: retryError } = await supabase
+              .from('affiliate_conversions')
+              .insert({
+                affiliate_id: appliedAffiliate.id,
+                order_id: order.id,
+                order_total: total,
+                commission_amount: commissionAmount,
+                status: 'pending',
+              });
+            if (retryError) {
+              console.error('[Affiliate] Conversion insert failed (retry):', retryError);
+            }
+          } else {
+            console.error('[Affiliate] Conversion insert failed:', conversionError);
+          }
+        }
+
+        // Clear click tracking data
+        sessionStorage.removeItem('nexalon_click_id');
+        sessionStorage.removeItem('nexalon_click_at');
+        clearAffiliateCookie();
+
+        // Notify affiliate of their sale — fire and forget
+        fetch('/.netlify/functions/send-affiliate-sale-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            affiliateId: appliedAffiliate.id,
+            orderNumber: order.order_number,
+            commissionAmount,
+            orderTotal: total,
+          }),
+        }).catch(() => {});
+      }
+
 
       setOrderId(order.id);
 
@@ -678,6 +709,8 @@ export default function Checkout() {
           quantity: item.quantity,
           unit_price: unitPrice,
           total_price: unitPrice * item.quantity,
+          selected_colors: item.selected_colors?.length ? item.selected_colors : undefined,
+          product_description: item.product_description || undefined,
         };
       }),
       subtotal,
@@ -786,6 +819,8 @@ export default function Checkout() {
           unit_price: unitPrice,
           total_price: unitPrice * item.quantity,
           customization_image_url: item.customization_image_url || null,
+          selected_colors: item.selected_colors?.length ? item.selected_colors : null,
+          product_description: item.product_description || null,
         };
       });
 
@@ -1222,7 +1257,7 @@ export default function Checkout() {
                   </div>
                   <button
                     type="button"
-                    onClick={removePromoCode}
+                    onClick={removeAffiliate}
                     className="text-gray-400 hover:text-red-400 transition-colors"
                   >
                     <X className="h-5 w-5" />
@@ -1360,7 +1395,7 @@ export default function Checkout() {
               Continue to Payment
             </Button>
 
-            {isAdmin && import.meta.env.VITE_DEV_MODE === 'true' && (
+            {isAdmin && (
               <button
                 type="button"
                 onClick={handleTestPayment}

@@ -23,11 +23,14 @@ export default function BottomNav() {
       .then(({ data }) => { setIsAffiliate(!!data); });
   }, [user]);
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    if (path === '/shop') return location.pathname === '/shop' || location.pathname.startsWith('/products');
+    return location.pathname === path;
+  };
 
   const navItems = [
     { href: '/', icon: Home, label: 'Home' },
-    { href: '/products', icon: Search, label: 'Shop' },
+    { href: '/shop', icon: Search, label: 'Shop' },
   ];
 
   return (

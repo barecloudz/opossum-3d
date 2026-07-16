@@ -10,7 +10,7 @@ interface CartState {
   isOpen: boolean;
 
   // Actions
-  addItem: (product: Product, variant?: ProductVariant, quantity?: number, customizationImageUrl?: string) => void;
+  addItem: (product: Product, variant?: ProductVariant, quantity?: number, customizationImageUrl?: string, selectedColors?: string[], productDescription?: string) => void;
   removeItem: (productId: string, variantId?: string) => void;
   updateQuantity: (productId: string, quantity: number, variantId?: string) => void;
   clearCart: () => void;
@@ -29,18 +29,27 @@ export const useCartStore = create<CartState>()(
       items: [],
       isOpen: false,
 
-      addItem: (product, variant, quantity = 1, customizationImageUrl?: string) => {
+      addItem: (product, variant, quantity = 1, customizationImageUrl?: string, selectedColors?: string[], productDescription?: string) => {
         // Validate quantity - must be positive integer, max 99
         const validQuantity = Math.min(
           MAX_QUANTITY_PER_ITEM,
           Math.max(1, Math.floor(quantity))
         );
 
+        const hasCustomization = !!customizationImageUrl || (selectedColors && selectedColors.length > 0) || !!productDescription;
+
         set((state) => {
-          // Customized items are always unique line items (each logo upload is distinct)
-          if (customizationImageUrl) {
+          // Customized items (artwork, colors, description) are always unique line items
+          if (hasCustomization) {
             return {
-              items: [...state.items, { product, variant, quantity: validQuantity, customization_image_url: customizationImageUrl }],
+              items: [...state.items, {
+                product,
+                variant,
+                quantity: validQuantity,
+                customization_image_url: customizationImageUrl,
+                selected_colors: selectedColors?.length ? selectedColors : undefined,
+                product_description: productDescription || undefined,
+              }],
             };
           }
 
@@ -48,7 +57,9 @@ export const useCartStore = create<CartState>()(
             (item) =>
               item.product.id === product.id &&
               item.variant?.id === variant?.id &&
-              !item.customization_image_url
+              !item.customization_image_url &&
+              !item.selected_colors?.length &&
+              !item.product_description
           );
 
           if (existingIndex > -1) {

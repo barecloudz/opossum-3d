@@ -104,7 +104,7 @@ export default function Home() {
                 Send Your Idea <ArrowRight className="h-4 w-4" />
               </a>
               <Link
-                to="/products"
+                to="/shop"
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-2xl transition-colors btn-press text-base"
               >
                 Browse Products
@@ -163,10 +163,10 @@ export default function Home() {
             <div className="flex items-end justify-between mb-8">
               <div>
                 <p className="text-[#1677FF] text-sm font-semibold uppercase tracking-widest mb-1">Our Products</p>
-                <h2 className="text-2xl md:text-3xl font-extrabold text-[#0D1B2A]">Ready to Ship</h2>
+                <h2 className="text-2xl md:text-3xl font-extrabold text-[#0D1B2A]">Most Popular</h2>
               </div>
               <Link
-                to="/products"
+                to="/shop"
                 className="hidden sm:inline-flex items-center gap-1.5 text-[#1677FF] font-semibold text-sm hover:gap-2.5 transition-all"
               >
                 View All <ArrowRight className="h-4 w-4" />
@@ -225,7 +225,7 @@ export default function Home() {
 
             <div className="text-center mt-6 sm:hidden">
               <Link
-                to="/products"
+                to="/shop"
                 className="inline-flex items-center gap-2 text-[#1677FF] font-semibold text-sm"
               >
                 View All Products <ArrowRight className="h-4 w-4" />
@@ -404,7 +404,7 @@ export default function Home() {
               Request a Custom Quote <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              to="/products"
+              to="/shop"
               className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-2xl transition-colors btn-press"
             >
               Browse Products

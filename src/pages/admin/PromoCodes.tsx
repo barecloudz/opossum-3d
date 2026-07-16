@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Edit2, Trash2, Tag, Copy, Check } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -16,6 +16,7 @@ export default function AdminPromoCodes() {
   const [showModal, setShowModal] = useState(false);
   const [editingCode, setEditingCode] = useState<PromoCode | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { addToast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -144,7 +145,8 @@ export default function AdminPromoCodes() {
   const copyToClipboard = (code: string, id: string) => {
     navigator.clipboard.writeText(code);
     setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => setCopiedId(null), 2000);
   };
 
   const resetForm = () => {

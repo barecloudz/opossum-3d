@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check, ChevronDown, ChevronUp, Upload, X as XIcon, ImageIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check, ChevronDown, ChevronUp, Upload, X as XIcon, ImageIcon, Palette, MessageSquare } from 'lucide-react';
+
 import Button from '../components/ui/Button';
+import { COLOR_PRESETS } from '../lib/constants';
 import { ProductDetailSkeleton } from '../components/ui/Skeleton';
 import RelatedProducts from '../components/product/RelatedProducts';
 import ProductReviews from '../components/product/ProductReviews';
@@ -15,7 +17,7 @@ import type { ProductVariant } from '../types';
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { product, isLoading } = useProduct(slug || '');
+  const { product, isLoading, error, refetch } = useProduct(slug || '');
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [userSelectedImage, setUserSelectedImage] = useState(false); // Track if user clicked a thumbnail
@@ -25,6 +27,12 @@ export default function ProductDetail() {
   const [imageLoading, setImageLoading] = useState(true);
   const [customizationImageUrl, setCustomizationImageUrl] = useState('');
   const [customizationUploading, setCustomizationUploading] = useState(false);
+  const [quantityInput, setQuantityInput] = useState('1');
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [colorRatios, setColorRatios] = useState<Record<string, number>>({});
+  const [colorSplitError, setColorSplitError] = useState<string | null>(null);
+  const colorErrorRef = useRef<HTMLDivElement>(null);
+  const [productDescription, setProductDescription] = useState('');
   const { addItem, openCart } = useCartStore();
 
   // Swipe support for main image
@@ -64,6 +72,19 @@ export default function ProductDetail() {
 
   if (isLoading) {
     return <ProductDetailSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-400 mb-4">Failed to load product. Please try again.</p>
+          <button onClick={refetch} className="px-4 py-2 bg-brand-neon text-black font-medium rounded-lg">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!product) {
@@ -114,8 +135,8 @@ export default function ProductDetail() {
     }
     setCustomizationUploading(true);
     try {
-      const { uploadToCloudinary } = await import('../lib/cloudinary');
-      const url = await uploadToCloudinary(file, 'customizations');
+      const { uploadToStorage } = await import('../lib/storage');
+      const url = await uploadToStorage(file, 'customizations');
       setCustomizationImageUrl(url);
     } catch {
       alert('Upload failed. Please try again.');
@@ -124,9 +145,82 @@ export default function ProductDetail() {
     }
   };
 
+  // Auto-distribute units evenly across colors
+  const distributeUnits = (colors: string[], qty: number): Record<string, number> => {
+    if (colors.length === 0) return {};
+    const base = Math.floor(qty / colors.length);
+    const remainder = qty - base * colors.length;
+    const result: Record<string, number> = {};
+    colors.forEach((c, i) => { result[c] = base + (i < remainder ? 1 : 0); });
+    return result;
+  };
+
+  const toggleColor = (colorName: string) => {
+    setSelectedColors(prev => {
+      const isRemoving = prev.includes(colorName);
+      // Block adding a color if already at the quantity limit
+      if (!isRemoving && prev.length >= quantity) {
+        const msg = `You can only pick up to ${quantity} color${quantity !== 1 ? 's' : ''} for a quantity of ${quantity}. Increase your quantity or remove a color first.`;
+        setColorSplitError(msg);
+        setTimeout(() => colorErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+        return prev;
+      }
+      const next = isRemoving
+        ? prev.filter(c => c !== colorName)
+        : [...prev, colorName];
+      setColorRatios(distributeUnits(next, quantity));
+      setColorSplitError(null);
+      return next;
+    });
+  };
+
+  const updateColorUnits = (colorName: string, value: number) => {
+    setColorRatios(prev => ({ ...prev, [colorName]: Math.max(0, value) }));
+    setColorSplitError(null);
+  };
+
+  // When quantity changes, trim colors to new qty limit and redistribute
+  const handleQuantityChange = (newQty: number) => {
+    setQuantity(newQty);
+    setQuantityInput(String(newQty));
+    if (selectedColors.length > 0) {
+      const trimmed = selectedColors.slice(0, newQty);
+      if (trimmed.length !== selectedColors.length) {
+        setSelectedColors(trimmed);
+      }
+      setColorRatios(distributeUnits(trimmed, newQty));
+      setColorSplitError(null);
+    }
+  };
+
   const handleAddToCart = () => {
+    // Validate color units if multiple colors selected and qty > 1
+    if (selectedColors.length > 1 && quantity > 1) {
+      const totalUnits = selectedColors.reduce((sum, c) => sum + (colorRatios[c] ?? 0), 0);
+      if (totalUnits !== quantity) {
+        const msg = `Color units must add up to ${quantity} (your order quantity). Currently: ${totalUnits}. Adjust the amounts so they equal your total.`;
+        setColorSplitError(msg);
+        setTimeout(() => colorErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+        return;
+      }
+    }
+    setColorSplitError(null);
     setIsAdding(true);
-    addItem(product, selectedVariant, quantity, customizationImageUrl || undefined);
+
+    // qty=1 with multiple colors selected: just use whichever single color has units=1, or first selected
+    // qty>1 with multiple colors: encode as "Color:units"
+    const encodedColors = selectedColors.length > 1 && quantity > 1
+      ? selectedColors.map(c => `${c}:${colorRatios[c] ?? 0}`)
+      : selectedColors.slice(0, quantity === 1 ? 1 : undefined);
+
+    addItem(
+      product,
+      selectedVariant,
+      quantity,
+      customizationImageUrl || undefined,
+      encodedColors.length ? encodedColors : undefined,
+      productDescription.trim() || undefined,
+    );
     setTimeout(() => {
       setIsAdding(false);
       openCart();
@@ -334,6 +428,47 @@ export default function ProductDetail() {
               )}
             </div>
 
+            {/* Quantity (top) */}
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center bg-gray-100 rounded-xl border border-gray-200">
+                <button
+                  onClick={() => handleQuantityChange(Math.max(1, quantity - 1))}
+                  className="p-2.5 text-gray-500 hover:text-[#0D1B2A] transition-colors btn-press"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={quantityInput}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    setQuantityInput(raw);
+                    const parsed = parseInt(raw, 10);
+                    if (!isNaN(parsed) && parsed >= 1) {
+                      handleQuantityChange(Math.min(maxQuantity, parsed));
+                    }
+                  }}
+                  onBlur={() => {
+                    const parsed = parseInt(quantityInput, 10);
+                    const clamped = isNaN(parsed) ? 1 : Math.min(maxQuantity, Math.max(1, parsed));
+                    handleQuantityChange(clamped);
+                  }}
+                  onFocus={(e) => e.target.select()}
+                  className="text-[#0D1B2A] text-base font-semibold w-12 text-center bg-transparent focus:outline-none"
+                />
+                <button
+                  onClick={() => handleQuantityChange(Math.min(maxQuantity, quantity + 1))}
+                  disabled={quantity >= maxQuantity}
+                  className="p-2.5 text-gray-500 hover:text-[#0D1B2A] transition-colors btn-press disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              <span className="text-sm text-gray-400">qty</span>
+            </div>
+
             {/* Variants */}
             {product.variants && product.variants.length > 0 && (
               <div>
@@ -348,6 +483,7 @@ export default function ProductDetail() {
                         const newVariant = selectedVariant?.id === variant.id ? undefined : variant;
                         setSelectedVariant(newVariant);
                         setQuantity(1);
+                        setQuantityInput('1');
                         setUserSelectedImage(false); // Reset so variant image shows
                         if (newVariant?.image_url) {
                           setImageLoading(true);
@@ -439,10 +575,10 @@ export default function ProductDetail() {
                 <div className="flex items-center gap-2 mb-1">
                   <ImageIcon className="h-4 w-4 text-[var(--color-primary)]" />
                   <p className="text-sm font-semibold text-[#0D1B2A]">Upload Your Logo / Artwork</p>
-                  <span className="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">Required</span>
+                  <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">Optional</span>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
-                  This product is custom-engraved or printed with your design. Upload a high-quality PNG, JPG, or SVG file.
+                  This product can be custom-engraved or printed with your design. Upload a PNG, JPG, or SVG file if you have one.
                 </p>
 
                 {customizationImageUrl ? (
@@ -479,30 +615,141 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* Quantity */}
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-3">
-                Quantity
-              </label>
-              <div className="inline-flex items-center bg-gray-100 rounded-xl border border-gray-200">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="p-3 text-gray-500 hover:text-[#0D1B2A] transition-colors btn-press"
-                >
-                  <Minus className="h-5 w-5" />
-                </button>
-                <span className="text-[#0D1B2A] text-lg font-semibold w-12 text-center">
-                  {quantity}
-                </span>
-                <button
-                  onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
-                  disabled={quantity >= maxQuantity}
-                  className="p-3 text-gray-500 hover:text-[#0D1B2A] transition-colors btn-press disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
+            {/* Color Selection — only when enabled on product */}
+            {product.allow_color_selection && (
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Palette className="h-4 w-4 text-[var(--color-primary)]" />
+                  <p className="text-sm font-semibold text-[#0D1B2A]">Pick Your Colors</p>
+                  {selectedColors.length > 0 && (
+                    <span className="text-xs text-[var(--color-primary)] font-medium ml-auto">
+                      {selectedColors.length} selected
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mb-3">Select one or more colors for your product (optional)</p>
+                <div className="flex flex-wrap gap-2">
+                  {(product.available_colors?.length
+                    ? product.available_colors.map(name => ({
+                        name,
+                        hex: COLOR_PRESETS.find(p => p.name === name)?.hex ?? '#888888',
+                      }))
+                    : COLOR_PRESETS
+                  ).map(color => (
+                    <button
+                      key={color.name}
+                      type="button"
+                      onClick={() => toggleColor(color.name)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition-all btn-press ${
+                        selectedColors.includes(color.name)
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 font-medium'
+                          : 'border-gray-200 hover:border-[var(--color-primary)]/50 text-gray-600'
+                      }`}
+                    >
+                      <span
+                        className="w-4 h-4 rounded-full border border-gray-300 flex-shrink-0"
+                        style={{ backgroundColor: color.hex }}
+                      />
+                      {color.name}
+                      {selectedColors.includes(color.name) && (
+                        <Check className="h-3 w-3 text-[var(--color-primary)]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Qty nudge — shown when 2+ colors picked but qty is 1 */}
+                {selectedColors.length > 1 && quantity === 1 && (
+                  <div className="mt-3 flex items-center gap-3 p-3 bg-[var(--color-primary)]/5 border border-[var(--color-primary)]/20 rounded-xl">
+                    <span className="text-sm text-[#0D1B2A] flex-1">Want multiple colors? Increase your quantity.</span>
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityChange(2)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Set qty to 2
+                    </button>
+                  </div>
+                )}
+
+                {/* Color unit split — shown when 2+ colors selected AND qty > 1 */}
+                {selectedColors.length > 1 && quantity > 1 && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
+                    <p className="text-xs font-medium text-[#0D1B2A]">How many of each color? <span className="text-gray-400 font-normal">(must add up to {quantity})</span></p>
+                    {selectedColors.map(colorName => {
+                      const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
+                      const units = colorRatios[colorName] ?? 0;
+                      return (
+                        <div key={colorName} className="flex items-center gap-3">
+                          <span className="w-3 h-3 rounded-full flex-shrink-0 border border-gray-300" style={{ backgroundColor: hex }} />
+                          <span className="text-sm text-[#0D1B2A] flex-1">{colorName}</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => updateColorUnits(colorName, units - 1)}
+                              className="w-7 h-7 rounded-lg bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 transition-colors"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </button>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={units}
+                              onChange={e => updateColorUnits(colorName, parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)}
+                              onFocus={e => e.target.select()}
+                              className="w-10 text-center text-sm font-semibold border border-gray-200 rounded-lg py-1 focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => updateColorUnits(colorName, units + 1)}
+                              className="w-7 h-7 rounded-lg bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 transition-colors"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {(() => {
+                      const total = selectedColors.reduce((s, c) => s + (colorRatios[c] ?? 0), 0);
+                      return (
+                        <div className={`text-xs font-medium pt-1 border-t border-gray-200 ${total === quantity ? 'text-green-600' : 'text-orange-500'}`}>
+                          Total: {total} / {quantity} {total === quantity ? '✓' : `— need ${quantity - total > 0 ? `${quantity - total} more` : `${total - quantity} less`}`}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Color split error */}
+                {colorSplitError && (
+                  <div ref={colorErrorRef} className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-xl text-orange-700 text-xs">
+                    {colorSplitError}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
+
+            {/* Description Prompt — only when enabled on product */}
+            {product.show_description_prompt && (
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <MessageSquare className="h-4 w-4 text-[var(--color-primary)]" />
+                  <p className="text-sm font-semibold text-[#0D1B2A]">Tell Us How You Want Your Product</p>
+                </div>
+                <p className="text-xs text-gray-500 mb-3">
+                  Describe any specific details, text, dimensions, or special requests for your order.
+                </p>
+                <textarea
+                  value={productDescription}
+                  onChange={e => setProductDescription(e.target.value)}
+                  rows={4}
+                  placeholder="e.g., Name to engrave, specific text, size preferences, finish style..."
+                  className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-[#0D1B2A] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-none text-sm"
+                />
+              </div>
+            )}
 
             {/* Add to cart */}
             <div className="flex gap-3 pt-4">
@@ -512,7 +759,6 @@ export default function ProductDetail() {
                 className={`flex-1 btn-press ${isAdding ? 'animate-cart-bounce' : ''}`}
                 disabled={
                   (stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock) ||
-                  (product.is_customizable && !customizationImageUrl) ||
                   customizationUploading
                 }
               >
@@ -520,11 +766,6 @@ export default function ProductDetail() {
                   <>
                     <Check className="h-5 w-5 mr-2" />
                     Added!
-                  </>
-                ) : product.is_customizable && !customizationImageUrl ? (
-                  <>
-                    <Upload className="h-5 w-5 mr-2" />
-                    Upload Artwork to Continue
                   </>
                 ) : (
                   <>

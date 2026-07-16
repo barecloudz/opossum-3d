@@ -9,6 +9,7 @@ interface AuthState {
   profile: Profile | null;
   session: Session | null;
   isLoading: boolean;
+  isProfileLoading: boolean;
   isAdmin: boolean;
 
   // Actions
@@ -21,7 +22,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, metadata?: { first_name?: string; last_name?: string; marketing_opt_in?: boolean }) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  initialize: () => Promise<void>;
+  initialize: () => () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -31,6 +32,7 @@ export const useAuthStore = create<AuthState>()(
       profile: null,
       session: null,
       isLoading: true,
+      isProfileLoading: false,
       isAdmin: false,
 
       setUser: (user) => set({ user }),
@@ -42,6 +44,8 @@ export const useAuthStore = create<AuthState>()(
         const { user } = get();
         if (!user) return;
 
+        set({ isProfileLoading: true });
+
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -50,10 +54,11 @@ export const useAuthStore = create<AuthState>()(
 
         if (error) {
           console.error('Error fetching profile:', error);
+          set({ isProfileLoading: false });
           return;
         }
 
-        set({ profile: data, isAdmin: data?.role === 'admin' });
+        set({ profile: data, isAdmin: data?.role === 'admin', isProfileLoading: false });
       },
 
       updateProfile: async (updates) => {
@@ -105,7 +110,6 @@ export const useAuthStore = create<AuthState>()(
 
         set({ user: data.user, session: data.session });
 
-        // Update profile with the registration data
         if (data.user && metadata) {
           try {
             await supabase
@@ -117,7 +121,6 @@ export const useAuthStore = create<AuthState>()(
               })
               .eq('id', data.user.id);
 
-            // Fetch the updated profile
             await get().fetchProfile();
           } catch (err) {
             console.error('Error updating profile after signup:', err);
@@ -132,32 +135,40 @@ export const useAuthStore = create<AuthState>()(
         set({ user: null, profile: null, session: null, isAdmin: false });
       },
 
-      initialize: async () => {
+      initialize: () => {
         set({ isLoading: true });
 
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
+        // Register the listener FIRST — before any awaits — so INITIAL_SESSION
+        // is never missed if it fires while async work is still in flight.
+        // Supabase docs: do NOT use async callbacks here; it can corrupt their
+        // internal auth state machine. Fire-and-forget fetchProfile instead.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          set({ user: session?.user ?? null, session });
 
-          if (session) {
-            set({ user: session.user, session });
-            await get().fetchProfile();
-          }
-        } catch (err) {
-          console.error('Error initializing auth:', err);
-        } finally {
-          set({ isLoading: false });
-        }
-
-        // Listen for auth changes
-        supabase.auth.onAuthStateChange(async (_event, session) => {
-          set({ user: session?.user || null, session });
-
-          if (session?.user) {
-            await get().fetchProfile();
-          } else {
-            set({ profile: null, isAdmin: false });
+          if (event === 'INITIAL_SESSION') {
+            set({ isLoading: false });
+            if (session?.user) {
+              get().fetchProfile().catch(console.error);
+            } else {
+              set({ profile: null, isAdmin: false, isProfileLoading: false });
+            }
+          } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            if (session?.user) {
+              get().fetchProfile().catch(console.error);
+            }
+          } else if (event === 'SIGNED_OUT') {
+            set({ profile: null, isAdmin: false, isProfileLoading: false });
           }
         });
+
+        const safetyTimeout = setTimeout(() => {
+          set(state => state.isLoading ? { isLoading: false, isProfileLoading: false } : {});
+        }, 5000);
+
+        return () => {
+          subscription.unsubscribe();
+          clearTimeout(safetyTimeout);
+        };
       },
     }),
     {
