@@ -77,6 +77,14 @@ export default function AdminAffiliateDetail() {
   const [payoutReference, setPayoutReference] = useState('');
   const [isSavingPayout, setIsSavingPayout] = useState(false);
 
+  // Manual order assignment
+  const [assignOrderNumber, setAssignOrderNumber] = useState('');
+  const [foundOrder, setFoundOrder] = useState<{ id: string; order_number: number; total: number; created_at: string; guest_name: string | null; guest_email: string | null } | null>(null);
+  const [assignLookupLoading, setAssignLookupLoading] = useState(false);
+  const [assignLookupError, setAssignLookupError] = useState('');
+  const [assignSaving, setAssignSaving] = useState(false);
+  const [assignSuccess, setAssignSuccess] = useState('');
+
   useEffect(() => {
     if (id) fetchAll();
   }, [id]);
@@ -336,6 +344,80 @@ export default function AdminAffiliateDetail() {
     }
   };
 
+  const handleLookupOrder = async () => {
+    const num = parseInt(assignOrderNumber.trim(), 10);
+    if (isNaN(num)) { setAssignLookupError('Enter a valid order number'); return; }
+    setAssignLookupLoading(true);
+    setAssignLookupError('');
+    setFoundOrder(null);
+    setAssignSuccess('');
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, order_number, total, created_at, guest_name, guest_email')
+        .eq('order_number', num)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) { setAssignLookupError('Order not found'); return; }
+      // Check if this order already has a conversion for this affiliate
+      const { data: existing } = await supabase
+        .from('affiliate_conversions')
+        .select('id')
+        .eq('order_id', data.id)
+        .eq('affiliate_id', affiliate!.id)
+        .maybeSingle();
+      if (existing) { setAssignLookupError('This order already has a conversion for this affiliate'); return; }
+      setFoundOrder(data);
+    } catch (err) {
+      setAssignLookupError('Failed to look up order');
+    } finally {
+      setAssignLookupLoading(false);
+    }
+  };
+
+  const handleAssignOrder = async () => {
+    if (!affiliate || !foundOrder) return;
+    setAssignSaving(true);
+    try {
+      const { data: settingsData } = await supabase
+        .from('affiliate_settings')
+        .select('commission_rate')
+        .eq('id', 1)
+        .single();
+      const globalRate = settingsData?.commission_rate ?? 10;
+      const commissionRate = affiliate.commission_rate ?? globalRate;
+      const commissionAmount = foundOrder.total * (commissionRate / 100);
+
+      // Create the conversion
+      const { error: convErr } = await supabase
+        .from('affiliate_conversions')
+        .insert({
+          affiliate_id: affiliate.id,
+          order_id: foundOrder.id,
+          order_total: foundOrder.total,
+          commission_amount: commissionAmount,
+          status: 'approved',
+        });
+      if (convErr) throw convErr;
+
+      // Also stamp affiliate_id on the order if not already set
+      await supabase
+        .from('orders')
+        .update({ affiliate_id: affiliate.id })
+        .eq('id', foundOrder.id)
+        .is('affiliate_id', null);
+
+      setAssignSuccess(`Order #${foundOrder.order_number} assigned — ${formatPrice(commissionAmount)} commission added`);
+      setFoundOrder(null);
+      setAssignOrderNumber('');
+      fetchAll(); // Refresh the conversions list
+    } catch (err: any) {
+      setAssignLookupError(err.message || 'Failed to assign order');
+    } finally {
+      setAssignSaving(false);
+    }
+  };
+
   // Computed stats
   const totalEarned = conversions
     .filter((c) => c.status !== 'pending')
@@ -525,6 +607,47 @@ export default function AdminAffiliateDetail() {
             </div>
           ) : (
             <p className="text-sm text-gray-400">This affiliate has not set their payout preference yet.</p>
+          )}
+        </Card>
+
+        {/* Manual Order Assignment */}
+        <Card>
+          <h2 className="text-lg font-semibold text-[#0D1B2A] mb-2">Assign Order Manually</h2>
+          <p className="text-gray-400 text-sm mb-3">
+            Enter an order number to manually assign commission for an order that wasn't tracked automatically.
+          </p>
+          <div className="flex gap-2 mb-2">
+            <Input
+              type="number"
+              placeholder="Order #"
+              value={assignOrderNumber}
+              onChange={(e) => { setAssignOrderNumber(e.target.value); setAssignLookupError(''); setAssignSuccess(''); setFoundOrder(null); }}
+            />
+            <Button size="sm" onClick={handleLookupOrder} isLoading={assignLookupLoading} disabled={!assignOrderNumber.trim()}>
+              Look Up
+            </Button>
+          </div>
+          {assignLookupError && <p className="text-red-400 text-xs mb-2">{assignLookupError}</p>}
+          {assignSuccess && <p className="text-green-400 text-xs mb-2">{assignSuccess}</p>}
+          {foundOrder && (
+            <div className="bg-gray-50 rounded-xl p-3 mb-3 text-sm">
+              <p className="font-semibold text-[#0D1B2A]">Order #{foundOrder.order_number}</p>
+              <p className="text-gray-500">{foundOrder.guest_name || foundOrder.guest_email || 'Guest'}</p>
+              <p className="text-gray-500">{formatDate(foundOrder.created_at)}</p>
+              <p className="text-brand-neon font-bold mt-1">Order total: {formatPrice(foundOrder.total)}</p>
+              <p className="text-gray-400">
+                Commission: {formatPrice(foundOrder.total * ((affiliate?.commission_rate ?? 10) / 100))}
+                ({affiliate?.commission_rate ?? 10}%)
+              </p>
+              <div className="flex gap-2 mt-3">
+                <Button size="sm" onClick={handleAssignOrder} isLoading={assignSaving}>
+                  Assign to {affiliate?.name.split(' ')[0]}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setFoundOrder(null); setAssignOrderNumber(''); }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
           )}
         </Card>
       </div>

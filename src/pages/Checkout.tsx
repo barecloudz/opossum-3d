@@ -381,6 +381,10 @@ export default function Checkout() {
 
   const removePromoCode = () => {
     setAppliedPromo(null);
+    setPromoError('');
+  };
+
+  const removeAffiliate = () => {
     setAppliedAffiliate(null);
     setAffiliateDiscountRate(0);
     setPromoError('');
@@ -451,6 +455,42 @@ export default function Checkout() {
 
       if (orderError) throw orderError;
 
+      // Validate variant IDs still exist in database before inserting
+      const variantIds = items.map(i => i.variant?.id).filter(Boolean) as string[];
+      let validVariantIds = new Set<string>();
+      if (variantIds.length > 0) {
+        const { data: validVariants } = await supabase
+          .from('product_variants')
+          .select('id')
+          .in('id', variantIds);
+        validVariantIds = new Set((validVariants || []).map(v => v.id));
+      }
+
+      // Create order items (set variant_id to null if variant no longer exists)
+      const orderItems = items.map((item) => {
+        const variantExists = item.variant?.id ? validVariantIds.has(item.variant.id) : false;
+        const unitPrice = getItemUnitPrice(item);
+        return {
+          order_id: order.id,
+          product_id: item.product.id,
+          variant_id: variantExists ? item.variant!.id : null,
+          product_name: item.product.name,
+          variant_name: item.variant?.name || null,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+          total_price: unitPrice * item.quantity,
+          customization_image_url: item.customization_image_url || null,
+          selected_colors: item.selected_colors?.length ? item.selected_colors : null,
+          product_description: item.product_description || null,
+        };
+      });
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
       // Create pending affiliate conversion if affiliate code was used
       if (appliedAffiliate && order) {
         const affiliateSettings = await supabase
@@ -497,40 +537,6 @@ export default function Checkout() {
           }),
         }).catch(() => {});
       }
-
-      // Validate variant IDs still exist in database before inserting
-      const variantIds = items.map(i => i.variant?.id).filter(Boolean) as string[];
-      let validVariantIds = new Set<string>();
-      if (variantIds.length > 0) {
-        const { data: validVariants } = await supabase
-          .from('product_variants')
-          .select('id')
-          .in('id', variantIds);
-        validVariantIds = new Set((validVariants || []).map(v => v.id));
-      }
-
-      // Create order items (set variant_id to null if variant no longer exists)
-      const orderItems = items.map((item) => {
-        const variantExists = item.variant?.id ? validVariantIds.has(item.variant.id) : false;
-        const unitPrice = getItemUnitPrice(item);
-        return {
-          order_id: order.id,
-          product_id: item.product.id,
-          variant_id: variantExists ? item.variant!.id : null,
-          product_name: item.product.name,
-          variant_name: item.variant?.name || null,
-          quantity: item.quantity,
-          unit_price: unitPrice,
-          total_price: unitPrice * item.quantity,
-          customization_image_url: item.customization_image_url || null,
-        };
-      });
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
 
       setOrderId(order.id);
 
@@ -1222,7 +1228,7 @@ export default function Checkout() {
                   </div>
                   <button
                     type="button"
-                    onClick={removePromoCode}
+                    onClick={removeAffiliate}
                     className="text-gray-400 hover:text-red-400 transition-colors"
                   >
                     <X className="h-5 w-5" />
