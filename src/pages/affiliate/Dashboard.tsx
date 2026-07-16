@@ -297,10 +297,14 @@ export default function AffiliateDashboard() {
       .order('display_order', { ascending: true });
     if (tierData) setMilestones(tierData as MilestoneTier[]);
 
-    const [clicksRes, conversionsRes, payoutsRes, campaignRes] = await Promise.all([
+    const [clicksRes, allStatsRes, conversionsRes, payoutsRes, campaignRes] = await Promise.all([
       supabase
         .from('affiliate_clicks')
         .select('id', { count: 'exact', head: true })
+        .eq('affiliate_id', affiliateId),
+      supabase
+        .from('affiliate_conversions')
+        .select('commission_amount, status')
         .eq('affiliate_id', affiliateId),
       supabase
         .from('affiliate_conversions')
@@ -333,27 +337,28 @@ export default function AffiliateDashboard() {
     setCampaignStats(campaigns);
 
     const totalClicks = clicksRes.count ?? 0;
-    const allConversions = (conversionsRes.data ?? []) as unknown as AffiliateConversion[];
+    const allStats = (allStatsRes.data ?? []) as { commission_amount: number; status: string }[];
+    const recentConversions = (conversionsRes.data ?? []) as unknown as AffiliateConversion[];
 
-    const totalEarned = allConversions
+    const totalEarned = allStats
       .filter((c) => c.status !== 'pending' && c.status !== 'reversed')
       .reduce((sum, c) => sum + c.commission_amount, 0);
 
-    const pendingBalance = allConversions
+    const pendingBalance = allStats
       .filter((c) => c.status === 'pending' || c.status === 'approved')
       .reduce((sum, c) => sum + c.commission_amount, 0);
 
     const conversionRate = totalClicks > 0
-      ? (allConversions.length / totalClicks) * 100
+      ? (allStats.length / totalClicks) * 100
       : 0;
 
-    setStats({ totalClicks, totalConversions: allConversions.length, conversionRate, totalEarned, pendingBalance });
-    setConversions(allConversions);
+    setStats({ totalClicks, totalConversions: allStats.length, conversionRate, totalEarned, pendingBalance });
+    setConversions(recentConversions);
     setPayouts((payoutsRes.data ?? []) as AffiliatePayout[]);
 
     // Auto-unlock: check if affiliate has crossed a milestone tier
     if (tierData && tierData.length > 0) {
-      const completedConversions = allConversions.filter(c => c.status !== 'reversed').length;
+      const completedConversions = allStats.filter(c => c.status !== 'reversed').length;
       const earned = [...(tierData as MilestoneTier[])]
         .filter(t => t.conversions_required <= completedConversions)
         .sort((a, b) => b.conversions_required - a.conversions_required)[0];
