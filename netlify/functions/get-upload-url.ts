@@ -21,10 +21,15 @@ const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: corsHeaders, body: '' };
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: corsHeaders, body: 'Method not allowed' };
 
-  const authResult = await requireAuth(event.headers as Record<string, string>);
-  if ('error' in authResult) return { ...authResult.error, headers: corsHeaders };
-
   const { folder = 'products', contentType = 'image/jpeg', fileName } = JSON.parse(event.body || '{}');
+
+  // Customer artwork uploads (customizations, affiliate-share) are allowed without auth.
+  // All other folders (products, etc.) require a logged-in user.
+  const publicFolders = ['customizations', 'affiliate-share'];
+  if (!publicFolders.includes(folder)) {
+    const authResult = await requireAuth(event.headers as Record<string, string>);
+    if ('error' in authResult) return { ...authResult.error, headers: corsHeaders };
+  }
 
   const ext = fileName?.split('.').pop() || 'jpg';
   const key = `nexalon/${folder}/${crypto.randomUUID()}.${ext}`;
