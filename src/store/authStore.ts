@@ -114,12 +114,14 @@ export const useAuthStore = create<AuthState>()(
           try {
             await supabase
               .from('profiles')
-              .update({
+              .upsert({
+                id: data.user.id,
+                email: data.user.email,
+                role: 'customer',
                 first_name: metadata.first_name || null,
                 last_name: metadata.last_name || null,
                 marketing_opt_in: metadata.marketing_opt_in || false,
-              })
-              .eq('id', data.user.id);
+              }, { onConflict: 'id' });
 
             await get().fetchProfile();
           } catch (err) {
