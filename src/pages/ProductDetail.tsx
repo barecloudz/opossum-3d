@@ -27,6 +27,8 @@ export default function ProductDetail() {
   const [imageLoading, setImageLoading] = useState(true);
   const [customizationImageUrl, setCustomizationImageUrl] = useState('');
   const [customizationUploading, setCustomizationUploading] = useState(false);
+  const [artworkError, setArtworkError] = useState<string | null>(null);
+  const artworkErrorRef = useRef<HTMLDivElement>(null);
   const [quantityInput, setQuantityInput] = useState('1');
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [colorRatios, setColorRatios] = useState<Record<string, number>>({});
@@ -138,6 +140,7 @@ export default function ProductDetail() {
       const { uploadToStorage } = await import('../lib/storage');
       const url = await uploadToStorage(file, 'customizations');
       setCustomizationImageUrl(url);
+      setArtworkError(null);
     } catch {
       alert('Upload failed. Please try again.');
     } finally {
@@ -194,6 +197,13 @@ export default function ProductDetail() {
   };
 
   const handleAddToCart = () => {
+    // Require artwork upload for customizable products
+    if (product.is_customizable && !customizationImageUrl) {
+      setArtworkError('Please upload your artwork or logo before adding to cart.');
+      setTimeout(() => artworkErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      return;
+    }
+    setArtworkError(null);
     // Require at least one color if the product has require_color_selection enabled
     if (product.require_color_selection && selectedColors.length === 0) {
       setColorSplitError('Please select at least one color before adding to cart.');
@@ -577,15 +587,18 @@ export default function ProductDetail() {
 
             {/* Logo / Artwork Upload — only for customizable products */}
             {product.is_customizable && (
-              <div className="rounded-2xl border-2 border-dashed border-[var(--color-primary)]/40 bg-[var(--color-primary)]/5 p-5">
+              <div ref={artworkErrorRef} className="rounded-2xl border-2 border-dashed border-[var(--color-primary)]/40 bg-[var(--color-primary)]/5 p-5">
                 <div className="flex items-center gap-2 mb-1">
                   <ImageIcon className="h-4 w-4 text-[var(--color-primary)]" />
                   <p className="text-sm font-semibold text-[#0D1B2A]">Upload Your Logo / Artwork</p>
-                  <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">Optional</span>
+                  <span className="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">Required</span>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
-                  This product can be custom-engraved or printed with your design. Upload a PNG, JPG, or SVG file if you have one.
+                  This product is custom-printed with your design. Upload a PNG, JPG, or SVG file before adding to cart.
                 </p>
+                {artworkError && (
+                  <p className="text-red-500 text-xs font-medium mb-3">{artworkError}</p>
+                )}
 
                 {customizationImageUrl ? (
                   <div className="flex items-center gap-4">
