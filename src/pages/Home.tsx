@@ -119,7 +119,7 @@ export default function Home() {
               <a href="mailto:nexaloncreations@gmail.com?subject=Custom%20Request" className="relative block group">
                 <div className="relative w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 rounded-full overflow-hidden ring-4 ring-[#1677FF]/30 group-hover:ring-[#1677FF]/60 transition-all duration-300 group-hover:scale-105 shadow-2xl">
                   <img
-                    src="https://res.cloudinary.com/dblvtidrh/image/upload/v1780197742/nexalon/misc/scnjp9js3tybrv4is50j.jpg"
+                    src="/images/creativity.jpeg"
                     alt="Submit a creative idea"
                     className="w-full h-full object-cover"
                   />
