@@ -194,6 +194,12 @@ export default function ProductDetail() {
   };
 
   const handleAddToCart = () => {
+    // Require at least one color if the product has require_color_selection enabled
+    if (product.require_color_selection && selectedColors.length === 0) {
+      setColorSplitError('Please select at least one color before adding to cart.');
+      setTimeout(() => colorErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      return;
+    }
     // Validate color units if multiple colors selected and qty > 1
     if (selectedColors.length > 1 && quantity > 1) {
       const totalUnits = selectedColors.reduce((sum, c) => sum + (colorRatios[c] ?? 0), 0);
@@ -627,7 +633,7 @@ export default function ProductDetail() {
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 mb-3">Select one or more colors for your product (optional)</p>
+                <p className="text-xs text-gray-500 mb-3">Select one or more colors for your product{product.require_color_selection && <span className="text-red-500 font-medium"> (required)</span>}</p>
                 <div className="flex flex-wrap gap-2">
                   {(product.available_colors?.length
                     ? product.available_colors.map(name => ({

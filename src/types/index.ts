@@ -31,6 +31,7 @@ export interface Product {
   weight_oz: number | null;
   is_customizable: boolean;
   allow_color_selection: boolean;
+  require_color_selection: boolean;
   show_description_prompt: boolean;
   available_colors?: string[] | null;
   created_at: string;

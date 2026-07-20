@@ -76,6 +76,7 @@ export default function AdminProductEdit() {
     is_featured: false,
     is_customizable: false,
     allow_color_selection: false,
+    require_color_selection: false,
     show_description_prompt: false,
     track_inventory: true,
     continue_selling_when_out_of_stock: false,
@@ -122,6 +123,7 @@ export default function AdminProductEdit() {
           is_featured: data.is_featured,
           is_customizable: data.is_customizable ?? false,
           allow_color_selection: data.allow_color_selection ?? false,
+          require_color_selection: data.require_color_selection ?? false,
           show_description_prompt: data.show_description_prompt ?? false,
           track_inventory: data.track_inventory,
           continue_selling_when_out_of_stock: data.continue_selling_when_out_of_stock,
@@ -341,6 +343,7 @@ export default function AdminProductEdit() {
         is_featured: formData.is_featured,
         is_customizable: formData.is_customizable,
         allow_color_selection: formData.allow_color_selection,
+        require_color_selection: formData.require_color_selection,
         available_colors: availableColors.length ? availableColors : null,
         show_description_prompt: formData.show_description_prompt,
         track_inventory: formData.track_inventory,
@@ -1020,6 +1023,26 @@ export default function AdminProductEdit() {
 
                   {formData.allow_color_selection && (
                     <div className="mt-4 p-4 bg-brand-black/40 rounded-xl border border-brand-gray">
+                      {/* Require color selection toggle */}
+                      <label className="flex items-center gap-3 cursor-pointer mb-4">
+                        <input
+                          type="checkbox"
+                          name="require_color_selection"
+                          checked={formData.require_color_selection}
+                          onChange={handleInputChange}
+                          className="sr-only"
+                        />
+                        <div className={`relative w-10 h-6 rounded-full flex-shrink-0 transition-colors ${formData.require_color_selection ? 'bg-brand-neon' : 'bg-gray-600'}`}>
+                          <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.require_color_selection ? 'translate-x-4' : ''}`} />
+                        </div>
+                        <div>
+                          <span className="text-gray-300 text-sm font-medium">Require Color Selection</span>
+                          <p className="text-gray-500 text-xs mt-0.5">
+                            When ON, customers must pick at least one color before they can add to cart.
+                          </p>
+                        </div>
+                      </label>
+
                       <div className="flex items-center gap-2 mb-3">
                         <Palette className="h-4 w-4 text-brand-neon" />
                         <span className="text-gray-300 text-sm font-medium">Available Colors for This Product</span>
