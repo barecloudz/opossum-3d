@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, Package, LogOut, Settings, ChevronRight, MapPin, Clock, Handshake, KeyRound } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { User, Package, LogOut, Settings, ChevronRight, MapPin, Clock, Handshake, KeyRound, RefreshCw, X } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
 import Button from '../components/ui/Button';
@@ -17,16 +17,45 @@ interface OrderWithItems extends Order {
   items: OrderItem[];
 }
 
+interface CustomerSubscription {
+  id: string;
+  product_id: string | null;
+  interval: string;
+  status: string;
+  next_billing_date: string | null;
+  quantity: number;
+  unit_price: number;
+  selected_colors: string[] | null;
+  product_description: string | null;
+  created_at: string;
+  product?: { name: string; slug: string } | null;
+}
+
+const INTERVAL_LABELS: Record<string, string> = {
+  weekly: 'Every week',
+  biweekly: 'Every 2 weeks',
+  monthly: 'Every month',
+  every2months: 'Every 2 months',
+  quarterly: 'Every 3 months',
+};
+
 export default function Account() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, profile, isLoading: authLoading, signOut, updateProfile } = useAuthStore();
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'orders' | 'settings'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'subscriptions' | 'settings'>(
+    searchParams.get('tab') === 'subscriptions' ? 'subscriptions' : 'orders'
+  );
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAffiliate, setIsAffiliate] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  // Subscriptions
+  const [subscriptions, setSubscriptions] = useState<CustomerSubscription[]>([]);
+  const [subsLoading, setSubsLoading] = useState(false);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
 
   // Password change state
   const [newPassword, setNewPassword] = useState('');
@@ -107,6 +136,45 @@ export default function Account() {
       .maybeSingle()
       .then(({ data }) => { if (data) setIsAffiliate(true); });
   }, [user]);
+
+  useEffect(() => {
+    if (!user || activeTab !== 'subscriptions') return;
+    setSubsLoading(true);
+    supabase
+      .from('customer_subscriptions')
+      .select('*, product:products(name, slug)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setSubscriptions((data as CustomerSubscription[]) || []);
+        setSubsLoading(false);
+      });
+  }, [user, activeTab]);
+
+  const handleCancelSubscription = async (subId: string) => {
+    if (!confirm('Cancel this subscription? You\'ll keep access until the end of the current billing period.')) return;
+    setCancelingId(subId);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const res = await fetch('/.netlify/functions/cancel-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ subscriptionId: subId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Cancel failed');
+      setSubscriptions(prev => prev.map(s => s.id === subId ? { ...s, status: 'canceled' } : s));
+      addToast('Subscription canceled. It will remain active until the end of the billing period.', 'success');
+    } catch (err: any) {
+      addToast(err.message || 'Failed to cancel subscription', 'error');
+    } finally {
+      setCancelingId(null);
+    }
+  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -233,6 +301,17 @@ export default function Account() {
           )}
         </button>
         <button
+          onClick={() => setActiveTab('subscriptions')}
+          className={`pb-3 px-1 font-medium transition-colors flex items-center gap-2 ${
+            activeTab === 'subscriptions'
+              ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]'
+              : 'text-theme opacity-60 hover:opacity-100'
+          }`}
+        >
+          <RefreshCw className="h-5 w-5" />
+          Subscriptions
+        </button>
+        <button
           onClick={() => setActiveTab('settings')}
           className={`pb-3 px-1 font-medium transition-colors flex items-center gap-2 ${
             activeTab === 'settings'
@@ -254,8 +333,81 @@ export default function Account() {
         )}
       </div>
 
+      {/* Subscribed banner */}
+      {searchParams.get('subscribed') === '1' && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-medium">
+          Your subscription is active! You'll receive a confirmation email shortly.
+        </div>
+      )}
+
       {/* Content */}
-      {activeTab === 'orders' ? (
+      {activeTab === 'subscriptions' ? (
+        <div>
+          {subsLoading ? (
+            <div className="flex justify-center py-12"><div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" /></div>
+          ) : subscriptions.length === 0 ? (
+            <Card className="text-center py-12">
+              <RefreshCw className="h-12 w-12 text-theme opacity-30 mx-auto mb-4" />
+              <p className="text-theme opacity-60 mb-4">No active subscriptions</p>
+              <Button onClick={() => navigate('/products')}>Browse Products</Button>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {subscriptions.map(sub => (
+                <Card key={sub.id} padding="none" className="overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-[var(--color-primary)]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <RefreshCw className="h-5 w-5 text-[var(--color-primary)]" />
+                        </div>
+                        <div>
+                          <p className="text-theme font-semibold">
+                            {sub.product?.name || 'Subscription'}
+                          </p>
+                          <p className="text-theme opacity-60 text-sm mt-0.5">
+                            {INTERVAL_LABELS[sub.interval] ?? sub.interval} · {sub.quantity} × ${sub.unit_price.toFixed(2)}
+                          </p>
+                          {sub.next_billing_date && sub.status === 'active' && (
+                            <p className="text-theme opacity-50 text-xs mt-1">
+                              Next billing: {new Date(sub.next_billing_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </p>
+                          )}
+                          {sub.selected_colors?.length ? (
+                            <p className="text-theme opacity-50 text-xs mt-1">Colors: {sub.selected_colors.join(', ')}</p>
+                          ) : null}
+                          {sub.product_description && (
+                            <p className="text-theme opacity-50 text-xs mt-1 italic">"{sub.product_description}"</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                          sub.status === 'active' ? 'bg-green-100 text-green-700' :
+                          sub.status === 'past_due' ? 'bg-orange-100 text-orange-700' :
+                          'bg-gray-100 text-gray-500'
+                        }`}>
+                          {sub.status === 'active' ? 'Active' : sub.status === 'past_due' ? 'Past Due' : 'Canceled'}
+                        </span>
+                        {sub.status !== 'canceled' && (
+                          <button
+                            onClick={() => handleCancelSubscription(sub.id)}
+                            disabled={cancelingId === sub.id}
+                            className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
+                          >
+                            <X className="h-3 w-3" />
+                            {cancelingId === sub.id ? 'Canceling...' : 'Cancel'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : activeTab === 'orders' ? (
         <div>
           {isLoading ? (
             <div className="flex justify-center py-12">

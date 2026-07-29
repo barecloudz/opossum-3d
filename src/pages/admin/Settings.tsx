@@ -26,6 +26,7 @@ export default function AdminSettings() {
     contact_email: '',
     default_shipping_cost: 5,
     low_stock_threshold: 5,
+    subscriptions_enabled: false,
   });
   const [shippingServices, setShippingServices] = useState<ShippingService[]>([]);
 
@@ -109,6 +110,7 @@ export default function AdminSettings() {
           contact_email: settings.contact_email,
           default_shipping_cost: settings.default_shipping_cost,
           low_stock_threshold: settings.low_stock_threshold,
+          subscriptions_enabled: settings.subscriptions_enabled ?? false,
         })
         .eq('id', 1);
 
@@ -302,6 +304,33 @@ export default function AdminSettings() {
             min="0"
             helperText="Alert when product stock falls below this number"
           />
+        </Card>
+
+        {/* Feature Flags */}
+        <Card>
+          <h2 className="text-xl font-semibold text-[#0D1B2A] mb-1">Feature Flags</h2>
+          <p className="text-gray-500 text-sm mb-4">Turn features on or off without touching code.</p>
+          <div className="space-y-4">
+            <label className="flex items-center justify-between gap-4 cursor-pointer">
+              <div>
+                <p className="text-[#0D1B2A] font-medium">Subscription Plans</p>
+                <p className="text-gray-500 text-xs mt-0.5">
+                  Enable monthly subscription boxes with exclusive member-only colors. Off by default until plans are configured.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettings(prev => ({ ...prev, subscriptions_enabled: !prev.subscriptions_enabled }))}
+                className={`relative flex-shrink-0 w-12 h-6 rounded-full transition-colors ${
+                  settings.subscriptions_enabled ? 'bg-[var(--color-primary)]' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  settings.subscriptions_enabled ? 'translate-x-6' : ''
+                }`} />
+              </button>
+            </label>
+          </div>
         </Card>
 
         <Button onClick={handleSave} size="lg" isLoading={isSaving}>

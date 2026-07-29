@@ -8,7 +8,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Spinner from '../../components/ui/Spinner';
 import { supabase } from '../../lib/supabase';
-import { formatPrice, formatDateTime } from '../../lib/utils';
+import { formatPrice, formatDateTime, formatDate } from '../../lib/utils';
 import { ORDER_STATUSES } from '../../lib/constants';
 import type { Order, OrderItem, OrderStatus } from '../../types';
 
@@ -40,6 +40,7 @@ export default function AdminOrderDetail() {
   const [isRefundingLabel, setIsRefundingLabel] = useState(false);
   const [refundMessage, setRefundMessage] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState<string>('');
 
   // Assign affiliate state
   const [affiliates, setAffiliates] = useState<{ id: string; name: string; code: string; commission_rate: number | null }[]>([]);
@@ -73,6 +74,18 @@ export default function AdminOrderDetail() {
       setStatus(orderData.status);
       setTrackingNumber(orderData.tracking_number || '');
       setNotes(orderData.notes || '');
+
+      // For logged-in customers with no guest_name, fetch their profile name
+      if (orderData.user_id && !orderData.guest_name) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', orderData.user_id)
+          .single();
+        if (prof) {
+          setProfileName([prof.first_name, prof.last_name].filter(Boolean).join(' '));
+        }
+      }
       // Initialize color selections from DB
       const colorMap: Record<string, string[]> = {};
       for (const item of itemsData || []) {
@@ -396,6 +409,128 @@ export default function AdminOrderDetail() {
     }
   };
 
+  // Print packing slip
+  const handlePrintPackingSlip = () => {
+    if (!order) return;
+
+    const colorLabel = (colors: string[]) =>
+      colors.map(c => {
+        const [name, qty] = c.includes(':') ? c.split(':') : [c, null];
+        return qty ? `${name} ×${qty}` : name;
+      }).join(', ');
+
+    const rows = items.map(item => `
+      <tr>
+        <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;vertical-align:top;">
+          <strong>${item.product_name}</strong>
+          ${item.variant_name ? `<br/><span style="color:#6b7280;font-size:13px;">${item.variant_name}</span>` : ''}
+          ${item.selected_colors?.length ? `<br/><span style="color:#6b7280;font-size:12px;">Colors: ${colorLabel(item.selected_colors)}</span>` : ''}
+          ${item.product_description ? `<br/><span style="color:#6b7280;font-size:12px;font-style:italic;">"${item.product_description}"</span>` : ''}
+          ${item.customization_image_url ? `<br/><span style="color:#6b7280;font-size:12px;">⚠ Custom artwork attached</span>` : ''}
+        </td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:center;">${item.quantity}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatPrice(item.unit_price)}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatPrice(item.total_price)}</td>
+      </tr>
+    `).join('');
+
+    const addr = order.shipping_address;
+    const customerName = order.guest_name || profileName || '';
+    const totalItemCount = items.reduce((sum, i) => sum + i.quantity, 0);
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Packing Slip — Order #${order.order_number}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: Arial, sans-serif; font-size: 14px; color: #111; padding: 32px; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; border-bottom: 2px solid #111; padding-bottom: 20px; }
+          .company { font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+          .company-sub { font-size: 12px; color: #6b7280; margin-top: 2px; }
+          .slip-title { font-size: 18px; font-weight: 700; text-align: right; }
+          .slip-meta { font-size: 13px; color: #6b7280; text-align: right; margin-top: 4px; }
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+          .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; margin-bottom: 6px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          th { background: #f3f4f6; padding: 8px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; }
+          th:last-child, th:nth-last-child(2) { text-align: right; }
+          th:nth-child(2) { text-align: center; }
+          .totals { margin-left: auto; width: 260px; }
+          .totals-row { display: flex; justify-content: space-between; padding: 4px 0; color: #6b7280; font-size: 13px; }
+          .totals-row.total { font-size: 16px; font-weight: 700; color: #111; border-top: 2px solid #111; margin-top: 6px; padding-top: 8px; }
+          .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+          @media print { body { padding: 16px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="company">NEXALON CREATIONS</div>
+            <div class="company-sub">nexaloncreations.com · nexaloncreations@gmail.com</div>
+          </div>
+          <div>
+            <div class="slip-title">PACKING SLIP</div>
+            <div class="slip-meta">Order #${order.order_number}</div>
+            <div class="slip-meta">${formatDate(order.created_at)}</div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div>
+            <div class="section-label">Ship To</div>
+            <div><strong>${customerName}</strong></div>
+            <div>${addr.address_line_1}</div>
+            ${addr.address_line_2 ? `<div>${addr.address_line_2}</div>` : ''}
+            <div>${addr.city}, ${addr.state} ${addr.postal_code}</div>
+            <div>${addr.country}</div>
+            ${order.guest_email ? `<div style="margin-top:6px;color:#6b7280;font-size:13px;">${order.guest_email}</div>` : ''}
+            ${order.guest_phone ? `<div style="color:#6b7280;font-size:13px;">${order.guest_phone}</div>` : ''}
+          </div>
+          <div>
+            <div class="section-label">Order Info</div>
+            <div style="color:#6b7280;font-size:13px;">Order Date: <span style="color:#111;">${formatDate(order.created_at)}</span></div>
+            ${order.tracking_number ? `<div style="color:#6b7280;font-size:13px;">Tracking: <span style="color:#111;font-family:monospace;">${order.tracking_number}</span></div>` : ''}
+            ${order.notes ? `<div style="margin-top:8px;font-size:13px;color:#6b7280;font-style:italic;">Note: ${order.notes}</div>` : ''}
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th style="text-align:center;">Qty</th>
+              <th style="text-align:right;">Unit Price</th>
+              <th style="text-align:right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+
+        <div style="margin-bottom:16px;font-size:13px;color:#6b7280;">${totalItemCount} item${totalItemCount !== 1 ? 's' : ''} total</div>
+
+        <div class="totals">
+          <div class="totals-row"><span>Subtotal</span><span>${formatPrice(order.subtotal)}</span></div>
+          <div class="totals-row"><span>Shipping</span><span>${formatPrice(order.shipping_cost)}</span></div>
+          ${order.tax > 0 ? `<div class="totals-row"><span>Tax</span><span>${formatPrice(order.tax)}</span></div>` : ''}
+          ${order.discount_amount && order.discount_amount > 0 ? `<div class="totals-row" style="color:#16a34a;"><span>Discount</span><span>-${formatPrice(order.discount_amount)}</span></div>` : ''}
+          <div class="totals-row total"><span>Total</span><span>${formatPrice(order.total)}</span></div>
+        </div>
+
+        <div class="footer">Thank you for your order! Questions? Contact us at nexaloncreations@gmail.com</div>
+
+        <script>window.onload = () => { window.print(); }</script>
+      </body>
+      </html>
+    `;
+
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    }
+  };
+
   // Download label PDF
   const handleDownloadLabel = () => {
     if (!labelData?.labelUrl || !order) return;
@@ -489,18 +624,24 @@ export default function AdminOrderDetail() {
           <h1 className="text-3xl font-bold text-[#0D1B2A]">Order #{order.order_number}</h1>
           <p className="text-gray-400">{formatDateTime(order.created_at)}</p>
         </div>
-        <Badge
-          variant={
-            order.status === 'delivered'
-              ? 'success'
-              : order.status === 'cancelled'
-              ? 'danger'
-              : 'info'
-          }
-          className="text-base px-4 py-1"
-        >
-          {ORDER_STATUSES[order.status].label}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={handlePrintPackingSlip}>
+            <Printer className="h-4 w-4 mr-2" />
+            Packing Slip
+          </Button>
+          <Badge
+            variant={
+              order.status === 'delivered'
+                ? 'success'
+                : order.status === 'cancelled'
+                ? 'danger'
+                : 'info'
+            }
+            className="text-base px-4 py-1"
+          >
+            {ORDER_STATUSES[order.status].label}
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

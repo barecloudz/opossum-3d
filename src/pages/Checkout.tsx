@@ -98,9 +98,9 @@ export default function Checkout() {
     return price;
   };
 
-  // Fetch price tiers for all cart products when an affiliate code is applied
+  // Fetch price tiers for all cart products (available to everyone, not just affiliates)
   useEffect(() => {
-    if (!appliedAffiliate || items.length === 0) {
+    if (items.length === 0) {
       setPriceTiers({});
       return;
     }
@@ -119,7 +119,7 @@ export default function Checkout() {
         }
         setPriceTiers(map);
       });
-  }, [appliedAffiliate]);
+  }, [items.length]);
 
   // Ref for shipping section to scroll to
   const shippingSectionRef = useRef<HTMLDivElement>(null);
@@ -222,17 +222,15 @@ export default function Checkout() {
     setShippingError(null);
   }, [formData.zip, formData.city, formData.state]);
 
-  // When an affiliate code is active, compute tier-based subtotal per item
+  // Compute tier-based unit price for any customer based on quantity
   const getItemUnitPrice = (item: typeof items[0]): number => {
     const base = item.product.price + (item.variant?.price_adjustment || 0);
-    if (!appliedAffiliate) return base;
     const tiers = priceTiers[item.product.id] || [];
     return getTierPrice(tiers, item.quantity, base);
   };
 
-  const tierSubtotal = appliedAffiliate
-    ? items.reduce((sum, item) => sum + getItemUnitPrice(item) * item.quantity, 0)
-    : subtotal;
+  // Subtotal after applying volume tier pricing (available to everyone)
+  const tierSubtotal = items.reduce((sum, item) => sum + getItemUnitPrice(item) * item.quantity, 0);
 
   // Calculate discount
   let discount = 0;
@@ -243,14 +241,11 @@ export default function Checkout() {
       discount = Math.min(appliedPromo.discount_value, subtotal);
     }
   } else if (appliedAffiliate) {
-    const hasTiers = Object.keys(priceTiers).length > 0;
-    if (hasTiers && tierSubtotal < subtotal) {
-      // Tier pricing active — discount is the savings vs base price
-      discount = subtotal - tierSubtotal;
-    } else {
-      // No tiers configured — fall back to flat % discount
-      discount = subtotal * (affiliateDiscountRate / 100);
-    }
+    // Affiliate: apply their % discount on top of any tier savings
+    discount = (subtotal - tierSubtotal) + tierSubtotal * (affiliateDiscountRate / 100);
+  } else if (tierSubtotal < subtotal) {
+    // Volume tier pricing active for regular customers
+    discount = subtotal - tierSubtotal;
   }
 
   const total = subtotal + shipping - discount;

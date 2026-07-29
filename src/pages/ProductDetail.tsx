@@ -11,6 +11,7 @@ import { useProduct } from '../hooks/useProduct';
 import { useCartStore } from '../store/cartStore';
 import { useWishlistStore } from '../store/wishlistStore';
 import { useAuthStore } from '../store/authStore';
+import { useSettingsStore } from '../store/settingsStore';
 import { formatPrice, getStockStatus } from '../lib/utils';
 import type { ProductVariant } from '../types';
 
@@ -35,6 +36,15 @@ export default function ProductDetail() {
   const [colorSplitError, setColorSplitError] = useState<string | null>(null);
   const colorErrorRef = useRef<HTMLDivElement>(null);
   const [productDescription, setProductDescription] = useState('');
+  // Apparel-specific state
+  const [apparelSizeQtys, setApparelSizeQtys] = useState<Record<string, number>>({});
+  const [selectedApparelColor, setSelectedApparelColor] = useState<string>('');
+  const [apparelError, setApparelError] = useState<string | null>(null);
+  // Subscribe & Save state
+  const [selectedInterval, setSelectedInterval] = useState<string>('');
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
+  const [subscribeSuccess, setSubscribeSuccess] = useState(false);
   const { addItem, openCart } = useCartStore();
 
   // Swipe support for main image
@@ -71,6 +81,7 @@ export default function ProductDetail() {
   };
   const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore();
   const { user } = useAuthStore();
+  const { settings } = useSettingsStore();
 
   if (isLoading) {
     return <ProductDetailSkeleton />;
@@ -197,20 +208,48 @@ export default function ProductDetail() {
   };
 
   const handleAddToCart = () => {
-    // Require artwork upload for customizable products
+    // --- Apparel flow: add one line per size ---
+    if (product.is_apparel) {
+      const sizesWithQty = (product.variants || []).filter(v => (apparelSizeQtys[v.id] ?? 0) > 0);
+      if (sizesWithQty.length === 0) {
+        setApparelError('Please select at least one size and quantity.');
+        return;
+      }
+      if (!selectedApparelColor && (product.available_colors?.length || 0) > 0) {
+        setApparelError('Please select a color.');
+        return;
+      }
+      setApparelError(null);
+      setIsAdding(true);
+      for (const variant of sizesWithQty) {
+        addItem(
+          product,
+          variant,
+          apparelSizeQtys[variant.id],
+          undefined,
+          selectedApparelColor ? [selectedApparelColor] : undefined,
+          undefined,
+        );
+      }
+      setTimeout(() => {
+        setIsAdding(false);
+        openCart();
+      }, 600);
+      return;
+    }
+
+    // --- Standard flow ---
     if (product.is_customizable && !customizationImageUrl) {
       setArtworkError('Please upload your artwork or logo before adding to cart.');
       setTimeout(() => artworkErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
       return;
     }
     setArtworkError(null);
-    // Require at least one color if the product has require_color_selection enabled
     if (product.require_color_selection && selectedColors.length === 0) {
       setColorSplitError('Please select at least one color before adding to cart.');
       setTimeout(() => colorErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
       return;
     }
-    // Validate color units if multiple colors selected and qty > 1
     if (selectedColors.length > 1 && quantity > 1) {
       const totalUnits = selectedColors.reduce((sum, c) => sum + (colorRatios[c] ?? 0), 0);
       if (totalUnits !== quantity) {
@@ -223,8 +262,6 @@ export default function ProductDetail() {
     setColorSplitError(null);
     setIsAdding(true);
 
-    // qty=1 with multiple colors selected: just use whichever single color has units=1, or first selected
-    // qty>1 with multiple colors: encode as "Color:units"
     const encodedColors = selectedColors.length > 1 && quantity > 1
       ? selectedColors.map(c => `${c}:${colorRatios[c] ?? 0}`)
       : selectedColors.slice(0, quantity === 1 ? 1 : undefined);
@@ -241,6 +278,61 @@ export default function ProductDetail() {
       setIsAdding(false);
       openCart();
     }, 600);
+  };
+
+  const INTERVAL_LABELS: Record<string, string> = {
+    weekly: 'Every week',
+    biweekly: 'Every 2 weeks',
+    monthly: 'Every month',
+    every2months: 'Every 2 months',
+    quarterly: 'Every 3 months',
+  };
+
+  const handleSubscribe = async () => {
+    if (!user) {
+      navigate('/login?redirect=' + encodeURIComponent(window.location.pathname));
+      return;
+    }
+    if (!selectedInterval) {
+      setSubscribeError('Please select a delivery frequency.');
+      return;
+    }
+    setSubscribeError(null);
+    setIsSubscribing(true);
+    try {
+      const { supabase } = await import('../lib/supabase');
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const discountRate = product.subscription_discount_rate ?? 10;
+      const discountedPrice = currentPrice * (1 - discountRate / 100);
+      const res = await fetch('/.netlify/functions/create-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          productId: product.id,
+          variantId: selectedVariant?.id ?? null,
+          interval: selectedInterval,
+          quantity,
+          unitPrice: discountedPrice,
+          selectedColors: selectedColors.length ? selectedColors : null,
+          productDescription: productDescription.trim() || null,
+          productName: product.name,
+          productSlug: product.slug,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Subscription failed');
+      // Redirect to Stripe Checkout (handles card entry + Stripe receipt email)
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      setSubscribeError(err.message || 'Something went wrong. Please try again.');
+      setIsSubscribing(false);
+    }
   };
 
   const handleWishlistToggle = () => {
@@ -433,19 +525,76 @@ export default function ProductDetail() {
             <h1 className="text-2xl md:text-3xl font-bold text-[#0D1B2A]">{product.name}</h1>
 
             {/* Price */}
-            <div className="flex items-center gap-4">
-              <span className="text-3xl font-bold text-[var(--color-primary)]">
-                {formatPrice(currentPrice)}
-              </span>
-              {isOnSale && (
-                <span className="text-xl text-gray-500 line-through">
-                  {formatPrice(product.compare_at_price!)}
-                </span>
-              )}
-            </div>
+            {(() => {
+              const tiers = product.price_tiers || [];
+              const sorted = [...tiers].sort((a, b) => a.min_qty - b.min_qty);
+              // Find active tier based on current quantity
+              let activeTierPrice = currentPrice;
+              for (const tier of sorted) {
+                if (quantity >= tier.min_qty) activeTierPrice = tier.price_per_unit;
+              }
+              const hasTiers = sorted.length > 0;
+              const savingsPct = hasTiers && activeTierPrice < currentPrice
+                ? Math.round((1 - activeTierPrice / currentPrice) * 100)
+                : 0;
+              return (
+                <>
+                  <div className="flex items-center gap-4">
+                    <span className="text-3xl font-bold text-[var(--color-primary)]">
+                      {formatPrice(activeTierPrice)}
+                    </span>
+                    {activeTierPrice < currentPrice && (
+                      <span className="text-xl text-gray-500 line-through">{formatPrice(currentPrice)}</span>
+                    )}
+                    {isOnSale && activeTierPrice >= currentPrice && (
+                      <span className="text-xl text-gray-500 line-through">
+                        {formatPrice(product.compare_at_price!)}
+                      </span>
+                    )}
+                    {savingsPct > 0 && (
+                      <span className="text-sm font-semibold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-lg">
+                        Save {savingsPct}%
+                      </span>
+                    )}
+                  </div>
 
-            {/* Quantity (top) */}
-            <div className="flex items-center gap-3">
+                  {/* Volume pricing table */}
+                  {hasTiers && (
+                    <div className="rounded-xl border border-gray-200 overflow-hidden">
+                      <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Volume Pricing</p>
+                      </div>
+                      <div className="divide-y divide-gray-100">
+                        {sorted.map((tier, i) => {
+                          const isActive = quantity >= tier.min_qty &&
+                            (i === sorted.length - 1 || quantity < sorted[i + 1].min_qty);
+                          const label = tier.max_qty
+                            ? `${tier.min_qty}–${tier.max_qty} units`
+                            : `${tier.min_qty}+ units`;
+                          return (
+                            <div
+                              key={tier.id || i}
+                              className={`flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+                                isActive ? 'bg-[var(--color-primary)]/10 font-semibold' : 'text-gray-600'
+                              }`}
+                            >
+                              <span>{label}</span>
+                              <span className={isActive ? 'text-[var(--color-primary)]' : ''}>
+                                {formatPrice(tier.price_per_unit)} ea
+                                {isActive && <span className="ml-1.5 text-xs font-normal text-green-600">← your price</span>}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* Quantity (top) — hidden for apparel (per-size qty inputs are used instead) */}
+            <div className={`flex items-center gap-3 ${product.is_apparel ? 'hidden' : ''}`}>
               <div className="inline-flex items-center bg-gray-100 rounded-xl border border-gray-200">
                 <button
                   onClick={() => handleQuantityChange(Math.max(1, quantity - 1))}
@@ -485,43 +634,158 @@ export default function ProductDetail() {
               <span className="text-sm text-gray-400">qty</span>
             </div>
 
-            {/* Variants */}
-            {product.variants && product.variants.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-3">
-                  Select Option
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {product.variants.map((variant) => (
-                    <button
-                      key={variant.id}
-                      onClick={() => {
-                        const newVariant = selectedVariant?.id === variant.id ? undefined : variant;
-                        setSelectedVariant(newVariant);
-                        setQuantity(1);
-                        setQuantityInput('1');
-                        setUserSelectedImage(false); // Reset so variant image shows
-                        if (newVariant?.image_url) {
-                          setImageLoading(true);
-                        }
-                      }}
-                      className={`px-4 py-2.5 rounded-xl font-medium transition-all btn-press ${
-                        selectedVariant?.id === variant.id
-                          ? 'bg-[var(--color-primary)] text-black'
-                          : 'bg-gray-100 text-[#0D1B2A] hover:bg-gray-200'
-                      }`}
-                    >
-                      {variant.name}
-                      {variant.price_adjustment !== 0 && (
-                        <span className="ml-1 opacity-70">
-                          ({variant.price_adjustment > 0 ? '+' : ''}
-                          {formatPrice(variant.price_adjustment)})
-                        </span>
+            {/* Apparel: Color + Size Grid */}
+            {product.is_apparel ? (
+              <div className="space-y-5">
+                {apparelError && (
+                  <p className="text-red-500 text-sm font-medium">{apparelError}</p>
+                )}
+
+                {/* Single-select color swatches */}
+                {(product.available_colors?.length ?? 0) > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-sm font-semibold text-[#0D1B2A]">Color:</span>
+                      {selectedApparelColor && (
+                        <span className="text-sm text-[var(--color-primary)] font-medium">{selectedApparelColor}</span>
                       )}
-                    </button>
-                  ))}
-                </div>
+                      <span className="ml-auto text-xs text-gray-400">
+                        {(product.available_colors?.length ?? 0)} colors
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {(product.available_colors ?? []).map(colorName => {
+                        const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888888';
+                        const isSelected = selectedApparelColor === colorName;
+                        return (
+                          <button
+                            key={colorName}
+                            type="button"
+                            title={colorName}
+                            onClick={() => {
+                              setSelectedApparelColor(isSelected ? '' : colorName);
+                              setApparelError(null);
+                            }}
+                            className={`relative w-9 h-9 rounded-full border-2 transition-all btn-press ${
+                              isSelected
+                                ? 'border-[var(--color-primary)] scale-110 shadow-md'
+                                : 'border-gray-300 hover:border-gray-500'
+                            }`}
+                            style={{ backgroundColor: hex }}
+                          >
+                            {isSelected && (
+                              <Check className="absolute inset-0 m-auto h-4 w-4 text-white drop-shadow" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Size qty grid */}
+                {product.variants && product.variants.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-[#0D1B2A] mb-3">Choose Size</p>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {product.variants.map(variant => {
+                        const sizeQty = apparelSizeQtys[variant.id] ?? 0;
+                        const sizePrice = product.price + variant.price_adjustment;
+                        return (
+                          <div
+                            key={variant.id}
+                            className={`rounded-xl border-2 p-3 transition-all ${
+                              sizeQty > 0
+                                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                                : 'border-gray-200 bg-white'
+                            }`}
+                          >
+                            <p className="text-sm font-bold text-[#0D1B2A] text-center mb-2">{variant.name}</p>
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setApparelSizeQtys(prev => ({ ...prev, [variant.id]: Math.max(0, (prev[variant.id] ?? 0) - 1) }));
+                                  setApparelError(null);
+                                }}
+                                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-[#0D1B2A] flex items-center justify-center font-bold text-lg transition-colors btn-press"
+                              >
+                                −
+                              </button>
+                              <span className="w-8 text-center text-sm font-semibold text-[#0D1B2A]">{sizeQty}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setApparelSizeQtys(prev => ({ ...prev, [variant.id]: (prev[variant.id] ?? 0) + 1 }));
+                                  setApparelError(null);
+                                }}
+                                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-[#0D1B2A] flex items-center justify-center font-bold text-lg transition-colors btn-press"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <p className="text-xs text-center text-gray-500 mt-1.5">{formatPrice(sizePrice)}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Total summary */}
+                    {Object.values(apparelSizeQtys).some(q => q > 0) && (
+                      <div className="mt-3 p-3 bg-gray-50 rounded-xl border border-gray-200 flex justify-between items-center">
+                        <span className="text-sm text-gray-600">
+                          {Object.values(apparelSizeQtys).reduce((a, b) => a + b, 0)} items
+                        </span>
+                        <span className="text-sm font-semibold text-[#0D1B2A]">
+                          {formatPrice(
+                            (product.variants ?? []).reduce((sum, v) =>
+                              sum + (apparelSizeQtys[v.id] ?? 0) * (product.price + v.price_adjustment), 0
+                            )
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+            ) : (
+              /* Standard variants */
+              product.variants && product.variants.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-3">
+                    Select Option
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {product.variants.map((variant) => (
+                      <button
+                        key={variant.id}
+                        onClick={() => {
+                          const newVariant = selectedVariant?.id === variant.id ? undefined : variant;
+                          setSelectedVariant(newVariant);
+                          setQuantity(1);
+                          setQuantityInput('1');
+                          setUserSelectedImage(false);
+                          if (newVariant?.image_url) {
+                            setImageLoading(true);
+                          }
+                        }}
+                        className={`px-4 py-2.5 rounded-xl font-medium transition-all btn-press ${
+                          selectedVariant?.id === variant.id
+                            ? 'bg-[var(--color-primary)] text-black'
+                            : 'bg-gray-100 text-[#0D1B2A] hover:bg-gray-200'
+                        }`}
+                      >
+                        {variant.name}
+                        {variant.price_adjustment !== 0 && (
+                          <span className="ml-1 opacity-70">
+                            ({variant.price_adjustment > 0 ? '+' : ''}
+                            {formatPrice(variant.price_adjustment)})
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
             )}
 
             {/* Stock status */}
@@ -634,8 +898,8 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* Color Selection — only when enabled on product */}
-            {product.allow_color_selection && (
+            {/* Color Selection — only when enabled on product AND not apparel (apparel uses inline swatch above) */}
+            {product.allow_color_selection && !product.is_apparel && (
               <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <Palette className="h-4 w-4 text-[var(--color-primary)]" />
@@ -789,7 +1053,14 @@ export default function ProductDetail() {
                 ) : (
                   <>
                     <ShoppingCart className="h-5 w-5 mr-2" />
-                    Add to Cart - {formatPrice(currentPrice * quantity)}
+                    {product.is_apparel
+                      ? `Add to Cart - ${formatPrice(
+                          (product.variants ?? []).reduce((sum, v) =>
+                            sum + (apparelSizeQtys[v.id] ?? 0) * (product.price + v.price_adjustment), 0
+                          )
+                        )}`
+                      : `Add to Cart - ${formatPrice(currentPrice * quantity)}`
+                    }
                   </>
                 )}
               </Button>
@@ -804,6 +1075,78 @@ export default function ProductDetail() {
                 <Heart className={`h-6 w-6 ${inWishlist ? 'fill-current' : ''}`} />
               </button>
             </div>
+
+            {/* Subscribe & Save — only when feature flag + product flag are both on */}
+            {settings.subscriptions_enabled && product.allow_subscriptions && !product.is_apparel && (
+              <div className="rounded-2xl border-2 border-[var(--color-primary)]/30 bg-[var(--color-primary)]/5 p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-[#0D1B2A]">Subscribe &amp; Save</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Save {product.subscription_discount_rate ?? 10}% on every recurring order
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-xl">
+                    -{product.subscription_discount_rate ?? 10}%
+                  </span>
+                </div>
+
+                {subscribeSuccess ? (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-medium">
+                    <Check className="h-4 w-4 flex-shrink-0" />
+                    Subscription created! Check your account for details.
+                  </div>
+                ) : (
+                  <>
+                    {/* Frequency selector */}
+                    <div className="flex flex-wrap gap-2">
+                      {(product.subscription_intervals ?? []).map(interval => (
+                        <button
+                          key={interval}
+                          type="button"
+                          onClick={() => { setSelectedInterval(interval); setSubscribeError(null); }}
+                          className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all btn-press ${
+                            selectedInterval === interval
+                              ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-[var(--color-primary)]/50'
+                          }`}
+                        >
+                          {INTERVAL_LABELS[interval] ?? interval}
+                        </button>
+                      ))}
+                    </div>
+
+                    {selectedInterval && (
+                      <div className="flex items-center justify-between text-sm px-1">
+                        <span className="text-gray-500">Subscription price:</span>
+                        <span className="font-bold text-[var(--color-primary)]">
+                          {formatPrice(currentPrice * (1 - (product.subscription_discount_rate ?? 10) / 100))}
+                          <span className="text-xs font-normal text-gray-400 ml-1">/ {INTERVAL_LABELS[selectedInterval]?.toLowerCase().replace('every ', '') ?? selectedInterval}</span>
+                        </span>
+                      </div>
+                    )}
+
+                    {subscribeError && (
+                      <p className="text-red-500 text-xs font-medium">{subscribeError}</p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleSubscribe}
+                      disabled={isSubscribing}
+                      className="w-full py-3 rounded-xl font-semibold text-sm border-2 border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all btn-press disabled:opacity-50"
+                    >
+                      {isSubscribing ? 'Setting up subscription...' : `Subscribe & Save ${product.subscription_discount_rate ?? 10}%`}
+                    </button>
+                    {!user && (
+                      <p className="text-xs text-center text-gray-400">
+                        You'll be asked to log in before subscribing.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

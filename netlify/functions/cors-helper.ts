@@ -21,7 +21,7 @@ export function getCorsHeaders(requestOrigin?: string | null): Record<string, st
       const siteUrl = process.env.URL || '';
       return {
         'Access-Control-Allow-Origin': siteUrl || 'null',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
       };
     }
@@ -29,7 +29,7 @@ export function getCorsHeaders(requestOrigin?: string | null): Record<string, st
     // In development/preview, allow the requesting origin
     return {
       'Access-Control-Allow-Origin': requestOrigin || '*',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
     };
   }
@@ -41,7 +41,7 @@ export function getCorsHeaders(requestOrigin?: string | null): Record<string, st
   if (requestOrigin && origins.includes(requestOrigin)) {
     return {
       'Access-Control-Allow-Origin': requestOrigin,
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
     };
   }
@@ -49,7 +49,7 @@ export function getCorsHeaders(requestOrigin?: string | null): Record<string, st
   // Origin not allowed - return first allowed origin (won't match, request will fail)
   return {
     'Access-Control-Allow-Origin': origins[0] || 'null',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 }

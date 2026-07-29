@@ -18,6 +18,7 @@ interface SiteSettings {
   contact_email: string;
   default_shipping_cost: number;
   low_stock_threshold: number;
+  subscriptions_enabled: boolean;
   theme_settings: ThemeSettings | null;
 }
 
@@ -46,6 +47,7 @@ const defaultSettings: SiteSettings = {
   contact_email: '',
   default_shipping_cost: 5,
   low_stock_threshold: 5,
+  subscriptions_enabled: false,
   theme_settings: null,
 };
 
@@ -91,6 +93,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
             contact_email: data.contact_email || '',
             default_shipping_cost: data.default_shipping_cost || 5,
             low_stock_threshold: data.low_stock_threshold || 5,
+            subscriptions_enabled: data.subscriptions_enabled ?? false,
             theme_settings: defaultTheme,
           },
         });

@@ -9,6 +9,7 @@ import {
   Users,
   ArrowUpRight,
   ArrowDownRight,
+  RefreshCw,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -25,6 +26,7 @@ import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
 import { supabase } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore';
 import { formatPrice, formatDateTime } from '../../lib/utils';
 import { ORDER_STATUSES } from '../../lib/constants';
 import type { Order, OrderStatus } from '../../types';
@@ -41,6 +43,8 @@ interface DashboardStats {
   lowStockCount: number;
   customerCount: number;
   pendingOrders: number;
+  activeSubscriptions: number;
+  subscriptionMRR: number;
 }
 
 interface SalesDataPoint {
@@ -50,6 +54,7 @@ interface SalesDataPoint {
 }
 
 export default function AdminDashboard() {
+  const { profile } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
     todayRevenue: 0,
@@ -63,6 +68,8 @@ export default function AdminDashboard() {
     lowStockCount: 0,
     customerCount: 0,
     pendingOrders: 0,
+    activeSubscriptions: 0,
+    subscriptionMRR: 0,
   });
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [salesData, setSalesData] = useState<SalesDataPoint[]>([]);
@@ -89,10 +96,11 @@ export default function AdminDashboard() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const [ordersRes, lowStockRes, customerRes] = await Promise.all([
+      const [ordersRes, lowStockRes, customerRes, subsRes] = await Promise.all([
         supabase.from('orders').select('*').order('created_at', { ascending: false }).abortSignal(controller.signal),
         supabase.from('products').select('*', { count: 'exact', head: true }).eq('track_inventory', true).lt('stock_quantity', 5).abortSignal(controller.signal),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).abortSignal(controller.signal),
+        supabase.from('customer_subscriptions').select('unit_price, quantity, interval').eq('status', 'active').abortSignal(controller.signal),
       ]);
 
       clearTimeout(timeoutId);
@@ -100,6 +108,15 @@ export default function AdminDashboard() {
       const orders: Order[] = ordersRes.data || [];
       const lowStockCount = lowStockRes.count || 0;
       const customerCount = customerRes.count || 0;
+      const activeSubs = subsRes.data || [];
+      // Normalize all sub billing amounts to monthly equivalent for MRR
+      const intervalToMonths: Record<string, number> = {
+        weekly: 4.33, biweekly: 2.17, monthly: 1, every2months: 0.5, quarterly: 0.333,
+      };
+      const subscriptionMRR = activeSubs.reduce((sum: number, s: any) => {
+        const monthlyMultiplier = intervalToMonths[s.interval] ?? 1;
+        return sum + s.unit_price * s.quantity * monthlyMultiplier;
+      }, 0);
 
       // Revenue = only orders Stripe actually captured (processing/shipped/delivered)
       // pending = order record created but payment not yet confirmed
@@ -131,6 +148,8 @@ export default function AdminDashboard() {
         lowStockCount,
         customerCount,
         pendingOrders: pendingOrders.length,
+        activeSubscriptions: activeSubs.length,
+        subscriptionMRR,
       });
 
       setRecentOrders(orders.slice(0, 5));
@@ -170,7 +189,7 @@ export default function AdminDashboard() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="relative">
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-            Welcome to Nexalon Creations
+            {profile?.first_name ? `Hey ${profile.first_name}, welcome back.` : 'Welcome back.'}
           </h1>
           <p className="text-blue-100 mb-4">
             Here's what's happening with your store today.
@@ -200,7 +219,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 xl:grid-cols-5">
         <Card className="group p-4 sm:p-6 hover:border-brand-neon/50 transition-all duration-300 hover:shadow-lg hover:shadow-brand-neon/10">
           <div className="flex items-start justify-between">
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-brand-neon/20 to-brand-emerald-dark rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
@@ -273,6 +292,25 @@ export default function AdminDashboard() {
           <div className="mt-3 sm:mt-4">
             <p className="text-gray-400 text-xs sm:text-sm">Low Stock Items</p>
             <p className="text-xl sm:text-2xl font-bold text-[#0D1B2A]">{stats.lowStockCount}</p>
+          </div>
+        </Card>
+
+        <Card className="group col-span-2 xl:col-span-1 p-4 sm:p-6 hover:border-emerald-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-500/10">
+          <div className="flex items-start justify-between">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+              <RefreshCw className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500" />
+            </div>
+            <Link to="/admin/subscriptions" className="text-emerald-600 text-xs flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded-full hover:bg-emerald-500/20 transition-colors">
+              <ArrowUpRight className="h-3 w-3" />
+              View
+            </Link>
+          </div>
+          <div className="mt-3 sm:mt-4">
+            <p className="text-gray-400 text-xs sm:text-sm">Active Subscriptions</p>
+            <p className="text-xl sm:text-2xl font-bold text-[#0D1B2A]">{stats.activeSubscriptions}</p>
+            {stats.subscriptionMRR > 0 && (
+              <p className="text-xs text-emerald-600 font-medium mt-0.5">{formatPrice(stats.subscriptionMRR)}/mo MRR</p>
+            )}
           </div>
         </Card>
       </div>

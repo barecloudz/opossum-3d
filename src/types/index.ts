@@ -34,6 +34,10 @@ export interface Product {
   require_color_selection: boolean;
   show_description_prompt: boolean;
   available_colors?: string[] | null;
+  is_apparel: boolean;
+  allow_subscriptions: boolean;
+  subscription_intervals?: string[] | null;
+  subscription_discount_rate?: number | null;
   created_at: string;
   updated_at: string;
   images?: ProductImage[];
@@ -182,6 +186,7 @@ export interface StoreSettings {
   contact_email: string | null;
   default_shipping_cost: number;
   low_stock_threshold: number;
+  subscriptions_enabled: boolean;
   updated_at: string;
 }
 

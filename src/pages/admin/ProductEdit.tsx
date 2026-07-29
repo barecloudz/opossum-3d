@@ -82,6 +82,10 @@ export default function AdminProductEdit() {
     continue_selling_when_out_of_stock: false,
     print_time_hours: '',
     weight_oz: '',
+    is_apparel: false,
+    allow_subscriptions: false,
+    subscription_intervals: [] as string[],
+    subscription_discount_rate: 10,
   });
 
   useEffect(() => {
@@ -129,6 +133,10 @@ export default function AdminProductEdit() {
           continue_selling_when_out_of_stock: data.continue_selling_when_out_of_stock,
           print_time_hours: data.print_time_hours?.toString() || '',
           weight_oz: data.weight_oz?.toString() || '',
+          is_apparel: data.is_apparel ?? false,
+          allow_subscriptions: data.allow_subscriptions ?? false,
+          subscription_intervals: data.subscription_intervals ?? [],
+          subscription_discount_rate: data.subscription_discount_rate ?? 10,
         });
         setAvailableColors(data.available_colors ?? []);
 
@@ -350,6 +358,10 @@ export default function AdminProductEdit() {
         continue_selling_when_out_of_stock: formData.continue_selling_when_out_of_stock,
         print_time_hours: formData.print_time_hours ? parseInt(formData.print_time_hours) : null,
         weight_oz: formData.weight_oz ? parseFloat(formData.weight_oz) : null,
+        is_apparel: formData.is_apparel,
+        allow_subscriptions: formData.allow_subscriptions,
+        subscription_intervals: formData.subscription_intervals?.length ? formData.subscription_intervals : null,
+        subscription_discount_rate: formData.subscription_discount_rate ?? 10,
       };
 
       console.log('Saving product data:', productData);
@@ -1141,6 +1153,103 @@ export default function AdminProductEdit() {
                     </div>
                   </label>
                 </div>
+
+                {/* Apparel Product Toggle */}
+                <div className="pt-2 border-t border-gray-200">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="is_apparel"
+                      checked={formData.is_apparel}
+                      onChange={handleInputChange}
+                      className="sr-only"
+                    />
+                    <div className={`relative w-10 h-6 rounded-full flex-shrink-0 transition-colors ${formData.is_apparel ? 'bg-brand-neon' : 'bg-gray-600'}`}>
+                      <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.is_apparel ? 'translate-x-4' : ''}`} />
+                    </div>
+                    <div>
+                      <span className="text-gray-300 font-medium">Apparel Product</span>
+                      <p className="text-gray-500 text-xs mt-0.5">
+                        Enables size grid + color swatch selector on the product page. Use for clothing items (T-shirts, hoodies, etc.). Variants = sizes.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </Card>
+
+            {/* Subscription Settings */}
+            <Card>
+              <h2 className="text-xl font-semibold text-[#0D1B2A] mb-1">Subscribe & Save</h2>
+              <p className="text-gray-500 text-xs mb-4">Let customers set up recurring orders for this product at a discount.</p>
+              <div className="space-y-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="allow_subscriptions"
+                    checked={formData.allow_subscriptions}
+                    onChange={handleInputChange}
+                    className="sr-only"
+                  />
+                  <div className={`relative w-10 h-6 rounded-full flex-shrink-0 transition-colors ${formData.allow_subscriptions ? 'bg-brand-neon' : 'bg-gray-600'}`}>
+                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.allow_subscriptions ? 'translate-x-4' : ''}`} />
+                  </div>
+                  <div>
+                    <span className="text-gray-300 font-medium">Allow Subscriptions</span>
+                    <p className="text-gray-500 text-xs mt-0.5">Customers can subscribe to receive this product on a recurring schedule.</p>
+                  </div>
+                </label>
+
+                {formData.allow_subscriptions && (
+                  <div className="space-y-4 pt-3 border-t border-brand-gray">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Available Intervals</label>
+                      <div className="space-y-2">
+                        {[
+                          { value: 'weekly',       label: 'Every week' },
+                          { value: 'biweekly',     label: 'Every 2 weeks' },
+                          { value: 'monthly',      label: 'Every month' },
+                          { value: 'every2months', label: 'Every 2 months' },
+                          { value: 'quarterly',    label: 'Every 3 months' },
+                        ].map(opt => {
+                          const checked = (formData.subscription_intervals || []).includes(opt.value);
+                          return (
+                            <label key={opt.value} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => {
+                                  const current = formData.subscription_intervals || [];
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    subscription_intervals: checked
+                                      ? current.filter(i => i !== opt.value)
+                                      : [...current, opt.value],
+                                  }));
+                                }}
+                                className="w-4 h-4 rounded border-brand-gray bg-brand-black text-brand-neon focus:ring-brand-neon"
+                              />
+                              <span className="text-gray-300 text-sm">{opt.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Subscriber Discount (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={formData.subscription_discount_rate ?? 10}
+                        onChange={e => setFormData(prev => ({ ...prev, subscription_discount_rate: parseFloat(e.target.value) || 0 }))}
+                        className="w-full px-4 py-2 rounded-lg bg-brand-black border border-brand-gray text-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-brand-neon"
+                      />
+                      <p className="text-gray-500 text-xs mt-1">Discount applied to subscribers on every recurring order.</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
 

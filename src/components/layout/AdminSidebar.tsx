@@ -26,8 +26,10 @@ import {
   BarChart2,
   Printer,
   Hammer,
+  RefreshCw,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
 
 // Top-level items (always visible)
 export const topNavItems = [
@@ -46,6 +48,7 @@ export const storeSubItems = [
 // Customers section
 export const customersSubItems = [
   { href: '/admin/customers', icon: Users, label: 'Customers' },
+  { href: '/admin/subscriptions', icon: RefreshCw, label: 'Subscriptions' },
   { href: '/admin/quotes', icon: MessageSquare, label: 'Quote Requests' },
   { href: '/admin/reviews', icon: Star, label: 'Reviews' },
 ];
@@ -113,9 +116,24 @@ export function getPageTitle(pathname: string): string {
 export default function AdminSidebar() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   const [storeOpen, setStoreOpen] = useState(
     storeSubItems.some(item => location.pathname.startsWith(item.href))
   );
+
+  useEffect(() => {
+    const fetchPending = async () => {
+      const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['pending', 'processing']);
+      setPendingCount(count || 0);
+    };
+    fetchPending();
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchPending, 60000);
+    return () => clearInterval(interval);
+  }, []);
   const [customersOpen, setCustomersOpen] = useState(
     customersSubItems.some(item => location.pathname.startsWith(item.href))
   );
@@ -194,7 +212,12 @@ export default function AdminSidebar() {
                   }`}
                 >
                   <item.icon className={`h-4 w-4 ${isActive(item.href) ? 'text-brand-neon' : ''}`} />
-                  <span className="text-sm">{item.label}</span>
+                  <span className="text-sm flex-1">{item.label}</span>
+                  {item.href === '/admin/orders' && pendingCount > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center leading-tight">
+                      {pendingCount}
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>
