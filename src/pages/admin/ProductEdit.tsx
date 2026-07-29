@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Plus, Trash2, AlertCircle, X, Image as ImageIcon, Upload, FolderPlus, Palette } from 'lucide-react';
-import { COLOR_PRESETS } from '../../lib/constants';
+import { COLOR_PRESETS, parseColor } from '../../lib/constants';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
@@ -48,6 +48,7 @@ export default function AdminProductEdit() {
   const [priceTiers, setPriceTiers] = useState<PriceTier[]>([]);
   const [availableColors, setAvailableColors] = useState<string[]>([]);
   const [customColorInput, setCustomColorInput] = useState('');
+  const [customColorHex, setCustomColorHex] = useState('#000000');
   const variantsEndRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
 
@@ -1088,45 +1089,85 @@ export default function AdminProductEdit() {
                           );
                         })}
                       </div>
+                      {/* Show active custom colors (non-preset) */}
+                      {availableColors.filter(c => c.includes('|')).length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {availableColors.filter(c => c.includes('|')).map(c => {
+                            const { name, hex } = parseColor(c);
+                            return (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => setAvailableColors(prev => prev.filter(x => x !== c))}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-brand-neon bg-brand-neon/20 text-brand-neon text-xs font-medium"
+                              >
+                                <span className="w-3 h-3 rounded-full border border-white/30 flex-shrink-0" style={{ backgroundColor: hex }} />
+                                {name}
+                                <X className="h-2.5 w-2.5 ml-0.5 opacity-70" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                       {availableColors.length === 0 && (
-                        <p className="text-yellow-500/80 text-xs mb-2">⚠ No colors selected — all 12 will show to customers.</p>
+                        <p className="text-yellow-500/80 text-xs mb-2">⚠ No colors selected — all 12 presets will show to customers.</p>
                       )}
                       {availableColors.length > 0 && (
                         <p className="text-brand-neon text-xs mb-2">✓ {availableColors.length} color{availableColors.length !== 1 ? 's' : ''} selected — only these will show to customers.</p>
                       )}
 
-                      {/* Custom color name */}
-                      <div className="flex gap-2 mt-1">
-                        <input
-                          type="text"
-                          value={customColorInput}
-                          onChange={e => setCustomColorInput(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              const name = customColorInput.trim();
-                              if (name && !availableColors.includes(name)) {
-                                setAvailableColors(prev => [...prev, name]);
+                      {/* Custom color creator */}
+                      <div className="mt-3 border-t border-gray-700 pt-3">
+                        <p className="text-gray-400 text-xs mb-2">Create a custom color with a name and exact color:</p>
+                        <div className="flex gap-2 items-center">
+                          <div className="relative flex-shrink-0">
+                            <input
+                              type="color"
+                              value={customColorHex}
+                              onChange={e => setCustomColorHex(e.target.value)}
+                              className="w-9 h-9 rounded-lg border border-gray-600 cursor-pointer bg-transparent p-0.5"
+                              title="Pick a color"
+                            />
+                          </div>
+                          <input
+                            type="text"
+                            value={customColorInput}
+                            onChange={e => setCustomColorInput(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const name = customColorInput.trim();
+                                if (name) {
+                                  const entry = `${name}|${customColorHex}`;
+                                  if (!availableColors.some(c => c === name || c.startsWith(name + '|'))) {
+                                    setAvailableColors(prev => [...prev, entry]);
+                                  }
+                                  setCustomColorInput('');
+                                  setCustomColorHex('#000000');
+                                }
                               }
-                              setCustomColorInput('');
-                            }
-                          }}
-                          placeholder="Custom color name (e.g. Teal, Galaxy Black)"
-                          className="flex-1 text-xs px-3 py-1.5 rounded-lg bg-brand-black border border-brand-gray text-[#0D1B2A] placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-neon"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const name = customColorInput.trim();
-                            if (name && !availableColors.includes(name)) {
-                              setAvailableColors(prev => [...prev, name]);
-                            }
-                            setCustomColorInput('');
-                          }}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-brand-neon/20 border border-brand-neon/40 text-brand-neon hover:bg-brand-neon/30 transition-colors whitespace-nowrap"
-                        >
-                          + Add
-                        </button>
+                            }}
+                            placeholder="Color name (e.g. Military Green)"
+                            className="flex-1 text-xs px-3 py-2 rounded-lg bg-[#1a1a1a] border border-gray-600 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-neon"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const name = customColorInput.trim();
+                              if (name) {
+                                const entry = `${name}|${customColorHex}`;
+                                if (!availableColors.some(c => c === name || c.startsWith(name + '|'))) {
+                                  setAvailableColors(prev => [...prev, entry]);
+                                }
+                                setCustomColorInput('');
+                                setCustomColorHex('#000000');
+                              }
+                            }}
+                            className="text-xs px-3 py-2 rounded-lg bg-brand-neon/20 border border-brand-neon/40 text-brand-neon hover:bg-brand-neon/30 transition-colors whitespace-nowrap"
+                          >
+                            + Add
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}

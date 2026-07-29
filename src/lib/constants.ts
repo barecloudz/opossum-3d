@@ -15,6 +15,20 @@ export const COLOR_PRESETS = [
   { name: 'Wood Brown', hex: '#8B4513' },
 ] as const;
 
+/**
+ * Parse a color string that may be either:
+ * - A preset name: "Red" → looks up hex from COLOR_PRESETS
+ * - A custom color: "Military Green|#4a5c3a" → splits on | to get name + hex
+ */
+export function parseColor(colorStr: string): { name: string; hex: string } {
+  if (colorStr.includes('|')) {
+    const idx = colorStr.indexOf('|');
+    return { name: colorStr.slice(0, idx), hex: colorStr.slice(idx + 1) };
+  }
+  const preset = COLOR_PRESETS.find(p => p.name === colorStr);
+  return { name: colorStr, hex: preset?.hex ?? '#888888' };
+}
+
 export const ORDER_STATUSES = {
   pending: { label: 'Pending', color: 'bg-yellow-500/20 text-yellow-400' },
   paid: { label: 'Paid', color: 'bg-green-500/20 text-green-400' },

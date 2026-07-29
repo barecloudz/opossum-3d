@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check, ChevronDown, ChevronUp, Upload, X as XIcon, ImageIcon, Palette, MessageSquare } from 'lucide-react';
 
 import Button from '../components/ui/Button';
-import { COLOR_PRESETS } from '../lib/constants';
+import { COLOR_PRESETS, parseColor } from '../lib/constants';
 import { ProductDetailSkeleton } from '../components/ui/Skeleton';
 import RelatedProducts from '../components/product/RelatedProducts';
 import ProductReviews from '../components/product/ProductReviews';
@@ -655,13 +655,13 @@ export default function ProductDetail() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {(product.available_colors ?? []).map(colorName => {
-                        const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888888';
+                        const { name: parsedName, hex } = parseColor(colorName);
                         const isSelected = selectedApparelColor === colorName;
                         return (
                           <button
                             key={colorName}
                             type="button"
-                            title={colorName}
+                            title={parsedName}
                             onClick={() => {
                               setSelectedApparelColor(isSelected ? '' : colorName);
                               setApparelError(null);
@@ -913,10 +913,7 @@ export default function ProductDetail() {
                 <p className="text-xs text-gray-500 mb-3">Select one or more colors for your product{product.require_color_selection && <span className="text-red-500 font-medium"> (required)</span>}</p>
                 <div className="flex flex-wrap gap-2">
                   {(product.available_colors?.length
-                    ? product.available_colors.map(name => ({
-                        name,
-                        hex: COLOR_PRESETS.find(p => p.name === name)?.hex ?? '#888888',
-                      }))
+                    ? product.available_colors.map(raw => parseColor(raw))
                     : COLOR_PRESETS
                   ).map(color => (
                     <button
@@ -961,12 +958,12 @@ export default function ProductDetail() {
                   <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3">
                     <p className="text-xs font-medium text-[#0D1B2A]">How many of each color? <span className="text-gray-400 font-normal">(must add up to {quantity})</span></p>
                     {selectedColors.map(colorName => {
-                      const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
+                      const { name: displayName, hex } = parseColor(colorName);
                       const units = colorRatios[colorName] ?? 0;
                       return (
                         <div key={colorName} className="flex items-center gap-3">
                           <span className="w-3 h-3 rounded-full flex-shrink-0 border border-gray-300" style={{ backgroundColor: hex }} />
-                          <span className="text-sm text-[#0D1B2A] flex-1">{colorName}</span>
+                          <span className="text-sm text-[#0D1B2A] flex-1">{displayName}</span>
                           <div className="flex items-center gap-1">
                             <button
                               type="button"

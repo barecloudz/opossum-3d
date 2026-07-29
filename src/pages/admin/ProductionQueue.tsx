@@ -6,7 +6,7 @@ import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import { supabase } from '../../lib/supabase';
-import { ORDER_STATUSES, COLOR_PRESETS } from '../../lib/constants';
+import { ORDER_STATUSES, parseColor } from '../../lib/constants';
 import type { OrderStatus } from '../../types';
 
 interface OrderRef {
@@ -266,7 +266,7 @@ export default function ProductionQueue() {
                           <div className="flex flex-wrap gap-1">
                             {o.selectedColors.map(entry => {
                               const [colorName, pct] = entry.includes(':') ? entry.split(':') : [entry, null];
-                              const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
+                              const { hex } = parseColor(colorName);
                               return (
                                 <span key={entry} className="flex items-center gap-1 text-xs bg-brand-gray text-[#0D1B2A] px-2 py-0.5 rounded-full whitespace-nowrap">
                                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />

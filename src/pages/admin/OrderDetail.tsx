@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle, Printer, RotateCcw, Tag } from 'lucide-react';
-import { COLOR_PRESETS } from '../../lib/constants';
+import { COLOR_PRESETS, parseColor } from '../../lib/constants';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -697,7 +697,7 @@ export default function AdminOrderDetail() {
                                 <>
                                   {(itemColors[item.id] ?? []).map(entry => {
                                     const [colorName, pct] = entry.includes(':') ? entry.split(':') : [entry, null];
-                                    const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
+                                    const { hex } = parseColor(colorName);
                                     return (
                                       <span key={entry} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-gray text-xs text-[#0D1B2A]">
                                         <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: hex }} />
@@ -721,7 +721,7 @@ export default function AdminOrderDetail() {
                             <div>
                               <div className="flex flex-wrap gap-1.5 mb-2">
                                 {(productColors[item.product_id] ?? COLOR_PRESETS.map(c => c.name)).map(colorName => {
-                                  const hex = COLOR_PRESETS.find(p => p.name === colorName)?.hex ?? '#888';
+                                  const { hex } = parseColor(colorName);
                                   const cur = itemColors[item.id] ?? [];
                                   const selected = cur.some(e => e === colorName || e.startsWith(colorName + ':'));
                                   return (
