@@ -44,7 +44,7 @@ export default function ProductDetail() {
   const [selectedInterval, setSelectedInterval] = useState<string>('');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
-  const [subscribeSuccess, setSubscribeSuccess] = useState(false);
+
   const { addItem, openCart } = useCartStore();
 
   // Swipe support for main image
