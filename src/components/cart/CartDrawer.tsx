@@ -47,7 +47,17 @@ export default function CartDrawer() {
           ) : (
             <ul className="space-y-4">
               {items.map((item) => {
-                const itemPrice = item.product.price + (item.variant?.price_adjustment || 0);
+                const basePrice = item.product.price + (item.variant?.price_adjustment || 0);
+                const tiers = [...(item.product.price_tiers || [])].sort((a: any, b: any) => a.min_qty - b.min_qty);
+                let tierPrice = basePrice;
+                for (const tier of tiers) {
+                  if (item.quantity >= tier.min_qty) tierPrice = tier.price_per_unit;
+                }
+                const lineTotal = tierPrice * item.quantity;
+                const isTierApplied = tierPrice < basePrice;
+                // Find next tier unlock nudge
+                const nextTier = tiers.find((t: any) => t.min_qty > item.quantity);
+                const qtyToNextTier = nextTier ? nextTier.min_qty - item.quantity : null;
                 return (
                   <li
                     key={`${item.product.id}-${item.variant?.id || 'default'}`}
@@ -108,9 +118,27 @@ export default function CartDrawer() {
                           "{item.product_description}"
                         </p>
                       )}
-                      <p className="text-[var(--color-primary)] font-semibold mt-1">
-                        {formatPrice(itemPrice)}
-                      </p>
+                      <div className="mt-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-[var(--color-primary)] font-semibold">
+                            {formatPrice(tierPrice)}
+                            {item.quantity > 1 && <span className="text-xs font-normal text-theme opacity-50 ml-1">ea</span>}
+                          </p>
+                          {isTierApplied && (
+                            <span className="text-xs text-green-600 font-medium bg-green-50 px-1.5 py-0.5 rounded">
+                              Volume price
+                            </span>
+                          )}
+                        </div>
+                        {item.quantity > 1 && (
+                          <p className="text-xs text-theme opacity-50">{formatPrice(lineTotal)} total</p>
+                        )}
+                        {qtyToNextTier && nextTier && (
+                          <p className="text-xs text-[var(--color-primary)] opacity-70 mt-0.5">
+                            Add {qtyToNextTier} more to unlock {formatPrice(nextTier.price_per_unit)}/ea
+                          </p>
+                        )}
+                      </div>
 
                       {/* Quantity controls */}
                       <div className="flex items-center justify-between mt-2">
