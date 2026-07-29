@@ -673,7 +673,7 @@ export default function AdminProductEdit() {
                 <div>
                   <h2 className="text-xl font-semibold text-[#0D1B2A]">Volume Pricing Tiers</h2>
                   <p className="text-gray-400 text-sm mt-1">
-                    Unlocked for customers who use an affiliate code. Leave empty to use base price.
+                    Automatically applied to all customers based on quantity ordered. Leave empty to use the base price.
                   </p>
                 </div>
                 <Button
