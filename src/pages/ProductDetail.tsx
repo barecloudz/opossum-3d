@@ -1091,14 +1091,7 @@ export default function ProductDetail() {
                   </span>
                 </div>
 
-                {subscribeSuccess ? (
-                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-medium">
-                    <Check className="h-4 w-4 flex-shrink-0" />
-                    Subscription created! Check your account for details.
-                  </div>
-                ) : (
-                  <>
-                    {/* Frequency selector */}
+                {/* Frequency selector */}
                     <div className="flex flex-wrap gap-2">
                       {(product.subscription_intervals ?? []).map(interval => (
                         <button
@@ -1143,8 +1136,6 @@ export default function ProductDetail() {
                         You'll be asked to log in before subscribing.
                       </p>
                     )}
-                  </>
-                )}
               </div>
             )}
           </div>
