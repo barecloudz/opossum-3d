@@ -120,13 +120,13 @@ export const useCartStore = create<CartState>()(
 
       getSubtotal: () => {
         return get().items.reduce((total, item) => {
-          const basePrice = item.product.price + (item.variant?.price_adjustment || 0);
+          const variantAdjustment = item.variant?.price_adjustment || 0;
           const tiers = (item.product.price_tiers || []).sort((a: any, b: any) => a.min_qty - b.min_qty);
-          let tierPrice = basePrice;
+          let tierUnitPrice = item.product.price; // tiers apply to base product price only
           for (const tier of tiers) {
-            if (item.quantity >= tier.min_qty) tierPrice = tier.price_per_unit;
+            if (item.quantity >= tier.min_qty) tierUnitPrice = tier.price_per_unit;
           }
-          return total + tierPrice * item.quantity;
+          return total + (tierUnitPrice + variantAdjustment) * item.quantity;
         }, 0);
       },
     }),

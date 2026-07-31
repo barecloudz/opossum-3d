@@ -48,12 +48,14 @@ export default function CartDrawer() {
           ) : (
             <ul className="space-y-4">
               {items.map((item) => {
-                const basePrice = item.product.price + (item.variant?.price_adjustment || 0);
+                const variantAdjustment = item.variant?.price_adjustment || 0;
+                const basePrice = item.product.price + variantAdjustment;
                 const tiers = [...(item.product.price_tiers || [])].sort((a: any, b: any) => a.min_qty - b.min_qty);
-                let tierPrice = basePrice;
+                let tierUnitPrice = item.product.price;
                 for (const tier of tiers) {
-                  if (item.quantity >= tier.min_qty) tierPrice = tier.price_per_unit;
+                  if (item.quantity >= tier.min_qty) tierUnitPrice = tier.price_per_unit;
                 }
+                const tierPrice = tierUnitPrice + variantAdjustment;
                 const lineTotal = tierPrice * item.quantity;
                 const isTierApplied = tierPrice < basePrice;
                 // Find next tier unlock nudge

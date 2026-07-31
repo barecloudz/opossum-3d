@@ -86,16 +86,16 @@ export default function Checkout() {
   }, []);
 
   // Resolve the tier price for a given product quantity
-  const getTierPrice = (tiers: ProductPriceTier[], quantity: number, basePrice: number): number => {
+  const getTierPrice = (tiers: ProductPriceTier[], quantity: number, basePrice: number, variantAdjustment = 0): number => {
     if (!tiers || tiers.length === 0) return basePrice;
     const sorted = [...tiers].sort((a, b) => a.min_qty - b.min_qty);
-    let price = basePrice;
+    let tierUnitPrice = basePrice - variantAdjustment; // tiers are set against base product price only
     for (const tier of sorted) {
       if (quantity >= tier.min_qty) {
-        price = tier.price_per_unit;
+        tierUnitPrice = tier.price_per_unit;
       }
     }
-    return price;
+    return tierUnitPrice + variantAdjustment; // always add variant adjustment back on top
   };
 
   // Fetch price tiers for all cart products (available to everyone, not just affiliates)
@@ -224,9 +224,10 @@ export default function Checkout() {
 
   // Compute tier-based unit price for any customer based on quantity
   const getItemUnitPrice = (item: typeof items[0]): number => {
-    const base = item.product.price + (item.variant?.price_adjustment || 0);
+    const variantAdjustment = item.variant?.price_adjustment || 0;
+    const base = item.product.price + variantAdjustment;
     const tiers = priceTiers[item.product.id] || [];
-    return getTierPrice(tiers, item.quantity, base);
+    return getTierPrice(tiers, item.quantity, base, variantAdjustment);
   };
 
   // Subtotal after applying volume tier pricing (available to everyone)
