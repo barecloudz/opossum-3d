@@ -78,7 +78,7 @@ export default function Home() {
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <div className="bg-[#0D1B2A] overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5 py-14 md:py-20 flex flex-col md:flex-row items-center gap-10 md:gap-16">
+        <div className="max-w-6xl mx-auto px-5 py-16 md:py-24 flex flex-col md:flex-row items-center gap-10 md:gap-16">
 
           {/* Left — text */}
           <div className="flex-1 text-center md:text-left order-2 md:order-1">
@@ -86,26 +86,26 @@ export default function Home() {
               <span className="w-2 h-2 bg-[#1677FF] rounded-full animate-pulse" />
               <span className="text-white/80 text-sm font-medium">Custom 3D Printing & Laser Engraving</span>
             </div>
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-white leading-tight tracking-tight mb-4">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white leading-tight tracking-tight mb-5">
               Have an idea you want<br />
               <span className="text-[#1677FF]">brought to life?</span>
             </h1>
-            <p className="text-white/60 text-base mb-3 max-w-md leading-relaxed">
+            <p className="text-white/60 text-base md:text-lg mb-3 max-w-md leading-relaxed">
               Click the Creativity button to get started. Tell us exactly what you want, add your details, and submit your request directly to our team.
             </p>
             <p className="text-white/40 text-sm mb-8 max-w-md leading-relaxed">
               We'll get back to you as soon as possible.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start mt-2">
               <a
                 href="mailto:nexaloncreations@gmail.com?subject=Custom%20Request"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#1677FF] hover:bg-[#1060d0] text-white font-bold rounded-2xl transition-colors btn-press text-base"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#1677FF] hover:bg-[#1060d0] text-white font-bold rounded-2xl transition-colors btn-press text-base shadow-lg shadow-[#1677FF]/30"
               >
-                Send Your Idea <ArrowRight className="h-4 w-4" />
+                Send Your Idea <ArrowRight className="h-5 w-5" />
               </a>
               <Link
                 to="/shop"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-2xl transition-colors btn-press text-base"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 border border-white/25 text-white font-bold rounded-2xl transition-colors btn-press text-base"
               >
                 Browse Products
               </Link>
@@ -156,9 +156,16 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ── SECTION DIVIDER ──────────────────────────────────── */}
+      <div className="bg-white">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+        </div>
+      </div>
+
       {/* ── FEATURED PRODUCTS ────────────────────────────────── */}
       {featuredProducts.length > 0 && (
-        <div className="px-4 py-14 bg-[#F8FAFC]">
+        <div className="px-4 py-14 bg-white">
           <div className="max-w-5xl mx-auto">
             <div className="flex items-end justify-between mb-8">
               <div>
@@ -177,8 +184,12 @@ export default function Home() {
               {featuredProducts.map((product) => {
                 const img = getPrimaryImage(product);
                 return (
-                  <div key={product.id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group border border-gray-100">
-                    <Link to={`/products/${product.slug}`} className="block relative aspect-square bg-gray-50 overflow-hidden">
+                  <Link
+                    key={product.id}
+                    to={`/products/${product.slug}`}
+                    className="bg-white rounded-2xl overflow-hidden shadow-sm hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group border border-gray-100"
+                  >
+                    <div className="relative aspect-[3/4] bg-[#F8FAFC] overflow-hidden">
                       {img ? (
                         <img
                           src={img}
@@ -191,42 +202,38 @@ export default function Home() {
                         </div>
                       )}
                       {product.compare_at_price && product.compare_at_price > product.price && (
-                        <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-lg">
                           SALE
                         </span>
                       )}
-                    </Link>
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleQuickAdd(product); }}
+                        className="absolute bottom-2 right-2 p-2 bg-[#1677FF] text-white rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-[#1060d0] btn-press"
+                        title="Add to cart"
+                      >
+                        <ShoppingCart className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                     <div className="p-3">
-                      <Link to={`/products/${product.slug}`}>
-                        <p className="font-semibold text-[#0D1B2A] text-sm leading-tight line-clamp-2 mb-1 hover:text-[#1677FF] transition-colors">
-                          {product.name}
-                        </p>
-                      </Link>
-                      <div className="flex items-center justify-between mt-2">
-                        <div>
-                          <span className="font-bold text-[#0D1B2A] text-sm">{formatPrice(product.price)}</span>
-                          {product.compare_at_price && product.compare_at_price > product.price && (
-                            <span className="text-gray-400 text-xs line-through ml-1">{formatPrice(product.compare_at_price)}</span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleQuickAdd(product)}
-                          className="p-1.5 rounded-lg bg-[#1677FF]/10 text-[#1677FF] hover:bg-[#1677FF] hover:text-white transition-colors btn-press"
-                          title="Add to cart"
-                        >
-                          <ShoppingCart className="h-3.5 w-3.5" />
-                        </button>
+                      <p className="font-bold text-[#0D1B2A] text-sm leading-tight line-clamp-2 mb-1.5 group-hover:text-[#1677FF] transition-colors">
+                        {product.name}
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-[#1677FF] text-sm">{formatPrice(product.price)}</span>
+                        {product.compare_at_price && product.compare_at_price > product.price && (
+                          <span className="text-gray-400 text-xs line-through">{formatPrice(product.compare_at_price)}</span>
+                        )}
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
 
-            <div className="text-center mt-6 sm:hidden">
+            <div className="text-center mt-8 sm:hidden">
               <Link
                 to="/shop"
-                className="inline-flex items-center gap-2 text-[#1677FF] font-semibold text-sm"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#1677FF]/10 text-[#1677FF] font-semibold text-sm rounded-2xl hover:bg-[#1677FF]/20 transition-colors"
               >
                 View All Products <ArrowRight className="h-4 w-4" />
               </Link>

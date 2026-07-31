@@ -45,10 +45,10 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <Link
       to={`/products/${product.slug}`}
-      className="group bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] overflow-hidden hover:border-[var(--color-primary)]/50 hover:shadow-neon-sm transition-all"
+      className="group bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
     >
-      {/* Image */}
-      <div className="aspect-square bg-[var(--color-background)] relative overflow-hidden">
+      {/* Image — 3:4 portrait aspect, image-dominant */}
+      <div className="aspect-[3/4] bg-[#F8FAFC] relative overflow-hidden">
         {primaryImage ? (
           <img
             src={primaryImage.image_url}
@@ -57,7 +57,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Package className="h-16 w-16 text-gray-600" />
+            <Package className="h-16 w-16 text-gray-300" />
           </div>
         )}
 
@@ -72,52 +72,52 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* Featured badge */}
         {product.is_featured && !isOnSale && (
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-2 left-2">
             <Badge variant="success">Featured</Badge>
           </div>
         )}
 
         {/* Sale badge */}
         {isOnSale && (
-          <div className="absolute top-2 right-2">
-            <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+          <div className="absolute top-2 left-2">
+            <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-lg">
               {discountPercent}% OFF
             </span>
           </div>
         )}
 
-        {/* Wishlist button - always bottom left */}
+        {/* Wishlist button — top-right, always visible */}
         <button
           onClick={handleWishlistToggle}
-          className={`absolute bottom-2 left-2 p-2 rounded-full transition-all ${
+          className={`absolute top-2 right-2 p-2 rounded-full shadow-md transition-all ${
             inWishlist
               ? 'bg-red-500 text-white'
-              : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500'
+              : 'bg-white/90 text-gray-400 hover:bg-white hover:text-red-500'
           }`}
         >
           <Heart className={`h-4 w-4 ${inWishlist ? 'fill-current' : ''}`} />
         </button>
 
-        {/* Quick add button */}
+        {/* Quick add button — bottom-right on hover */}
         <button
           onClick={handleAddToCart}
           disabled={product.track_inventory && stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock}
-          className="absolute bottom-2 right-2 p-2 bg-brand-neon text-brand-black rounded-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-emerald"
+          className="absolute bottom-2 right-2 p-2 bg-[#1677FF] text-white rounded-xl opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1060d0] shadow-md"
         >
-          <ShoppingCart className="h-5 w-5" />
+          <ShoppingCart className="h-4 w-4" />
         </button>
       </div>
 
       {/* Info */}
-      <div className="p-4">
-        <h3 className="text-theme font-medium mb-1 truncate group-hover:text-[var(--color-primary)] transition-colors">
+      <div className="p-3">
+        <h3 className="text-[#0D1B2A] font-bold text-sm leading-tight mb-1 line-clamp-2 group-hover:text-[#1677FF] transition-colors">
           {product.name}
         </h3>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--color-primary)] font-semibold">{formatPrice(product.price)}</span>
+        <div className="flex items-center justify-between mt-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[#1677FF] font-bold text-sm">{formatPrice(product.price)}</span>
             {product.compare_at_price && (
-              <span className="text-theme opacity-50 text-sm line-through">
+              <span className="text-gray-400 text-xs line-through">
                 {formatPrice(product.compare_at_price)}
               </span>
             )}
@@ -126,9 +126,9 @@ export default function ProductCard({ product }: ProductCardProps) {
           <button
             onClick={handleAddToCart}
             disabled={product.track_inventory && stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock}
-            className="md:hidden p-2 bg-brand-neon text-brand-black rounded-lg disabled:opacity-50 disabled:cursor-not-allowed active:bg-brand-emerald"
+            className="md:hidden p-1.5 bg-[#1677FF]/10 text-[#1677FF] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed active:bg-[#1677FF] active:text-white"
           >
-            <ShoppingCart className="h-4 w-4" />
+            <ShoppingCart className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>

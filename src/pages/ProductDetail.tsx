@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Minus, Plus, Clock, Package, Heart, Share2, ShoppingCart, Check, ChevronDown, ChevronUp, Upload, X as XIcon, ImageIcon, Palette, MessageSquare } from 'lucide-react';
 
@@ -44,6 +44,9 @@ export default function ProductDetail() {
   const [selectedInterval, setSelectedInterval] = useState<string>('');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
+  // Sticky mobile bar state
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  const addToCartRef = useRef<HTMLDivElement>(null);
 
   const { addItem, openCart } = useCartStore();
 
@@ -82,6 +85,18 @@ export default function ProductDetail() {
   const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore();
   const { user } = useAuthStore();
   const { settings } = useSettingsStore();
+
+  // Show sticky bar when main Add to Cart is scrolled out of view
+  useEffect(() => {
+    const el = addToCartRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [product]);
 
   if (isLoading) {
     return <ProductDetailSkeleton />;
@@ -391,7 +406,7 @@ export default function ProductDetail() {
           <div className="space-y-4 animate-fade-in">
             {/* Main Image - Swipeable */}
             <div
-              className="relative aspect-square bg-[#F8FAFC] border border-gray-100 rounded-3xl overflow-hidden"
+              className="relative aspect-square bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm"
               onTouchStart={handleImageTouchStart}
               onTouchMove={handleImageTouchMove}
               onTouchEnd={handleImageTouchEnd}
@@ -1032,7 +1047,7 @@ export default function ProductDetail() {
             )}
 
             {/* Add to cart */}
-            <div className="flex gap-3 pt-4">
+            <div ref={addToCartRef} className="flex gap-3 pt-4">
               <Button
                 onClick={handleAddToCart}
                 size="lg"
@@ -1151,6 +1166,30 @@ export default function ProductDetail() {
           />
         </div>
       </div>
+
+      {/* Sticky mobile Add to Cart bar */}
+      {showStickyBar && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[#0D1B2A] font-bold text-sm truncate">{product.name}</p>
+              <p className="text-[#1677FF] font-semibold text-sm">{formatPrice(currentPrice)}</p>
+            </div>
+            <button
+              onClick={handleAddToCart}
+              disabled={
+                (stockStatus === 'out_of_stock' && !product.continue_selling_when_out_of_stock) ||
+                customizationUploading ||
+                isAdding
+              }
+              className="flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-[#1677FF] hover:bg-[#1060d0] text-white font-bold rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed btn-press"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              {isAdding ? 'Added!' : 'Add to Cart'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

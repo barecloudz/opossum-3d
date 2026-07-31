@@ -22,26 +22,34 @@ export default function CartDrawer() {
       {/* Drawer */}
       <div className="fixed inset-y-0 right-0 w-full max-w-md bg-[var(--color-surface)] z-50 flex flex-col shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
+          <div className="flex items-center gap-2.5">
             <ShoppingBag className="h-5 w-5 text-[var(--color-primary)]" />
-            <h2 className="text-lg font-semibold text-theme">Your Cart</h2>
+            <h2 className="text-lg font-bold text-theme">Your Cart</h2>
+            {items.length > 0 && (
+              <span className="bg-[#1677FF] text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                {items.length} {items.length === 1 ? 'item' : 'items'}
+              </span>
+            )}
           </div>
           <button
             onClick={closeCart}
-            className="text-theme opacity-60 hover:opacity-100 transition-colors"
+            className="p-1.5 text-theme opacity-50 hover:opacity-100 hover:bg-gray-100 rounded-lg transition-all"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Cart items */}
         <div className="flex-1 overflow-auto p-4">
           {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <ShoppingBag className="h-16 w-16 text-theme opacity-40 mb-4" />
-              <p className="text-theme opacity-60 mb-4">Your cart is empty</p>
-              <Button onClick={closeCart} as={Link} to="/products">
+            <div className="flex flex-col items-center justify-center h-full text-center px-6">
+              <div className="w-20 h-20 bg-[#1677FF]/10 rounded-full flex items-center justify-center mb-5">
+                <ShoppingBag className="h-9 w-9 text-[#1677FF]" />
+              </div>
+              <h3 className="text-[#0D1B2A] font-bold text-lg mb-2">Your cart is empty</h3>
+              <p className="text-gray-400 text-sm mb-6 leading-relaxed">Looks like you haven't added anything yet. Explore our products and find something you'll love.</p>
+              <Button onClick={closeCart} as={Link} to="/products" className="px-8">
                 Start Shopping
               </Button>
             </div>
@@ -67,12 +75,12 @@ export default function CartDrawer() {
                     className="flex gap-4 bg-[var(--color-background)] rounded-lg p-3"
                   >
                     {/* Product image placeholder */}
-                    <div className="w-20 h-20 bg-[var(--color-border)] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="w-24 h-24 bg-[var(--color-border)] rounded-xl flex items-center justify-center flex-shrink-0">
                       {item.product.images?.[0]?.image_url ? (
                         <img
                           src={item.product.images[0].image_url}
                           alt={item.product.name}
-                          className="w-full h-full object-cover rounded-lg"
+                          className="w-full h-full object-cover rounded-xl"
                         />
                       ) : (
                         <ShoppingBag className="h-8 w-8 text-theme opacity-40" />
@@ -174,21 +182,20 @@ export default function CartDrawer() {
 
         {/* Footer */}
         {items.length > 0 && (
-          <div className="p-4 border-t border-[var(--color-border)] space-y-4">
-            <div className="flex items-center justify-between text-lg">
-              <span className="text-theme opacity-60">Subtotal</span>
-              <span className="text-theme font-semibold">{formatPrice(subtotal)}</span>
+          <div className="px-5 py-4 border-t border-[var(--color-border)] space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-theme opacity-60 text-base">Subtotal</span>
+              <span className="text-theme font-bold text-xl">{formatPrice(subtotal)}</span>
             </div>
-            <p className="text-theme opacity-50 text-sm">Shipping calculated at checkout</p>
-            <div className="space-y-2">
-              <Button
-                as={Link}
+            <p className="text-theme opacity-40 text-xs">Shipping calculated at checkout</p>
+            <div className="space-y-2.5">
+              <Link
                 to="/checkout"
                 onClick={closeCart}
-                className="w-full"
+                className="flex items-center justify-center w-full py-4 bg-[#1677FF] hover:bg-[#1060d0] text-white font-bold text-base rounded-2xl transition-colors shadow-lg shadow-[#1677FF]/25 btn-press"
               >
-                Checkout
-              </Button>
+                Checkout — {formatPrice(subtotal)}
+              </Link>
               <Button
                 as={Link}
                 to="/cart"
