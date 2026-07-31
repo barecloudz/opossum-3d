@@ -6,6 +6,7 @@ import {
   Package,
   AlertTriangle,
   TrendingUp,
+  TrendingDown,
   Users,
   ArrowUpRight,
   ArrowDownRight,
@@ -21,6 +22,9 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -35,6 +39,7 @@ interface DashboardStats {
   todayRevenue: number;
   weekRevenue: number;
   monthRevenue: number;
+  lastMonthRevenue: number;
   totalRefunded: number;
   netRevenue: number;
   orderCount: number;
@@ -53,6 +58,26 @@ interface SalesDataPoint {
   orders: number;
 }
 
+interface OrderStatusPoint {
+  name: string;
+  value: number;
+  color: string;
+}
+
+interface TopProduct {
+  name: string;
+  units: number;
+  revenue: number;
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  pending: '#f59e0b',
+  processing: '#3b82f6',
+  shipped: '#8b5cf6',
+  delivered: '#22c55e',
+  cancelled: '#ef4444',
+};
+
 export default function AdminDashboard() {
   const { profile } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +85,7 @@ export default function AdminDashboard() {
     todayRevenue: 0,
     weekRevenue: 0,
     monthRevenue: 0,
+    lastMonthRevenue: 0,
     totalRefunded: 0,
     netRevenue: 0,
     orderCount: 0,
@@ -73,6 +99,8 @@ export default function AdminDashboard() {
   });
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [salesData, setSalesData] = useState<SalesDataPoint[]>([]);
+  const [orderStatusData, setOrderStatusData] = useState<OrderStatusPoint[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -91,16 +119,19 @@ export default function AdminDashboard() {
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
       const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
 
       // Fetch all data in parallel with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const [ordersRes, lowStockRes, customerRes, subsRes] = await Promise.all([
+      const [ordersRes, lowStockRes, customerRes, subsRes, lastMonthRes, orderItemsRes] = await Promise.all([
         supabase.from('orders').select('*').order('created_at', { ascending: false }).abortSignal(controller.signal),
         supabase.from('products').select('*', { count: 'exact', head: true }).eq('track_inventory', true).lt('stock_quantity', 5).abortSignal(controller.signal),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).abortSignal(controller.signal),
         supabase.from('customer_subscriptions').select('unit_price, quantity, interval').eq('status', 'active').abortSignal(controller.signal),
+        supabase.from('orders').select('total, status, created_at').gte('created_at', lastMonthStart).lt('created_at', monthStart).in('status', ['processing', 'shipped', 'delivered']).abortSignal(controller.signal),
+        supabase.from('order_items').select('product_name, quantity, total_price').abortSignal(controller.signal),
       ]);
 
       clearTimeout(timeoutId);
@@ -109,6 +140,9 @@ export default function AdminDashboard() {
       const lowStockCount = lowStockRes.count || 0;
       const customerCount = customerRes.count || 0;
       const activeSubs = subsRes.data || [];
+      const lastMonthOrders: { total: number; status: string; created_at: string }[] = lastMonthRes.data || [];
+      const orderItems: { product_name: string; quantity: number; total_price: number }[] = orderItemsRes.data || [];
+
       // Normalize all sub billing amounts to monthly equivalent for MRR
       const intervalToMonths: Record<string, number> = {
         weekly: 4.33, biweekly: 2.17, monthly: 1, every2months: 0.5, quarterly: 0.333,
@@ -136,10 +170,14 @@ export default function AdminDashboard() {
       const monthRevenue = monthOrders.reduce((sum: number, o: Order) => sum + o.total - (o.refund_amount || 0), 0);
       const avgOrderValue = paidOrders.length > 0 ? grossRevenue / paidOrders.length : 0;
 
+      // Last month revenue
+      const lastMonthRevenue = lastMonthOrders.reduce((sum, o) => sum + o.total, 0);
+
       setStats({
         todayRevenue,
         weekRevenue,
         monthRevenue,
+        lastMonthRevenue,
         totalRefunded,
         netRevenue: grossRevenue - totalRefunded,
         orderCount: orders.length,
@@ -167,12 +205,46 @@ export default function AdminDashboard() {
         });
       }
       setSalesData(chartData);
+
+      // Order status donut data — all statuses we track
+      const statusKeys: OrderStatus[] = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+      const statusCounts = statusKeys
+        .map((s) => ({
+          name: ORDER_STATUSES[s]?.label ?? s,
+          value: orders.filter((o) => o.status === s).length,
+          color: STATUS_COLORS[s] ?? '#6b7280',
+        }))
+        .filter((s) => s.value > 0);
+      setOrderStatusData(statusCounts);
+
+      // Top 5 products by revenue from order_items
+      const productMap: Record<string, { units: number; revenue: number }> = {};
+      for (const item of orderItems) {
+        const name = item.product_name || 'Unknown';
+        if (!productMap[name]) productMap[name] = { units: 0, revenue: 0 };
+        productMap[name].units += item.quantity ?? 0;
+        productMap[name].revenue += item.total_price ?? 0;
+      }
+      const sorted = Object.entries(productMap)
+        .map(([name, data]) => ({ name, ...data }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5);
+      setTopProducts(sorted);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Revenue comparison helpers
+  const revenueChange = stats.lastMonthRevenue > 0
+    ? ((stats.monthRevenue - stats.lastMonthRevenue) / stats.lastMonthRevenue) * 100
+    : null;
+  const revenueUp = revenueChange !== null && revenueChange >= 0;
+
+  // Top products max revenue (for progress bars)
+  const maxProductRevenue = topProducts.length > 0 ? topProducts[0].revenue : 1;
 
   if (isLoading) {
     return (
@@ -194,6 +266,17 @@ export default function AdminDashboard() {
           <p className="text-blue-100 mb-4">
             Here's what's happening with your store today.
           </p>
+          {/* Quick stats chips */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <span className="inline-flex items-center gap-1.5 bg-white/15 border border-white/20 text-white text-xs font-medium px-3 py-1.5 rounded-full">
+              <DollarSign className="h-3 w-3" />
+              This week: {formatPrice(stats.weekRevenue)}
+            </span>
+            <span className="inline-flex items-center gap-1.5 bg-white/15 border border-white/20 text-white text-xs font-medium px-3 py-1.5 rounded-full">
+              <TrendingUp className="h-3 w-3" />
+              Avg order: {formatPrice(stats.avgOrderValue)}
+            </span>
+          </div>
           <div className="flex flex-wrap gap-3">
             <Link
               to="/admin/products/new"
@@ -339,6 +422,38 @@ export default function AdminDashboard() {
         </div>
       </Card>
 
+      {/* Revenue Comparison Card */}
+      <Card className="p-4 sm:p-6">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Month vs. Last Month</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+          <div className="flex-1">
+            <p className="text-xs text-gray-400 mb-1">This Month</p>
+            <p className="text-2xl sm:text-3xl font-bold text-[#0D1B2A]">{formatPrice(stats.monthRevenue)}</p>
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-gray-400 mb-1">Last Month</p>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-400">{formatPrice(stats.lastMonthRevenue)}</p>
+          </div>
+          <div className="flex-shrink-0">
+            {revenueChange === null ? (
+              <span className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-500 text-sm font-semibold px-4 py-2 rounded-xl">
+                No prior data
+              </span>
+            ) : revenueUp ? (
+              <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-600 text-sm font-semibold px-4 py-2 rounded-xl border border-green-100">
+                <TrendingUp className="h-4 w-4" />
+                +{revenueChange.toFixed(1)}%
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-500 text-sm font-semibold px-4 py-2 rounded-xl border border-red-100">
+                <TrendingDown className="h-4 w-4" />
+                {revenueChange.toFixed(1)}%
+              </span>
+            )}
+          </div>
+        </div>
+      </Card>
+
       {/* Secondary Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="group p-4 sm:p-6 hover:border-green-500/50 transition-all">
@@ -470,6 +585,92 @@ export default function AdminDashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+        </Card>
+      </div>
+
+      {/* Order Status Donut + Top Products */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Order Status Donut */}
+        <Card className="p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold text-[#0D1B2A] mb-4">Orders by Status</h2>
+          {orderStatusData.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 text-sm">No orders to display</div>
+          ) : (
+            <div className="flex flex-col items-center gap-4">
+              <div className="h-52">
+                <ResponsiveContainer width={220} height="100%">
+                  <PieChart>
+                    <Pie
+                      data={orderStatusData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={90}
+                      paddingAngle={2}
+                      dataKey="value"
+                      strokeWidth={0}
+                    >
+                      {orderStatusData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                      }}
+                      formatter={(value: number, name: string) => [value, name]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
+                {orderStatusData.map((entry, index) => (
+                  <div key={index} className="flex items-center gap-1.5">
+                    <span
+                      className="w-3 h-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: entry.color }}
+                    />
+                    <span className="text-xs text-gray-600 font-medium">{entry.name}</span>
+                    <span className="text-xs text-gray-400">({entry.value})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+
+        {/* Top 5 Products by Revenue */}
+        <Card className="p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold text-[#0D1B2A] mb-4">Top Products by Revenue</h2>
+          {topProducts.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 text-sm">No order item data available</div>
+          ) : (
+            <div className="space-y-4">
+              {topProducts.map((product, index) => (
+                <div key={index}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-bold text-gray-400 w-4 flex-shrink-0">#{index + 1}</span>
+                      <span className="text-sm font-medium text-[#0D1B2A] truncate">{product.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0 ml-2">
+                      <span className="text-xs text-gray-400">{product.units} units</span>
+                      <span className="text-sm font-bold text-[#0D1B2A]">{formatPrice(product.revenue)}</span>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#1677FF] rounded-full transition-all"
+                      style={{ width: `${(product.revenue / maxProductRevenue) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
 
