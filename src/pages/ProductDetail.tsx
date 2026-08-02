@@ -649,6 +649,30 @@ export default function ProductDetail() {
               <span className="text-sm text-gray-400">qty</span>
             </div>
 
+            {/* Volume tier nudge — non-apparel */}
+            {!product.is_apparel && (product.price_tiers?.length ?? 0) > 0 && (() => {
+              const sorted = [...(product.price_tiers || [])].sort((a, b) => a.min_qty - b.min_qty);
+              const nextTier = sorted.find(t => t.min_qty > quantity);
+              if (!nextTier) return null;
+              const qtyNeeded = nextTier.min_qty - quantity;
+              const savingsEach = product.price - nextTier.price_per_unit;
+              return (
+                <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm">
+                  <span className="text-green-700 flex-1">
+                    Add <strong>{qtyNeeded} more</strong> to unlock <strong>{formatPrice(nextTier.price_per_unit)}/ea</strong>
+                    {savingsEach > 0 && <span className="text-green-600 ml-1">— save {formatPrice(savingsEach)} each</span>}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleQuantityChange(nextTier.min_qty)}
+                    className="flex-shrink-0 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap"
+                  >
+                    Set to {nextTier.min_qty}
+                  </button>
+                </div>
+              );
+            })()}
+
             {/* Apparel: Color + Size Grid */}
             {product.is_apparel ? (
               <div className="space-y-5">
@@ -662,7 +686,7 @@ export default function ProductDetail() {
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-sm font-semibold text-[#0D1B2A]">Color:</span>
                       {selectedApparelColor && (
-                        <span className="text-sm text-[var(--color-primary)] font-medium">{selectedApparelColor}</span>
+                        <span className="text-sm text-[var(--color-primary)] font-medium">{parseColor(selectedApparelColor).name}</span>
                       )}
                       <span className="ml-auto text-xs text-gray-400">
                         {(product.available_colors?.length ?? 0)} colors
@@ -759,6 +783,24 @@ export default function ProductDetail() {
                         </span>
                       </div>
                     )}
+                    {/* Volume tier nudge — apparel */}
+                    {(product.price_tiers?.length ?? 0) > 0 && (() => {
+                      const apparelTotal = Object.values(apparelSizeQtys).reduce((a, b) => a + b, 0);
+                      if (apparelTotal === 0) return null;
+                      const sorted = [...(product.price_tiers || [])].sort((a, b) => a.min_qty - b.min_qty);
+                      const nextTier = sorted.find(t => t.min_qty > apparelTotal);
+                      if (!nextTier) return null;
+                      const qtyNeeded = nextTier.min_qty - apparelTotal;
+                      const savingsEach = product.price - nextTier.price_per_unit;
+                      return (
+                        <div className="mt-2 flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm">
+                          <span className="text-green-700">
+                            Add <strong>{qtyNeeded} more shirt{qtyNeeded !== 1 ? 's' : ''}</strong> to unlock <strong>{formatPrice(nextTier.price_per_unit)}/ea</strong>
+                            {savingsEach > 0 && <span className="text-green-600 ml-1">— save {formatPrice(savingsEach)} each</span>}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
