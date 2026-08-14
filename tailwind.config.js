@@ -6,6 +6,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        display: ['DM Serif Display', 'Georgia', 'serif'],
+      },
       colors: {
         brand: {
           // Dynamic theme colors (from CSS variables)

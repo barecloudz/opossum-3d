@@ -109,13 +109,13 @@ export default function ProductCard({ product }: ProductCardProps) {
       </div>
 
       {/* Info */}
-      <div className="p-3">
-        <h3 className="text-[#0D1B2A] font-bold text-sm leading-tight mb-1 line-clamp-2 group-hover:text-[#1677FF] transition-colors">
+      <div className="p-5">
+        <h3 className="text-[#0D1B2A] font-bold text-sm leading-tight mb-2.5 line-clamp-2 group-hover:text-[#1677FF] transition-colors">
           {product.name}
         </h3>
-        <div className="flex items-center justify-between mt-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[#1677FF] font-bold text-sm">{formatPrice(product.price)}</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-[#1677FF] font-bold">{formatPrice(product.price)}</span>
             {product.compare_at_price && (
               <span className="text-gray-400 text-xs line-through">
                 {formatPrice(product.compare_at_price)}

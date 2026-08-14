@@ -141,64 +141,79 @@ export default function ProductReviews({ productId }: ProductReviewsProps) {
     <section className="mt-16 pt-8 border-t border-[var(--color-border)]">
       <h2 className="text-2xl font-bold text-theme mb-6">Customer Reviews</h2>
 
-      {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        {/* Average Rating */}
-        <Card>
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-theme">
-                {averageRating.toFixed(1)}
-              </div>
-              <div className="flex justify-center mt-1">
-                {renderStars(Math.round(averageRating))}
-              </div>
-              <p className="text-theme opacity-60 text-sm mt-1">
-                {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
-              </p>
-            </div>
-            <div className="flex-1 space-y-1">
-              {ratingDistribution.map(({ rating, count, percentage }) => (
-                <div key={rating} className="flex items-center gap-2">
-                  <span className="text-sm text-theme opacity-60 w-8">{rating}</span>
-                  <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
-                  <div className="flex-1 h-2 bg-[var(--color-border)] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-yellow-400 rounded-full transition-all"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                  <span className="text-sm text-theme opacity-60 w-8">{count}</span>
+      {/* Summary — only show when there are actual reviews */}
+      {reviews.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          {/* Average Rating */}
+          <Card>
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <div className="text-4xl font-bold text-theme">
+                  {averageRating.toFixed(1)}
                 </div>
-              ))}
+                <div className="flex justify-center mt-1">
+                  {renderStars(Math.round(averageRating))}
+                </div>
+                <p className="text-theme opacity-60 text-sm mt-1">
+                  {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
+                </p>
+              </div>
+              <div className="flex-1 space-y-1">
+                {ratingDistribution.map(({ rating, count, percentage }) => (
+                  <div key={rating} className="flex items-center gap-2">
+                    <span className="text-sm text-theme opacity-60 w-8">{rating}</span>
+                    <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
+                    <div className="flex-1 h-2 bg-[var(--color-border)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-yellow-400 rounded-full transition-all"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                    <span className="text-sm text-theme opacity-60 w-8">{count}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
 
-        {/* Write Review CTA */}
-        <Card>
-          <div className="text-center py-4">
-            <h3 className="text-lg font-semibold text-theme mb-2">Share Your Experience</h3>
-            <p className="text-theme opacity-60 text-sm mb-4">
-              Help other customers by sharing your thoughts
-            </p>
-            {hasReviewed ? (
-              <p className="text-green-400 text-sm flex items-center justify-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                You've already reviewed this product
+          {/* Write Review CTA */}
+          <Card>
+            <div className="text-center py-4">
+              <h3 className="text-lg font-semibold text-theme mb-2">Share Your Experience</h3>
+              <p className="text-theme opacity-60 text-sm mb-4">
+                Help other customers by sharing your thoughts
               </p>
-            ) : showReviewForm ? (
-              <Button variant="ghost" onClick={() => setShowReviewForm(false)}>
-                Cancel
-              </Button>
-            ) : (
-              <Button onClick={() => setShowReviewForm(true)}>
-                Write a Review
-              </Button>
-            )}
+              {hasReviewed ? (
+                <p className="text-green-400 text-sm flex items-center justify-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  You've already reviewed this product
+                </p>
+              ) : showReviewForm ? (
+                <Button variant="ghost" onClick={() => setShowReviewForm(false)}>
+                  Cancel
+                </Button>
+              ) : (
+                <Button onClick={() => setShowReviewForm(true)}>
+                  Write a Review
+                </Button>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Write Review CTA — shown only when no reviews yet */}
+      {reviews.length === 0 && !showReviewForm && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-[#F8FAFC] border border-gray-100 rounded-2xl mb-8">
+          <div>
+            <p className="font-semibold text-[#0D1B2A] mb-0.5">No reviews yet</p>
+            <p className="text-gray-500 text-sm">Be the first to share your experience with this product.</p>
           </div>
-        </Card>
-      </div>
+          {!hasReviewed && (
+            <Button onClick={() => setShowReviewForm(true)}>Write a Review</Button>
+          )}
+        </div>
+      )}
 
       {/* Review Form */}
       {showReviewForm && !hasReviewed && (

@@ -1,7 +1,8 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogOut, Handshake, ShoppingBag } from 'lucide-react';
+import { Menu, X, User, LogOut, Handshake, ShoppingBag, ShoppingCart } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
+import { useCartStore } from '../../store/cartStore';
 import { supabase } from '../../lib/supabase';
 
 export default function Header() {
@@ -15,6 +16,8 @@ export default function Header() {
     setMobileMenuOpen(false);
   }, [location.pathname]);
   const { user, isAdmin, signOut } = useAuthStore();
+  const { items, openCart } = useCartStore();
+  const cartCount = items.reduce((sum, i) => sum + i.quantity, 0);
 
   useEffect(() => {
     if (!user) { setIsApprovedAffiliate(false); return; }
@@ -82,13 +85,27 @@ export default function Header() {
           </nav>
 
           {/* Right side icons */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            {/* Cart icon — Desktop */}
+            <button
+              onClick={openCart}
+              className="hidden md:flex relative text-theme hover:text-[var(--color-primary)] transition-colors p-1"
+              aria-label="Open cart"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#1677FF] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none">
+                  {cartCount > 9 ? '9+' : cartCount}
+                </span>
+              )}
+            </button>
+
             {/* User account - Desktop */}
             <Link
               to={user ? '/account' : '/login'}
-              className="hidden md:flex text-theme hover:text-[var(--color-primary)] transition-colors"
+              className="hidden md:flex text-theme hover:text-[var(--color-primary)] transition-colors p-1"
             >
-              <User className="h-6 w-6" />
+              <User className="h-5 w-5" />
             </Link>
 
             {/* Admin link - Desktop */}
