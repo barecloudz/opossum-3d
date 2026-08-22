@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle, Printer, RotateCcw, Tag } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Save, Truck, Download, AlertCircle, CheckCircle, Printer, RotateCcw, Tag, Mail } from 'lucide-react';
 import { COLOR_PRESETS, parseColor } from '../../lib/constants';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
@@ -922,6 +922,24 @@ export default function AdminOrderDetail() {
                 <Truck className="h-5 w-5 text-brand-neon" />
                 Shipping Label
               </h2>
+
+              {/* Email flow info */}
+              <div className="mb-4 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg space-y-2">
+                <p className="text-xs font-semibold text-blue-300 uppercase tracking-wide flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5" />
+                  Customer Email Flow
+                </p>
+                <div className="space-y-1.5 text-xs text-gray-400">
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 h-4 w-4 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-[10px] font-bold flex-shrink-0">1</span>
+                    <span><span className="text-gray-200">Order placed & paid</span> → customer gets <span className="text-green-400">"Order Confirmed"</span> email automatically.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 h-4 w-4 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold flex-shrink-0">2</span>
+                    <span><span className="text-gray-200">You generate a label below</span> → label is purchased, order marked Shipped, customer gets <span className="text-blue-400">"Your Order Has Shipped"</span> email with tracking number.</span>
+                  </div>
+                </div>
+              </div>
 
               {labelError && (
                 <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2">

@@ -34,13 +34,6 @@ export default function OrderConfirmation() {
           if (!updateError) {
             console.log('[OrderConfirmation] Order status updated to paid (redirect return)');
 
-            // Trigger background tasks for redirect-based payments
-            // Auto-generate shipping label
-            fetch('/.netlify/functions/auto-generate-shipping-label', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orderId: id }),
-            }).catch(err => console.error('[OrderConfirmation] Auto label failed:', err));
           }
         }
 
